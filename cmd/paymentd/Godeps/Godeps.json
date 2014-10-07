@@ -3,6 +3,11 @@
 	"GoVersion": "go1.3.2",
 	"Deps": [
 		{
+			"ImportPath": "github.com/smartystreets/goconvey/convey",
+			"Comment": "1.5.0-270-gc9900a9",
+			"Rev": "c9900a95b757fd2e72857ee2c9bf9529fc335eb0"
+		},
+		{
 			"ImportPath": "gopkg.in/inconshreveable/log15.v2",
 			"Comment": "v2.4",
 			"Rev": "574f2561514e06d66f532fce5c7f776f7c7939b3"
