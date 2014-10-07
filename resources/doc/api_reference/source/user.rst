@@ -3,7 +3,10 @@ User API
 
 .. http:post:: /user/(user_name)/credentials
 
-	Send user credentials to receive an Authorization token.
+	Send user credentials to receive an authorization token.
+
+	The returned authorization token can be used in subsequent :http:header:`Authorization`
+	headers for accessing protected resources.
 
 	**Example request**:
 
@@ -15,7 +18,7 @@ User API
 		Content-Type: application/json
 
 		{
-			"type": "password",
+			"method": "plain",
 			"password": "mysecretpassword"
 		}
 
@@ -30,8 +33,37 @@ User API
 			"Authorization": "dEFFEFeddedeGGEGMceokr353521234"
 		}
 
-	:param user_name: the username
+	:param user_name: The username.
 
-	:statuscode 200: no error, credentials accepted
-	:statuscode 401: unauthorized, either the username does not exist or the credentials
-	                 were incorrect
+	:<json method: The credential method. Please refer to :ref:`user-credentials` for a
+	               list of supported methods.
+
+	:>json Authorization: The authorization token, which can be used in the
+	                      :http:header:`Authorization` header for subsequent requests.
+
+	:statuscode 200: No error, credentials accepted.
+	:statuscode 400: The request was malformed; the provided fields could not be understood.
+	:statuscode 401: Unauthorized, either the username does not exist or the credentials
+	                 were incorrect.
+
+.. _user-credentials:
+
+Credentials
+-----------
+
+.. 
+	TODO "will support", update as soon as other methods are available
+	like key derivation methods
+
+:term:`paymentd` will support multiple methods for accepting and authenticating
+credentials.
+
+Currently the following types are available:
+
++-----------+-------------------------+
+|    Type   |       Description       |
++===========+=========================+
+| ``plain`` | Password in plain text. |
++-----------+-------------------------+
+
+
