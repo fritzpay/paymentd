@@ -45,7 +45,7 @@ Authentication and Authorization
 	:reqjson Method: The credential method. Please refer to :ref:`user-credentials` for a
 	               list of supported methods.
 
-	:>resjson Authorization: The authorization token, which can be used in the
+	:resjson Authorization: The authorization token, which can be used in the
 	                      :http:header:`Authorization` header for subsequent requests.
 
 	:statuscode 200: No error, credentials accepted.
