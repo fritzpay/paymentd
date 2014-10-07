@@ -1,0 +1,11 @@
+{
+	"ImportPath": "github.com/fritzpay/paymentd/cmd/paymentd",
+	"GoVersion": "go1.3.2",
+	"Deps": [
+		{
+			"ImportPath": "gopkg.in/inconshreveable/log15.v2",
+			"Comment": "v2.4",
+			"Rev": "574f2561514e06d66f532fce5c7f776f7c7939b3"
+		}
+	]
+}
