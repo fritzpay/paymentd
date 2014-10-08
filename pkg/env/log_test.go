@@ -17,10 +17,8 @@ func (t *testHandler) Log(r *log15.Record) error {
 }
 
 func TestLogPkgIsBridged(t *testing.T) {
-	handler := &testHandler{}
-
 	Convey("Given a new environment", t, func() {
-		InitLog()
+		handler := &testHandler{}
 		Log.SetHandler(handler)
 
 		Convey("When a log message is created using the go log pkg", func() {
@@ -45,10 +43,73 @@ func TestLogPkgIsBridged(t *testing.T) {
 					}
 				}
 				So(actual, ShouldNotBeBlank)
+				So(actual, ShouldContainSubstring, msg)
+			})
+		})
+	})
+}
 
-				Convey("The message should be passed", func() {
-					So(actual, ShouldContainSubstring, msg)
+func TestDaemonLogFmt(t *testing.T) {
+	Convey("Given a handler with the DaemonLog format", t, func() {
+		handler := &testHandler{}
+		Log.SetHandler(handler)
+
+		Convey("Given a log message with a log level", func() {
+			Convey("When logging a log level Crit", func() {
+				msg := "crit message"
+				Log.Crit(msg)
+
+				Convey("The log message should be prefixed with SD_CRIT", func() {
+					logStr := string(DaemonFormat().Format(handler.record))
+					So(logStr, ShouldStartWith, sdCrit)
 				})
+			})
+			Convey("When logging a log level Error", func() {
+				msg := "error message"
+				Log.Error(msg)
+
+				Convey("The log message should be prefixed with SD_ERR", func() {
+					logStr := string(DaemonFormat().Format(handler.record))
+					So(logStr, ShouldStartWith, sdErr)
+				})
+			})
+			Convey("When logging a log level Warn", func() {
+				msg := "warn message"
+				Log.Warn(msg)
+
+				Convey("The log message should be prefixed with SD_WARNING", func() {
+					logStr := string(DaemonFormat().Format(handler.record))
+					So(logStr, ShouldStartWith, sdWarning)
+				})
+			})
+			Convey("When logging a log level Info", func() {
+				msg := "info message"
+				Log.Info(msg)
+
+				Convey("The log message should be prefixed with SD_INFO", func() {
+					logStr := string(DaemonFormat().Format(handler.record))
+					So(logStr, ShouldStartWith, sdInfo)
+				})
+			})
+			Convey("When logging a log level Debug", func() {
+				msg := "debug message"
+				Log.Debug(msg)
+
+				Convey("The log message should be prefixed with SD_DEBUG", func() {
+					logStr := string(DaemonFormat().Format(handler.record))
+					So(logStr, ShouldStartWith, sdDebug)
+				})
+			})
+		})
+
+		Convey("When logging a complex string", func() {
+			str := "this\\should\tbe\r\nescaped\""
+			Log.Debug("escape", log15.Ctx{"this": str})
+
+			Convey("The log message should be properly escaped", func() {
+				expect := "this=\"this\\\\should\\tbe\\r\\nescaped\\\"\""
+				logStr := string(DaemonFormat().Format(handler.record))
+				So(logStr, ShouldContainSubstring, expect)
 			})
 		})
 	})

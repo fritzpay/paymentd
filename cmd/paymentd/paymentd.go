@@ -28,8 +28,7 @@ func main() {
 	// set flags
 	flag.StringVar(&cfgFileName, "c", "", "config file name to use")
 
-	log = env.InitLog()
-	log = log.New(log15.Ctx{
+	log = env.Log.New(log15.Ctx{
 		"AppName":    AppName,
 		"AppVersion": AppVersion,
 		"PID":        os.Getpid(),
