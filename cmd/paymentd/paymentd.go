@@ -1,10 +1,12 @@
 package main
 
 import (
+	"code.google.com/p/go.net/context"
 	"flag"
 	"github.com/fritzpay/paymentd/pkg/config"
 	"github.com/fritzpay/paymentd/pkg/env"
 	"github.com/fritzpay/paymentd/pkg/server"
+	"github.com/fritzpay/paymentd/pkg/service"
 	"github.com/fritzpay/paymentd/pkg/service/api"
 	"gopkg.in/inconshreveable/log15.v2"
 	"os"
@@ -24,9 +26,11 @@ var (
 )
 
 var (
-	log log15.Logger
-	cfg config.Config
-	srv *server.Server
+	log    log15.Logger
+	cfg    config.Config
+	srv    *server.Server
+	ctx    context.Context
+	cancel context.CancelFunc
 )
 
 func main() {
@@ -44,12 +48,19 @@ func main() {
 	log.Info("loading config...")
 	loadConfig()
 
-	srv = server.NewServer()
+	// initialize root context
+	ctx, cancel = context.WithCancel(context.Background())
+
+	log.Info("initializing server...")
+	srv = server.NewServer(ctx)
+
+	// services
+	serviceCtx := service.NewContext(ctx, cfg, log)
 
 	// API handler
 	if cfg.API.Active {
 		log.Info("enabling API service...")
-		apiHandler, err := api.NewHandler(cfg)
+		apiHandler, err := api.NewHandler(serviceCtx)
 		if err != nil {
 			log.Crit("error initializing API service", log15.Ctx{"err": err})
 			log.Info("exiting...")

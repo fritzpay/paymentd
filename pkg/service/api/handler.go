@@ -1,24 +1,41 @@
 package api
 
 import (
-	"github.com/fritzpay/paymentd/pkg/config"
+	"code.google.com/p/go.net/context"
+	"fmt"
 	"github.com/fritzpay/paymentd/pkg/service/api/v1"
 	"github.com/gorilla/mux"
+	"gopkg.in/inconshreveable/log15.v2"
 	"net/http"
 )
 
 // Handler is the (HTTP) API Handler
 type Handler struct {
 	router *mux.Router
+	ctx    context.Context
+
+	log log15.Logger
 }
 
 // NewHandler creates a new API Handler
-func NewHandler(cfg config.Config) (*Handler, error) {
+func NewHandler(ctx context.Context) (*Handler, error) {
+	var log log15.Logger
+	var ok bool
+	if log, ok = ctx.Value("log").(log15.Logger); !ok {
+		return nil, fmt.Errorf("invalid context. require logger, got %T", ctx.Value("log"))
+	}
 	h := &Handler{
 		router: mux.NewRouter(),
+
+		log: log.New(log15.Ctx{
+			"pkg": "github.com/fritzpay/paymentd/pkg/service/api",
+		}),
 	}
 
-	v1.NewService(cfg, h.router)
+	h.ctx = context.WithValue(ctx, "router", h.router)
+
+	h.log.Info("registering API service v1")
+	v1.NewService(h.ctx)
 
 	return h, nil
 }

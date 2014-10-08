@@ -1,6 +1,7 @@
 package server
 
 import (
+	"code.google.com/p/go.net/context"
 	"errors"
 	"github.com/fritzpay/paymentd/pkg/config"
 	"net/http"
@@ -8,14 +9,18 @@ import (
 
 // Server is a  paymentd server
 type Server struct {
+	ctx    context.Context
+	Cancel context.CancelFunc
+
 	httpServers []*http.Server
 }
 
 // NewServer creates a new paymentd server for the given config
-func NewServer() *Server {
+func NewServer(ctx context.Context) *Server {
 	srv := &Server{
 		httpServers: make([]*http.Server, 0, 3),
 	}
+	srv.ctx, srv.Cancel = context.WithCancel(ctx)
 	return srv
 }
 
@@ -47,6 +52,8 @@ func (s *Server) Serve() error {
 		}(srv)
 	}
 	select {
+	case <-s.ctx.Done():
+		return nil
 	case err := <-errors:
 		return err
 	}
