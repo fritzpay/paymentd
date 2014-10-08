@@ -3,6 +3,7 @@ package main
 import (
 	"flag"
 	"github.com/fritzpay/paymentd/pkg/env"
+	"github.com/fritzpay/paymentd/pkg/server"
 	"gopkg.in/inconshreveable/log15.v2"
 	"os"
 )
@@ -22,6 +23,7 @@ var (
 
 var (
 	log log15.Logger
+	srv *server.Server
 )
 
 func main() {
