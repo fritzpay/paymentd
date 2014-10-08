@@ -2,7 +2,9 @@ package main
 
 import (
 	"flag"
+	"github.com/fritzpay/paymentd/pkg/env"
 	"gopkg.in/inconshreveable/log15.v2"
+	"os"
 )
 
 const (
@@ -26,5 +28,10 @@ func main() {
 	// set flags
 	flag.StringVar(&cfgFileName, "c", "", "config file name to use")
 
-	setLog()
+	log = env.InitLog()
+	log = log.New(log15.Ctx{
+		"AppName":    AppName,
+		"AppVersion": AppVersion,
+		"PID":        os.Getpid(),
+	})
 }

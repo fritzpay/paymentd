@@ -1,4 +1,4 @@
-package main
+package env
 
 import (
 	. "github.com/smartystreets/goconvey/convey"
@@ -20,8 +20,8 @@ func TestLogPkgIsBridged(t *testing.T) {
 	handler := &testHandler{}
 
 	Convey("Given a new environment", t, func() {
-		setLog()
-		log.SetHandler(handler)
+		InitLog()
+		Log.SetHandler(handler)
 
 		Convey("When a log message is created using the go log pkg", func() {
 			msg := "Log message"
