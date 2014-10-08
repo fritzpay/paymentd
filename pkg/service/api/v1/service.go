@@ -47,9 +47,11 @@ func NewService(ctx context.Context) (*Service, error) {
 	}
 
 	if cfg.API.ServeAdmin {
-		s.log.Info("registering admin API")
+		s.log.Info("registering admin API...")
 		admin.NewAPI(s.router, s.log)
 	}
+
+	s.log.Info("register payment API...")
 	payment.NewAPI(s.router)
 	return s, nil
 }

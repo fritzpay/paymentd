@@ -34,7 +34,7 @@ func NewHandler(ctx context.Context) (*Handler, error) {
 
 	h.ctx = context.WithValue(ctx, "router", h.router)
 
-	h.log.Info("registering API service v1")
+	h.log.Info("registering API service v1...")
 	v1.NewService(h.ctx)
 
 	return h, nil
