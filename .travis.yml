@@ -8,4 +8,4 @@ go:
 
 install:
   - go get github.com/tools/godep
-  - godep restore
+  - $HOME/gopath/bin/godep restore ./...
