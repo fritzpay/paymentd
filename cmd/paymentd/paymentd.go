@@ -33,4 +33,5 @@ func main() {
 		"AppVersion": AppVersion,
 		"PID":        os.Getpid(),
 	})
+	log.Info("starting daemon...")
 }
