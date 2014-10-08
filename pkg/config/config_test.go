@@ -20,3 +20,22 @@ func TestReadConfig(t *testing.T) {
 		})
 	})
 }
+
+func TestDatabaseConfig(t *testing.T) {
+	Convey("Given an empty DatabaseConfig", t, func() {
+		db := NewDatabaseConfig()
+
+		Convey("When getting the database type of an empty DatabaseConfig", func() {
+			Convey("It should panic", func() {
+				So(func() { db.Type() }, ShouldPanic)
+			})
+		})
+
+		Convey("When getting the DSN of an empty DatabaseConfig", func() {
+			Convey("It should panic", func() {
+				So(func() { db.DSN() }, ShouldPanic)
+			})
+		})
+
+	})
+}
