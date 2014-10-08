@@ -1,7 +1,15 @@
 {
-	"ImportPath": "github.com/fritzpay/paymentd/cmd/paymentd",
+	"ImportPath": "github.com/fritzpay/paymentd",
 	"GoVersion": "go1.3.2",
+	"Packages": [
+		"./..."
+	],
 	"Deps": [
+		{
+			"ImportPath": "github.com/codegangsta/cli",
+			"Comment": "1.2.0-26-gf7ebb76",
+			"Rev": "f7ebb761e83e21225d1d8954fde853bf8edd46c4"
+		},
 		{
 			"ImportPath": "github.com/smartystreets/goconvey/convey",
 			"Comment": "1.5.0-270-gc9900a9",
