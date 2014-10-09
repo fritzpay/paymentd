@@ -55,7 +55,13 @@ func main() {
 	srv = server.NewServer(ctx)
 
 	// services
-	serviceCtx := service.NewContext(ctx, cfg, log)
+	log.Info("initializing service context")
+	serviceCtx, err := service.NewContext(ctx, cfg, log)
+	if err != nil {
+		log.Crit("error initializing service context", log15.Ctx{"err": err})
+		log.Info("exiting...")
+		os.Exit(1)
+	}
 
 	// API handler
 	if cfg.API.Active {
@@ -69,7 +75,7 @@ func main() {
 		srv.RegisterService(cfg.API.Service, apiHandler)
 	}
 
-	err := srv.Serve()
+	err = srv.Serve()
 	if err != nil {
 		log.Crit("error serving", log15.Ctx{"err": err})
 		log.Info("exiting...")
