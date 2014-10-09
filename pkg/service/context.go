@@ -77,7 +77,7 @@ func (ctx *Context) PaymentDB(ro bool) *sql.DB {
 	return ctx.paymentDBReadOnly
 }
 
-// SetPymentDB sets the payment DB connection(s)
+// SetPaymentDB sets the payment DB connection(s)
 // It will panic if the write connection is nil
 func (ctx *Context) SetPaymentDB(w, ro *sql.DB) {
 	if w == nil {

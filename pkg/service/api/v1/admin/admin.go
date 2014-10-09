@@ -6,12 +6,14 @@ import (
 	"net/http"
 )
 
+// API represents the admin API in version 1.x
 type API struct {
 	router *mux.Router
 
 	log log15.Logger
 }
 
+// NewAPI creates a new admin API
 func NewAPI(r *mux.Router, log log15.Logger) *API {
 	a := &API{
 		router: r,

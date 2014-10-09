@@ -22,7 +22,7 @@ func NewDatabaseConfig() DatabaseConfig {
 
 // Type returns the DB backend type
 func (d DatabaseConfig) Type() string {
-	for k, _ := range d {
+	for k := range d {
 		return k
 	}
 	panic("invalid database config")
@@ -36,6 +36,7 @@ func (d DatabaseConfig) DSN() string {
 	panic("invalid database config")
 }
 
+// ServiceConfig represents a configuration for an HTTP server for a service
 type ServiceConfig struct {
 	Address        string
 	ReadTimeout    time.Duration
