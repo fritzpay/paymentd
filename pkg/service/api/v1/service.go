@@ -36,7 +36,7 @@ func NewService(ctx *service.Context, r *mux.Router) (*Service, error) {
 		admin.NewAPI(s.router, s.log)
 	}
 
-	s.log.Info("register payment API...")
+	s.log.Info("registering payment API...")
 	payment.NewAPI(s.router)
 	return s, nil
 }

@@ -3,6 +3,7 @@ package config
 import (
 	"bytes"
 	. "github.com/smartystreets/goconvey/convey"
+	"reflect"
 	"testing"
 )
 
@@ -36,6 +37,33 @@ func TestDatabaseConfig(t *testing.T) {
 				So(func() { db.DSN() }, ShouldPanic)
 			})
 		})
+	})
+}
 
+func TestLoadSaveConfig(t *testing.T) {
+	Convey("Given a default config", t, func() {
+		cfg := DefaultConfig()
+
+		Convey("When saving the config", func() {
+			buf := bytes.NewBuffer(nil)
+			err := WriteConfig(buf, cfg)
+
+			Convey("It should complete successfully", func() {
+				So(err, ShouldBeNil)
+			})
+
+			Convey("When loading the saved config", func() {
+				loadedCfg, err := ReadConfig(buf)
+
+				Convey("It should complete successfully", func() {
+					So(err, ShouldBeNil)
+				})
+
+				Convey("The re-loaded config should match the saved config", func() {
+					So(loadedCfg, ShouldHaveSameTypeAs, cfg)
+					So(reflect.DeepEqual(loadedCfg, cfg), ShouldBeTrue)
+				})
+			})
+		})
 	})
 }
