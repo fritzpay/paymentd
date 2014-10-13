@@ -16,6 +16,8 @@ const (
 // Service represents the API service version 1.x
 type Service struct {
 	log log15.Logger
+
+	handler http.Handler
 }
 
 // NewService creates a new API service
@@ -24,13 +26,16 @@ type Service struct {
 func NewService(ctx *service.Context) *Service {
 	s := &Service{
 		log: ctx.Log().New(log15.Ctx{"pkg": "github.com/fritzpay/paymentd/pkg/service/api/v1"}),
+
+		handler: http.NotFoundHandler(),
 	}
 
 	cfg := ctx.Config()
 
 	if cfg.API.ServeAdmin {
 		s.log.Info("registering admin API...")
-		admin.NewAPI(ctx)
+		api := admin.NewAPI(ctx)
+		s.handler = api.Handler(s.handler)
 	}
 
 	s.log.Info("registering payment API...")
@@ -38,7 +43,6 @@ func NewService(ctx *service.Context) *Service {
 	return s
 }
 
-// ServeHTTP implements the http.Handler and serves the API v1.x
-func (s *Service) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-
+func (s *Service) Handler() http.Handler {
+	return s.handler
 }

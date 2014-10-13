@@ -12,28 +12,36 @@ type Handler struct {
 	ctx *service.Context
 	log log15.Logger
 
-	httpHandler http.Handler
+	mux *http.ServeMux
+
+	requestContexts map[*http.Request]*service.Context
 }
 
 // NewHandler creates a new API Handler
 func NewHandler(ctx *service.Context) (*Handler, error) {
 	h := &Handler{
 		ctx: ctx,
-
 		log: ctx.Log().New(log15.Ctx{
 			"pkg": "github.com/fritzpay/paymentd/pkg/service/api",
 		}),
+
+		mux: http.NewServeMux(),
+
+		requestContexts: make(map[*http.Request]*service.Context),
 	}
 
-	mux := http.NewServeMux()
-
 	h.log.Info("registering API service v1...")
-	mux.Handle(v1.ServicePath, v1.NewService(h.ctx))
+	h.mux.Handle(v1.ServicePath, v1.NewService(h.ctx).Handler())
 
 	return h, nil
 }
 
 // ServeHTTP implements the http.Handler
 func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	h.httpHandler.ServeHTTP(w, r)
+	defer func() {
+		if err := recover(); err != nil {
+			h.log.Crit("panic on serving HTTP", log15.Ctx{"panic": err})
+		}
+	}()
+	h.mux.ServeHTTP(w, r)
 }
