@@ -70,16 +70,16 @@ func testConfigAction(c *cli.Context) {
 	errors := 0
 	warnings := 0
 
-	if cfg.API.Address == "" {
+	if cfg.API.Service.Address == "" {
 		errors++
-		fmt.Println("error: API.Address is empty.")
+		fmt.Println("error: API.Service.Address is empty.")
 	} else {
-		apiAddr, err := net.ResolveTCPAddr("tcp", cfg.API.Address)
+		apiAddr, err := net.ResolveTCPAddr("tcp", cfg.API.Service.Address)
 		if err != nil {
 			errors++
-			fmt.Printf("error: API.Address could not be resolved: %v\n", err)
+			fmt.Printf("error: API.Service.Address could not be resolved: %v\n", err)
 		}
-		fmt.Printf("API.Address: API server will use network %s and address %s\n", apiAddr.Network(), apiAddr.String())
+		fmt.Printf("API.Service.Address: API server will use network %s and address %s\n", apiAddr.Network(), apiAddr.String())
 	}
 
 	fmt.Printf("\n\nconfig testing complete.\n%d errors and %d warnings.\n", errors, warnings)
@@ -101,7 +101,7 @@ var writeConfigCommand = cli.Command{
 func writeConfigAction(c *cli.Context) {
 	cfgFileName := c.String("output")
 	if cfgFileName == "" {
-		fmt.Println("no output file name provided\n")
+		fmt.Print("no output file name provided\n\n")
 		cli.ShowCommandHelp(c, "w")
 		return
 	}

@@ -8,9 +8,9 @@ Authentication and Authorization
 	TODO replace Authorization example fields with reasonable example values
 	Curently dEFFEFeddedeGGEGMceokr353521234 acts as a placeholder
 
-.. http:post:: /user/(username)/credentials
+.. http:get:: /user/credentials/basic
 
-	Send user credentials to receive an authorization token.
+	Receive an authorization token for given basic auth.
 
 	The returned authorization token can be used in subsequent :http:header:`Authorization`
 	headers for accessing protected resources.
@@ -19,15 +19,11 @@ Authentication and Authorization
 
 	.. sourcecode:: http
 
-		POST /user/root/credentials HTTP/1.1
+		GET /user/credentials/basic HTTP/1.1
 		Host: example.com
 		Accept: application/json
+		Authorization: Basic cm9vdDpyb290
 		Content-Type: application/json
-
-		{
-			"Method": "plain",
-			"Password": "mysecretpassword"
-		}
 
 	**Example response**:
 
@@ -40,10 +36,7 @@ Authentication and Authorization
 			"Authorization": "dEFFEFeddedeGGEGMceokr353521234"
 		}
 
-	:param username: The username.
-
-	:reqjson Method: The credential method. Please refer to :ref:`user-credentials` for a
-	               list of supported methods.
+	:reqheader Authorization: HTTP Basic Auth
 
 	:resjson Authorization: The authorization token, which can be used in the
 	                      :http:header:`Authorization` header for subsequent requests.
