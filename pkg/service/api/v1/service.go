@@ -9,6 +9,7 @@ import (
 )
 
 const (
+	// ServicePath is the (sub-)path under which the API service v1.x resides in
 	ServicePath = "/v1/"
 )
 
@@ -29,7 +30,7 @@ func NewService(ctx *service.Context) *Service {
 
 	if cfg.API.ServeAdmin {
 		s.log.Info("registering admin API...")
-		admin.NewAPI(s.log)
+		admin.NewAPI(ctx)
 	}
 
 	s.log.Info("registering payment API...")
@@ -37,6 +38,7 @@ func NewService(ctx *service.Context) *Service {
 	return s
 }
 
+// ServeHTTP implements the http.Handler and serves the API v1.x
 func (s *Service) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 }

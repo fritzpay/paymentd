@@ -1,6 +1,7 @@
 package admin
 
 import (
+	"github.com/fritzpay/paymentd/pkg/service"
 	"gopkg.in/inconshreveable/log15.v2"
 )
 
@@ -10,9 +11,9 @@ type API struct {
 }
 
 // NewAPI creates a new admin API
-func NewAPI(log log15.Logger) *API {
+func NewAPI(ctx *service.Context) *API {
 	a := &API{
-		log: log.New(log15.Ctx{"pkg": "github.com/fritzpay/paymentd/pkg/service/api/v1/admin"}),
+		log: ctx.Log().New(log15.Ctx{"pkg": "github.com/fritzpay/paymentd/pkg/service/api/v1/admin"}),
 	}
 	return a
 }

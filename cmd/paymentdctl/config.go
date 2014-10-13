@@ -101,7 +101,7 @@ var writeConfigCommand = cli.Command{
 func writeConfigAction(c *cli.Context) {
 	cfgFileName := c.String("output")
 	if cfgFileName == "" {
-		fmt.Println("no output file name provided\n")
+		fmt.Print("no output file name provided\n\n")
 		cli.ShowCommandHelp(c, "w")
 		return
 	}
