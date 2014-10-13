@@ -13,8 +13,6 @@ type Handler struct {
 	log log15.Logger
 
 	mux *http.ServeMux
-
-	requestContexts map[*http.Request]*service.Context
 }
 
 // NewHandler creates a new API Handler
@@ -26,12 +24,10 @@ func NewHandler(ctx *service.Context) (*Handler, error) {
 		}),
 
 		mux: http.NewServeMux(),
-
-		requestContexts: make(map[*http.Request]*service.Context),
 	}
 
 	h.log.Info("registering API service v1...")
-	h.mux.Handle(v1.ServicePath, v1.NewService(h.ctx).Handler())
+	v1.NewService(h.ctx, h.mux)
 
 	return h, nil
 }
@@ -43,5 +39,7 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			h.log.Crit("panic on serving HTTP", log15.Ctx{"panic": err})
 		}
 	}()
+	service.SetRequestContext(r, h.ctx)
+	defer service.Clear(r)
 	h.mux.ServeHTTP(w, r)
 }
