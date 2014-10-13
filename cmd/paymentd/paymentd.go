@@ -74,6 +74,14 @@ func main() {
 		os.Exit(1)
 	}
 
+	log.Info("setting payment defaults...")
+	err = setDefaults(serviceCtx)
+	if err != nil {
+		log.Crit("error on setting payment defaults", log15.Ctx{"err": err})
+		log.Info("exiting...")
+		os.Exit(1)
+	}
+
 	// API handler
 	if cfg.API.Active {
 		log.Info("enabling API service...")
