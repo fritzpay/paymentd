@@ -2,12 +2,15 @@ package main
 
 import (
 	"code.google.com/p/go.net/context"
+	"database/sql"
+	"errors"
 	"flag"
 	"github.com/fritzpay/paymentd/pkg/config"
 	"github.com/fritzpay/paymentd/pkg/env"
 	"github.com/fritzpay/paymentd/pkg/server"
 	"github.com/fritzpay/paymentd/pkg/service"
 	"github.com/fritzpay/paymentd/pkg/service/api"
+	_ "github.com/go-sql-driver/mysql"
 	"gopkg.in/inconshreveable/log15.v2"
 	"os"
 )
@@ -55,10 +58,18 @@ func main() {
 	srv = server.NewServer(ctx)
 
 	// services
-	log.Info("initializing service context")
+	log.Info("initializing service context...")
 	serviceCtx, err := service.NewContext(ctx, cfg, log)
 	if err != nil {
 		log.Crit("error initializing service context", log15.Ctx{"err": err})
+		log.Info("exiting...")
+		os.Exit(1)
+	}
+	// database
+	log.Info("connecting databases...")
+	err = connectDB(serviceCtx)
+	if err != nil {
+		log.Crit("error connecting databases", log15.Ctx{"err": err})
 		log.Info("exiting...")
 		os.Exit(1)
 	}
@@ -107,4 +118,37 @@ func loadConfig() {
 			os.Exit(1)
 		}
 	}
+}
+
+func connectDB(ctx *service.Context) error {
+	if cfg.Database.Principal.Write == nil {
+		return errors.New("principal write DB config error")
+	}
+	principalDBW, err := sql.Open(cfg.Database.Principal.Write.Type(), cfg.Database.Principal.Write.DSN())
+	if err != nil {
+		return err
+	}
+	var principalDBRO *sql.DB
+	if cfg.Database.Principal.ReadOnly != nil {
+		principalDBRO, err = sql.Open(cfg.Database.Principal.ReadOnly.Type(), cfg.Database.Principal.ReadOnly.DSN())
+		if err != nil {
+			return err
+		}
+	}
+	ctx.SetPrincipalDB(principalDBW, principalDBRO)
+
+	paymentDBW, err := sql.Open(cfg.Database.Payment.Write.Type(), cfg.Database.Payment.Write.DSN())
+	if err != nil {
+		return err
+	}
+	var paymentDBRO *sql.DB
+	if cfg.Database.Payment.ReadOnly != nil {
+		paymentDBRO, err = sql.Open(cfg.Database.Payment.ReadOnly.Type(), cfg.Database.Payment.ReadOnly.DSN())
+		if err != nil {
+			return err
+		}
+	}
+	ctx.SetPaymentDB(paymentDBW, paymentDBRO)
+
+	return nil
 }

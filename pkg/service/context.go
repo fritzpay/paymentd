@@ -44,9 +44,23 @@ func (ctx *Context) Log() log15.Logger {
 	return ctx.log
 }
 
+type dbRequestReadOnly bool
+
+// ReadOnly is a possible parameter for the ctx.xDB() methods. If this parameter
+// is passed to the methods, they will attempt to return the read-only database connection
+var ReadOnly = dbRequestReadOnly(true)
+
 // PrincipalDB returns the *sql.DB for the principal DB
-// If the single parameter is true, the read-only connection will be returned if present
-func (ctx *Context) PrincipalDB(ro bool) *sql.DB {
+// If the parameter(s) contain a service.ReadOnly, the read-only connection will be returned if present
+func (ctx *Context) PrincipalDB(ros ...dbRequestReadOnly) *sql.DB {
+	var ro bool
+	if len(ros) > 0 {
+		for _, r := range ros {
+			if r {
+				ro = true
+			}
+		}
+	}
 	if !ro {
 		return ctx.principalDBWrite
 	}
@@ -66,8 +80,16 @@ func (ctx *Context) SetPrincipalDB(w, ro *sql.DB) {
 }
 
 // PaymentDB returns the *sql.DB for the payment DB
-// If the single parameter is true, the read-only connection will be returned if present
-func (ctx *Context) PaymentDB(ro bool) *sql.DB {
+// If the parameter(s) contain a service.ReadOnly, the read-only connection will be returned if present
+func (ctx *Context) PaymentDB(ros ...dbRequestReadOnly) *sql.DB {
+	var ro bool
+	if len(ros) > 0 {
+		for _, r := range ros {
+			if r {
+				ro = true
+			}
+		}
+	}
 	if !ro {
 		return ctx.paymentDBWrite
 	}
