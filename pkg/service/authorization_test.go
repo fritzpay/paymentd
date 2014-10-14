@@ -1,6 +1,7 @@
 package service
 
 import (
+	"bytes"
 	"crypto/hmac"
 	"crypto/sha256"
 	"encoding/hex"
@@ -8,6 +9,7 @@ import (
 	"hash"
 	"reflect"
 	"testing"
+	"time"
 )
 
 func TestKeychain(t *testing.T) {
@@ -162,12 +164,61 @@ func TestKeychainCanMatchSigned(t *testing.T) {
 
 func TestEncodeDecodeAuthorization(t *testing.T) {
 	Convey("Given an authorization", t, func() {
+		key := []byte("testKey")
+		auth := NewAuthorization(sha256.New)
+		auth.Payload["test"] = "testValue"
+		auth.Expiry = time.Now()
+
 		Convey("When encoding it", func() {
-			Convey("It should complete successfully", nil)
-			Convey("When given it to decode", func() {
-				Convey("It should complete successfully", nil)
-				Convey("It should match the original authorization", nil)
+			err := auth.Encode(key)
+			encryptedMsg := auth.rawMsg
+			Convey("It should complete successfully", func() {
+				So(err, ShouldBeNil)
+				So(auth.rawMsg, ShouldNotBeNil)
 			})
+
+			Convey("When writing the encoded container", func() {
+				buf := bytes.NewBuffer(nil)
+				_, err = auth.WriteTo(buf)
+				encoded := buf.Bytes()
+				Convey("It should complete successfully", func() {
+					So(err, ShouldBeNil)
+					So(len(encoded), ShouldBeGreaterThan, 0)
+					t.Logf("Encoded: %s", string(encoded))
+				})
+
+				Convey("Given a fresh authorization container", func() {
+					newAuth := NewAuthorization(auth.HashFunc())
+
+					Convey("When given the encoded container to read from", func() {
+						buf = bytes.NewBuffer(encoded)
+						_, err = newAuth.ReadFrom(buf)
+						Convey("It should complete successfully", func() {
+							So(err, ShouldBeNil)
+						})
+						Convey("The payload should be read", func() {
+							So(newAuth.rawMsg, ShouldNotBeNil)
+						})
+						Convey("The encrypted message should be restored", func() {
+							So(reflect.DeepEqual(newAuth.rawMsg, encryptedMsg), ShouldBeTrue)
+						})
+
+						Convey("When decoding the new container", func() {
+							err = newAuth.Decode(key)
+							Convey("It should complete successfully", func() {
+								So(err, ShouldBeNil)
+								So(newAuth.rawMsg, ShouldNotBeNil)
+							})
+							Convey("It should match the original authorization", func() {
+								So(reflect.DeepEqual(newAuth.salt, auth.salt), ShouldBeTrue)
+								So(newAuth.Expiry.Unix(), ShouldEqual, auth.Expiry.Unix())
+								So(reflect.DeepEqual(newAuth.Payload, auth.Payload), ShouldBeTrue)
+							})
+						})
+					})
+				})
+			})
+
 		})
 	})
 }

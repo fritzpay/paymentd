@@ -1,11 +1,21 @@
 package service
 
 import (
+	"bufio"
+	"bytes"
+	"code.google.com/p/go.crypto/pbkdf2"
+	"crypto/aes"
+	"crypto/cipher"
 	"crypto/hmac"
+	"crypto/rand"
+	"encoding/base64"
+	"encoding/binary"
 	"encoding/hex"
+	"encoding/json"
 	"errors"
 	"hash"
-	"strconv"
+	"io"
+	"io/ioutil"
 	"sync"
 	"time"
 )
@@ -14,14 +24,17 @@ const (
 	keychainLen = 16
 )
 
+const (
+	MaxMsgSize = 4096
+)
+
 var (
-	ErrInvalidHashFunc   = errors.New("invalid hash func")
-	ErrInvalidSignature  = errors.New("invalid signature")
-	ErrSignatureKey      = errors.New("internal error while decoding signature key")
-	ErrSignatureMismatch = errors.New("signature mismatch")
-	ErrInvalidKey        = errors.New("invalid key")
-	ErrNoKeys            = errors.New("no keys in keychain")
-	ErrNoMatchingKey     = errors.New("no encryption key for signature key")
+	ErrInvalidKey    = errors.New("invalid key")
+	ErrNoKeys        = errors.New("no keys in keychain")
+	ErrNoMatchingKey = errors.New("no encryption key for signature key")
+	ErrBadContainer  = errors.New("bad container encoding")
+	ErrDecrypt       = errors.New("error decrypting container")
+	ErrMsgSize       = errors.New("message too big")
 )
 
 // Keychain stores (and rotates) keys for authorization container encryption
@@ -130,16 +143,86 @@ type Signed interface {
 // Authorization is a container
 type Authorization struct {
 	timestamp int64
-	rawMsg    []byte
+	salt      []byte
 	signature []byte
+	rawMsg    []byte
 
 	Expiry  time.Time
-	Payload interface{}
+	Payload map[string]interface{}
 	H       func() hash.Hash
 }
 
+func NewAuthorization(h func() hash.Hash) *Authorization {
+	return &Authorization{
+		salt:      make([]byte, 8),
+		signature: make([]byte, h().Size()),
+		rawMsg:    make([]byte, 0, MaxMsgSize),
+
+		Payload: make(map[string]interface{}),
+		H:       h,
+	}
+}
+
+func (a *Authorization) ReadFrom(r io.Reader) (n int64, err error) {
+	r = base64.NewDecoder(base64.StdEncoding, r)
+	buf := bufio.NewReader(r)
+	// timestamp
+	binBuf := make([]byte, binary.MaxVarintLen64)
+	read, err := buf.Read(binBuf)
+	if err != nil {
+		return
+	}
+	n += int64(read)
+	a.timestamp, read = binary.Varint(binBuf)
+	if read <= 0 {
+		err = ErrBadContainer
+		return
+	}
+	// read buffer parts
+	for _, binBuf = range [][]byte{a.salt, a.signature} {
+		read, err = buf.Read(binBuf)
+		if err != nil {
+			return
+		}
+		n += int64(read)
+	}
+	a.rawMsg, err = ioutil.ReadAll(buf)
+	if err != nil {
+		return
+	}
+	n += int64(len(a.rawMsg))
+	return
+}
+
+func (a *Authorization) WriteTo(w io.Writer) (n int64, err error) {
+	wr := base64.NewEncoder(base64.StdEncoding, w)
+	defer wr.Close()
+	written, err := wr.Write(a.timestampBytes())
+	if err != nil {
+		return
+	}
+	n += int64(written)
+	for _, binBuf := range [][]byte{a.salt, a.signature, a.rawMsg} {
+		written, err = wr.Write(binBuf)
+		if err != nil {
+			return
+		}
+		n += int64(written)
+	}
+	return
+}
+
+func (a *Authorization) timestampBytes() []byte {
+	a.timestamp = a.Expiry.Unix()
+	buf := make([]byte, binary.MaxVarintLen64)
+	binary.PutVarint(buf, a.timestamp)
+	return buf
+}
+
 func (a *Authorization) Message() []byte {
-	return append([]byte(strconv.FormatInt(a.timestamp, 10)), a.rawMsg...)
+	msg := append(a.timestampBytes(), a.salt...)
+	msg = append(msg, a.rawMsg...)
+	return msg
 }
 
 func (a *Authorization) Signature() []byte {
@@ -148,4 +231,94 @@ func (a *Authorization) Signature() []byte {
 
 func (a *Authorization) HashFunc() func() hash.Hash {
 	return a.H
+}
+
+func (a *Authorization) Sign(key []byte) error {
+	mac := hmac.New(a.HashFunc(), key)
+	_, err := mac.Write(a.Message())
+	if err != nil {
+		return err
+	}
+	a.signature = mac.Sum(nil)
+	return nil
+}
+
+func (a *Authorization) generateSalt() error {
+	_, err := rand.Read(a.salt)
+	return err
+}
+
+func (a *Authorization) deriveKey(key []byte) []byte {
+	const iter = 4096
+	// AES-256
+	const keyLen = 32
+	return pbkdf2.Key(key, a.salt, iter, keyLen, a.HashFunc())
+}
+
+func (a *Authorization) encrypt(b cipher.Block, value []byte) ([]byte, error) {
+	iv := make([]byte, b.BlockSize())
+	_, err := rand.Read(iv)
+	if err != nil {
+		return nil, err
+	}
+	stream := cipher.NewCTR(b, iv)
+	stream.XORKeyStream(value, value)
+	return append(iv, value...), nil
+}
+
+func (a *Authorization) decrypt(b cipher.Block, value []byte) ([]byte, error) {
+	size := b.BlockSize()
+	if len(value) <= size {
+		return nil, ErrDecrypt
+	}
+	iv := value[:size]
+	value = value[size:]
+	stream := cipher.NewCTR(b, iv)
+	stream.XORKeyStream(value, value)
+	return value, nil
+}
+
+func (a *Authorization) Encode(key []byte) error {
+	encoded := bytes.NewBuffer(nil)
+	enc := json.NewEncoder(encoded)
+	err := enc.Encode(a.Payload)
+	if err != nil {
+		return err
+	}
+	if encoded.Len() > MaxMsgSize {
+		return ErrMsgSize
+	}
+	err = a.generateSalt()
+	if err != nil {
+		return err
+	}
+	blockKey := a.deriveKey(key)
+	b, err := aes.NewCipher(blockKey)
+	if err != nil {
+		return err
+	}
+	a.rawMsg, err = a.encrypt(b, encoded.Bytes())
+	if err != nil {
+		return err
+	}
+	err = a.Sign(key)
+	return err
+}
+
+func (a *Authorization) Decode(key []byte) error {
+	a.Expiry = time.Unix(a.timestamp, 0)
+
+	blockKey := a.deriveKey(key)
+	b, err := aes.NewCipher(blockKey)
+	if err != nil {
+		return err
+	}
+	a.rawMsg, err = a.decrypt(b, a.rawMsg)
+	if err != nil {
+		return err
+	}
+	msgBuf := bytes.NewReader(a.rawMsg)
+	dec := json.NewDecoder(msgBuf)
+	err = dec.Decode(&a.Payload)
+	return err
 }
