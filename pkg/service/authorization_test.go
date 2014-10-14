@@ -222,3 +222,70 @@ func TestEncodeDecodeAuthorization(t *testing.T) {
 		})
 	})
 }
+
+func TestAuthorizationChain(t *testing.T) {
+	Convey("Given a keychain with a set of keys", t, func() {
+		chain := NewKeychain()
+		chain.AddBinKey([]byte("one"))
+		chain.AddBinKey([]byte("two"))
+		chain.AddBinKey([]byte("three"))
+
+		Convey("Given an authorization", func() {
+			auth := NewAuthorization(sha256.New)
+			auth.Payload["test"] = "testAuthChain"
+
+			Convey("When retrieving a key from the keychain", func() {
+				key, err := chain.BinKey()
+				Convey("It should be successful", func() {
+					So(err, ShouldBeNil)
+					So(key, ShouldNotBeNil)
+				})
+
+				Convey("When using the key to encode the authorization", func() {
+					err = auth.Encode(key)
+					Convey("It should be successful", func() {
+						So(err, ShouldBeNil)
+					})
+
+					Convey("When serializing the authorization", func() {
+						buf := bytes.NewBuffer(nil)
+						_, err = auth.WriteTo(buf)
+						serialized := buf.Bytes()
+						Convey("It should be successful", func() {
+							So(err, ShouldBeNil)
+						})
+
+						Convey("Given a new authorization", func() {
+							newAuth := NewAuthorization(auth.H)
+
+							Convey("When reading the serialized original authorization", func() {
+								_, err = newAuth.ReadFrom(bytes.NewReader(serialized))
+								Convey("It should be successful", func() {
+									So(err, ShouldBeNil)
+								})
+
+								Convey("When retrieving the key back from the keychain using the authorization", func() {
+									newKey, err := chain.MatchKey(newAuth)
+									Convey("It should be successful", func() {
+										So(err, ShouldBeNil)
+										So(newKey, ShouldNotBeNil)
+									})
+
+									Convey("When using the retrieved key to decode the authorization", func() {
+										err = newAuth.Decode(newKey)
+										Convey("It should be successful", func() {
+											So(err, ShouldBeNil)
+										})
+										Convey("The authorization should match the original", func() {
+											So(newAuth.Payload["test"], ShouldEqual, auth.Payload["test"])
+										})
+									})
+								})
+							})
+						})
+					})
+				})
+			})
+		})
+	})
+}

@@ -140,7 +140,9 @@ type Signed interface {
 	Signature() []byte
 }
 
-// Authorization is a container
+// Authorization is a container which can hold arbitrary authorization data,
+// can be encrypted and signed and safely passed between services. As long as those
+// share the same keychain, they are able to access the encrypted data.
 type Authorization struct {
 	timestamp int64
 	salt      []byte
@@ -152,6 +154,8 @@ type Authorization struct {
 	H       func() hash.Hash
 }
 
+// NewAuthorization creates a new authorization container with the given Hash function
+// for signing and key derivation
 func NewAuthorization(h func() hash.Hash) *Authorization {
 	return &Authorization{
 		salt:      make([]byte, 8),
@@ -163,6 +167,9 @@ func NewAuthorization(h func() hash.Hash) *Authorization {
 	}
 }
 
+// ReadFrom reads a serialized authorization container from the given reader
+//
+// After the container is read, it should be decoded using the Decode() method
 func (a *Authorization) ReadFrom(r io.Reader) (n int64, err error) {
 	r = base64.NewDecoder(base64.StdEncoding, r)
 	buf := bufio.NewReader(r)
@@ -194,6 +201,9 @@ func (a *Authorization) ReadFrom(r io.Reader) (n int64, err error) {
 	return
 }
 
+// WriteTo writes the serialized authorization container to the given writer
+//
+// Prior to writing the container to a writer, it must be encoded using the Encode() method
 func (a *Authorization) WriteTo(w io.Writer) (n int64, err error) {
 	wr := base64.NewEncoder(base64.StdEncoding, w)
 	defer wr.Close()
@@ -219,20 +229,24 @@ func (a *Authorization) timestampBytes() []byte {
 	return buf
 }
 
+// Message implementing the Signable interface
 func (a *Authorization) Message() []byte {
 	msg := append(a.timestampBytes(), a.salt...)
 	msg = append(msg, a.rawMsg...)
 	return msg
 }
 
+// Signature implementing the Signed interface
 func (a *Authorization) Signature() []byte {
 	return a.signature
 }
 
+// HashFunc implementing the Signable interface
 func (a *Authorization) HashFunc() func() hash.Hash {
 	return a.H
 }
 
+// Sign signs the container with the given key
 func (a *Authorization) Sign(key []byte) error {
 	mac := hmac.New(a.HashFunc(), key)
 	_, err := mac.Write(a.Message())
@@ -278,6 +292,11 @@ func (a *Authorization) decrypt(b cipher.Block, value []byte) ([]byte, error) {
 	return value, nil
 }
 
+// Encode encodes the message, encrypting its contents and signing it with the given
+// key
+//
+// Encode() must be called prior to writing it using the WriteTo() method, otherwise
+// secret data might be written to the Writer
 func (a *Authorization) Encode(key []byte) error {
 	encoded := bytes.NewBuffer(nil)
 	enc := json.NewEncoder(encoded)
@@ -305,6 +324,7 @@ func (a *Authorization) Encode(key []byte) error {
 	return err
 }
 
+/// Decode decodes a container after it was read using the ReadFrom() method
 func (a *Authorization) Decode(key []byte) error {
 	a.Expiry = time.Unix(a.timestamp, 0)
 
