@@ -255,6 +255,7 @@ func TestAuthorizationChain(t *testing.T) {
 		Convey("Given an authorization", func() {
 			auth := NewAuthorization(sha256.New)
 			auth.Payload["test"] = "testAuthChain"
+			auth.Expiry = time.Now()
 
 			Convey("When retrieving a key from the keychain", func() {
 				key, err := chain.BinKey()

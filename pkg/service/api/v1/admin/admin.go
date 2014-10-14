@@ -4,6 +4,7 @@ import (
 	"code.google.com/p/go.crypto/bcrypt"
 	"crypto/sha256"
 	"encoding/base64"
+	"encoding/json"
 	"github.com/fritzpay/paymentd/pkg/paymentd/config"
 	"github.com/fritzpay/paymentd/pkg/service"
 	"gopkg.in/inconshreveable/log15.v2"
@@ -21,6 +22,8 @@ const (
 const (
 	// AuthLifetime is the duration for which an authorization is considered valid
 	AuthLifetime = 15 * time.Minute
+	// AuthUserIDKey is the key for the user ID entry in the authorization container
+	AuthUserIDKey = "userID"
 )
 
 // API represents the admin API in version 1.x
@@ -36,12 +39,6 @@ func NewAPI(ctx *service.Context) *API {
 		log: ctx.Log().New(log15.Ctx{"pkg": "github.com/fritzpay/paymentd/pkg/service/api/v1/admin"}),
 	}
 	return a
-}
-
-// GetCredentialsResponse is the response for all GET /user/credentials requests
-// ready to be JSON-encoded
-type GetCredentialsResponse struct {
-	Authorization string
 }
 
 func (a *API) authenticateSystemPassword(pw string, w http.ResponseWriter) {
@@ -71,11 +68,46 @@ func (a *API) authenticateSystemPassword(pw string, w http.ResponseWriter) {
 	a.respondWithAuthorization(w)
 }
 
+// GetCredentialsResponse is the response for all GET /user/credentials requests
+// ready to be JSON-encoded
+type GetCredentialsResponse struct {
+	Authorization string
+}
+
 func (a *API) respondWithAuthorization(w http.ResponseWriter) {
+	log := a.log.New(log15.Ctx{"method": "respondWithAuthorization"})
 	auth := service.NewAuthorization(sha256.New)
-	auth.Payload["userID"] = systemUserID
+	auth.Payload[AuthUserIDKey] = systemUserID
 	auth.Expiry = time.Now().Add(AuthLifetime)
-	w.Write([]byte("ok"))
+	key, err := a.ctx.Keychain().BinKey()
+	if err != nil {
+		log.Error("error retrieving key from keychain", log15.Ctx{"err": err})
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+	err = auth.Encode(key)
+	if err != nil {
+		log.Error("error encoding authorization", log15.Ctx{"err": err})
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+	resp := GetCredentialsResponse{}
+	resp.Authorization, err = auth.Serialized()
+	if err != nil {
+		log.Error("error serializing authorization", log15.Ctx{"err": err})
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+	jsonResp, err := json.Marshal(resp)
+	if err != nil {
+		log.Error("error encoding JSON respone", log15.Ctx{"err": err})
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+	_, err = w.Write(jsonResp)
+	if err != nil {
+		log.Error("error writing HTTP response", log15.Ctx{"err": err})
+	}
 }
 
 // GetCredentials implements the GET /user/credentials request
@@ -122,4 +154,69 @@ func requestBasicAuth(w http.ResponseWriter) {
 func getCredentialsMethod(p string) string {
 	_, method := path.Split(path.Clean(p))
 	return method
+}
+
+// AuthHandler wraps the given handler with an authorization method using the
+// Authorization Header and the authorization container
+func (a *API) AuthHandler(parent http.Handler) http.Handler {
+	log := a.log.New(log15.Ctx{"method": "AuthHandler"})
+
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Header.Get("Authorization") == "" {
+			log.Debug("missing authorization header")
+			w.WriteHeader(http.StatusUnauthorized)
+			return
+		}
+		auth := service.NewAuthorization(sha256.New)
+		_, err := auth.ReadFrom(strings.NewReader(r.Header.Get("Authorization")))
+		if err != nil {
+			log.Debug("error reading authorization", log15.Ctx{"err": err})
+			w.WriteHeader(http.StatusUnauthorized)
+			return
+		}
+		key, err := a.ctx.Keychain().MatchKey(auth)
+		if err != nil {
+			log.Debug("error retrieving matching key from keychain", log15.Ctx{
+				"err":            err,
+				"keysInKeychain": a.ctx.Keychain().KeyCount(),
+			})
+			w.WriteHeader(http.StatusUnauthorized)
+			return
+		}
+		err = auth.Decode(key)
+		if err != nil {
+			log.Debug("error decoding authorization", log15.Ctx{"err": err})
+			w.WriteHeader(http.StatusUnauthorized)
+			return
+		}
+		if userID, ok := auth.Payload[AuthUserIDKey]; !ok {
+			log.Debug("no userID present")
+			w.WriteHeader(http.StatusUnauthorized)
+			return
+		} else {
+			service.SetRequestContextVar(r, AuthUserIDKey, userID)
+		}
+
+		parent.ServeHTTP(w, r)
+	})
+}
+
+// GetUserID returns a utility handler. This endpoint displays the user ID, which is stored
+// in the authorization container
+func (a *API) GetUserID() http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "text/plain")
+		if r.Method != "GET" {
+			w.WriteHeader(http.StatusMethodNotAllowed)
+			return
+		}
+		ctx := service.RequestContext(r)
+		userID, ok := ctx.Value(AuthUserIDKey).(string)
+		if !ok {
+			a.log.Error("internal error. missing userID")
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+		w.Write([]byte(userID))
+	})
 }

@@ -9,13 +9,13 @@ import (
 	"crypto/hmac"
 	"crypto/rand"
 	"encoding/base64"
-	"encoding/binary"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"hash"
 	"io"
 	"io/ioutil"
+	"strconv"
 	"sync"
 	"time"
 )
@@ -26,13 +26,15 @@ const (
 )
 
 const (
+	// MaxMsgSize is the maximum size the (encoded) content of an Authorization container
+	// can have
 	MaxMsgSize = 4096
 )
 
 var (
 	ErrInvalidKey    = errors.New("invalid key")
 	ErrNoKeys        = errors.New("no keys in keychain")
-	ErrNoMatchingKey = errors.New("no encryption key for signature key")
+	ErrNoMatchingKey = errors.New("no matching key for signature")
 	ErrBadContainer  = errors.New("bad container encoding")
 	ErrDecrypt       = errors.New("error decrypting container")
 	ErrMsgSize       = errors.New("message too big")
@@ -186,19 +188,20 @@ func (a *Authorization) ReadFrom(r io.Reader) (n int64, err error) {
 	r = base64.NewDecoder(base64.StdEncoding, r)
 	buf := bufio.NewReader(r)
 	// timestamp
-	binBuf := make([]byte, binary.MaxVarintLen64)
-	read, err := buf.Read(binBuf)
+	timestamp, err := buf.ReadBytes('|')
 	if err != nil {
 		return
 	}
-	n += int64(read)
-	a.timestamp, read = binary.Varint(binBuf)
-	if read <= 0 {
-		err = ErrBadContainer
+	n += int64(len(timestamp))
+	// remove delimiter
+	timestamp = timestamp[:len(timestamp)-1]
+	a.timestamp, err = strconv.ParseInt(string(timestamp), 10, 64)
+	if err != nil {
 		return
 	}
 	// read buffer parts
-	for _, binBuf = range [][]byte{a.salt, a.signature} {
+	var read int
+	for _, binBuf := range [][]byte{a.salt, a.signature} {
 		read, err = buf.Read(binBuf)
 		if err != nil {
 			return
@@ -219,7 +222,8 @@ func (a *Authorization) ReadFrom(r io.Reader) (n int64, err error) {
 func (a *Authorization) WriteTo(w io.Writer) (n int64, err error) {
 	wr := base64.NewEncoder(base64.StdEncoding, w)
 	defer wr.Close()
-	written, err := wr.Write(a.timestampBytes())
+	ts := a.timestampBytes()
+	written, err := wr.Write(append(ts, '|'))
 	if err != nil {
 		return
 	}
@@ -234,11 +238,17 @@ func (a *Authorization) WriteTo(w io.Writer) (n int64, err error) {
 	return
 }
 
+func (a *Authorization) Serialized() (string, error) {
+	buf := bytes.NewBuffer(nil)
+	_, err := a.WriteTo(buf)
+	if err != nil {
+		return "", err
+	}
+	return buf.String(), nil
+}
+
 func (a *Authorization) timestampBytes() []byte {
-	a.timestamp = a.Expiry.Unix()
-	buf := make([]byte, binary.MaxVarintLen64)
-	binary.PutVarint(buf, a.timestamp)
-	return buf
+	return []byte(strconv.FormatInt(a.timestamp, 10))
 }
 
 // Message implementing the Signable interface
@@ -310,6 +320,8 @@ func (a *Authorization) decrypt(b cipher.Block, value []byte) ([]byte, error) {
 // Encode() must be called prior to writing it using the WriteTo() method, otherwise
 // secret data might be written to the Writer
 func (a *Authorization) Encode(key []byte) error {
+	a.timestamp = a.Expiry.Unix()
+
 	encoded := bytes.NewBuffer(nil)
 	enc := json.NewEncoder(encoded)
 	err := enc.Encode(a.Payload)
