@@ -97,8 +97,10 @@ func SetPassword(pw []byte) entrySetter {
 	})
 }
 
+// DefaultPassword represents a default password generation and setting
 type DefaultPassword string
 
+// Generate generates a random password
 func (d *DefaultPassword) Generate() error {
 	pw := make([]byte, DefaultPasswordBytes)
 	_, err := rand.Read(pw)
@@ -110,6 +112,8 @@ func (d *DefaultPassword) Generate() error {
 	return nil
 }
 
+// Entry returns a setter, which can be used with the Set() function for setting
+// the default system password
 func (d DefaultPassword) Entry() entrySetter {
 	return SetPassword([]byte(d))
 }
