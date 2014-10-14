@@ -29,6 +29,22 @@ func setDefaults(ctx *service.Context) error {
 		}
 		log.Warn("new system password set. please change as soon as possible", log15.Ctx{"systemPassword": string(genPwd)})
 	}
+	if ctx.Keychain().KeyCount() == 0 {
+		log.Warn("no authorization keys set. will generate a new one...")
+		_, err = ctx.Keychain().GenerateKey()
+		if err != nil {
+			log.Crit("error generating a new authorization key", log15.Ctx{"err": err})
+			return err
+		}
+		generated, err := ctx.Keychain().Key()
+		if err != nil {
+			log.Crit("error retrieving generated key", log15.Ctx{"err": err})
+			return err
+		}
+		log.Warn("generated auth key. please make sure to dump the generated keys if you intend to keep using the keys.", log15.Ctx{
+			"generatedAuthKey": generated,
+		})
+	}
 	return nil
 }
 

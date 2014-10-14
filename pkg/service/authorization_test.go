@@ -76,6 +76,28 @@ func TestKeychain(t *testing.T) {
 			})
 		})
 
+		Convey("When generating a new key", func() {
+			newKey, err := c.GenerateKey()
+			Convey("It should return a new key", func() {
+				So(err, ShouldBeNil)
+				So(newKey, ShouldNotBeNil)
+			})
+			Convey("It should be in the keychain", func() {
+				So(c.KeyCount(), ShouldEqual, 1)
+			})
+
+			Convey("When requesting a key from the keychain", func() {
+				reqKey, err := c.BinKey()
+				Convey("It should return a key", func() {
+					So(err, ShouldBeNil)
+					So(reqKey, ShouldNotBeNil)
+				})
+				Convey("It should match the generated key", func() {
+					So(reflect.DeepEqual(newKey, reqKey), ShouldBeTrue)
+				})
+			})
+		})
+
 		Convey("When adding a badly encoded hex key", func() {
 			badKey := "xfg"
 			err := c.AddKey(badKey)

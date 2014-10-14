@@ -80,7 +80,7 @@ const (
 
 const (
 	// DefaultPasswordBytes is the default password length in bytes
-	DefaultPasswordBytes = 64
+	DefaultPasswordBytes = 32
 )
 
 type entrySetter func(Config) error

@@ -21,7 +21,8 @@ import (
 )
 
 const (
-	keychainLen = 16
+	keychainLen    = 16
+	defaultKeySize = 32
 )
 
 const (
@@ -80,6 +81,17 @@ func (k *Keychain) AddKey(newKey string) error {
 // AddBinKey adds a binary key to the keychain
 func (k *Keychain) AddBinKey(key []byte) {
 	k.pushKey(key)
+}
+
+// GenerateKey generates a random key, adds it to the keychain and returns the generated key
+func (k *Keychain) GenerateKey() ([]byte, error) {
+	key := make([]byte, defaultKeySize)
+	_, err := rand.Read(key)
+	if err != nil {
+		return nil, err
+	}
+	k.pushKey(key)
+	return key, nil
 }
 
 // Key returns a hex-encoded key from the keychain which can be used to encrypt authorization containers

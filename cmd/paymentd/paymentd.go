@@ -94,6 +94,7 @@ func main() {
 		srv.RegisterService(cfg.API.Service, apiHandler)
 	}
 
+	log.Info("serving...")
 	err = srv.Serve()
 	if err != nil {
 		log.Crit("error serving", log15.Ctx{"err": err})
