@@ -2,6 +2,7 @@ package admin
 
 import (
 	"code.google.com/p/go.crypto/bcrypt"
+	"crypto/sha256"
 	"encoding/base64"
 	"github.com/fritzpay/paymentd/pkg/paymentd/config"
 	"github.com/fritzpay/paymentd/pkg/service"
@@ -14,6 +15,12 @@ import (
 
 const (
 	badAuthWaitTime = 2 * time.Second
+	systemUserID    = "root"
+)
+
+const (
+	// AuthLifetime is the duration for which an authorization is considered valid
+	AuthLifetime = 15 * time.Minute
 )
 
 // API represents the admin API in version 1.x
@@ -29,6 +36,12 @@ func NewAPI(ctx *service.Context) *API {
 		log: ctx.Log().New(log15.Ctx{"pkg": "github.com/fritzpay/paymentd/pkg/service/api/v1/admin"}),
 	}
 	return a
+}
+
+// GetCredentialsResponse is the response for all GET /user/credentials requests
+// ready to be JSON-encoded
+type GetCredentialsResponse struct {
+	Authorization string
 }
 
 func (a *API) authenticateSystemPassword(pw string, w http.ResponseWriter) {
@@ -53,7 +66,15 @@ func (a *API) authenticateSystemPassword(pw string, w http.ResponseWriter) {
 		}
 		log.Error("error checking password", log15.Ctx{"err": err})
 		w.WriteHeader(http.StatusInternalServerError)
+		return
 	}
+	a.respondWithAuthorization(w)
+}
+
+func (a *API) respondWithAuthorization(w http.ResponseWriter) {
+	auth := service.NewAuthorization(sha256.New)
+	auth.Payload["userID"] = systemUserID
+	auth.Expiry = time.Now().Add(AuthLifetime)
 	w.Write([]byte("ok"))
 }
 
