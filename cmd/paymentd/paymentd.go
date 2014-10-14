@@ -145,6 +145,9 @@ func connectDB(ctx *service.Context) error {
 	}
 	ctx.SetPrincipalDB(principalDBW, principalDBRO)
 
+	if cfg.Database.Payment.Write == nil {
+		return errors.New("payment write DB config error")
+	}
 	paymentDBW, err := sql.Open(cfg.Database.Payment.Write.Type(), cfg.Database.Payment.Write.DSN())
 	if err != nil {
 		return err

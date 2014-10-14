@@ -8,7 +8,7 @@ Authentication and Authorization
 	TODO replace Authorization example fields with reasonable example values
 	Curently dEFFEFeddedeGGEGMceokr353521234 acts as a placeholder
 
-.. http:get:: /user/credentials/basic
+.. http:get:: /v1/user/credentials/basic
 
 	Receive an authorization token for given basic auth.
 
