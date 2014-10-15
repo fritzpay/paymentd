@@ -3,6 +3,7 @@ package env
 import (
 	"bytes"
 	"fmt"
+	"github.com/go-sql-driver/mysql"
 	"gopkg.in/inconshreveable/log15.v2"
 	golog "log"
 	"os"
@@ -41,6 +42,10 @@ func init() {
 	Log = log15.New()
 	Log.SetHandler(log15.StreamHandler(os.Stderr, DaemonFormat()))
 	golog.SetOutput(logBridge{Log})
+	err := mysql.SetLogger(mysqlLog{})
+	if err != nil {
+		Log.Crit("error setting up mysql log", log15.Ctx{"err": err})
+	}
 }
 
 // logBridge acts as a Writer for the log pkg
@@ -170,4 +175,10 @@ func escapeString(s string) (eStr string) {
 	eStr = string(e.Bytes()[start:stop])
 	bufferPool.Put(e)
 	return
+}
+
+type mysqlLog struct{}
+
+func (m mysqlLog) Print(v ...interface{}) {
+	Log.Warn("mysql log", log15.Ctx{"mysqlLog": v})
 }
