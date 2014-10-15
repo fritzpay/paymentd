@@ -183,6 +183,11 @@ func (a *API) AuthHandler(parent http.Handler) http.Handler {
 			w.WriteHeader(http.StatusUnauthorized)
 			return
 		}
+		if auth.Expiry().Before(time.Now()) {
+			log.Debug("authorization expired", log15.Ctx{"expiry": auth.Expiry()})
+			w.WriteHeader(http.StatusUnauthorized)
+			return
+		}
 		key, err := a.ctx.Keychain().MatchKey(auth)
 		if err != nil {
 			log.Debug("error retrieving matching key from keychain", log15.Ctx{
