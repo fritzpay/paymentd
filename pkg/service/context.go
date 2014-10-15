@@ -39,9 +39,23 @@ func (ctx *Context) Value(key interface{}) interface{} {
 	}
 }
 
+// SetValue creates a new service context with the given value
+func (ctx *Context) WithValue(key, value interface{}) *Context {
+	return &Context{
+		Context:             context.WithValue(ctx.Context, key, value),
+		cfg:                 ctx.cfg,
+		log:                 ctx.log,
+		keychain:            ctx.keychain,
+		principalDBWrite:    ctx.principalDBWrite,
+		principalDBReadOnly: ctx.principalDBReadOnly,
+		paymentDBWrite:      ctx.paymentDBWrite,
+		paymentDBReadOnly:   ctx.paymentDBReadOnly,
+	}
+}
+
 // Config returns the config.Config associated with the context
-func (ctx *Context) Config() config.Config {
-	return ctx.cfg
+func (ctx *Context) Config() *config.Config {
+	return &ctx.cfg
 }
 
 // Log returns the log15.Logger associated with the context

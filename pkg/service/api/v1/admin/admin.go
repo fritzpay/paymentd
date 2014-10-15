@@ -25,6 +25,8 @@ const (
 	AuthLifetime = 15 * time.Minute
 	// AuthUserIDKey is the key for the user ID entry in the authorization container
 	AuthUserIDKey = "userID"
+	// AuthCookieName is the cookie name for cookie-based authentication
+	AuthCookieName = "auth"
 )
 
 // API represents the admin API in version 1.x
@@ -81,6 +83,7 @@ type GetCredentialsResponse struct {
 
 func (a *API) respondWithAuthorization(w http.ResponseWriter) {
 	log := a.log.New(log15.Ctx{"method": "respondWithAuthorization"})
+
 	auth := service.NewAuthorization(a.authorizationHash())
 	auth.Payload[AuthUserIDKey] = systemUserID
 	auth.Expires(time.Now().Add(AuthLifetime))
@@ -108,6 +111,19 @@ func (a *API) respondWithAuthorization(w http.ResponseWriter) {
 		log.Error("error encoding JSON respone", log15.Ctx{"err": err})
 		w.WriteHeader(http.StatusInternalServerError)
 		return
+	}
+	if a.ctx.Config().API.Cookie.AllowCookieAuth {
+		c := &http.Cookie{
+			Name:     AuthCookieName,
+			Value:    resp.Authorization,
+			Expires:  auth.Expiry(),
+			HttpOnly: a.ctx.Config().API.Cookie.HttpOnly,
+			Secure:   a.ctx.Config().API.Cookie.Secure,
+		}
+		if servicePath, ok := a.ctx.Value("ServicePath").(string); ok {
+			c.Path = servicePath
+		}
+		http.SetCookie(w, c)
 	}
 	_, err = w.Write(jsonResp)
 	if err != nil {
@@ -168,9 +184,9 @@ func getCredentialsMethod(p string) string {
 // AuthHandler wraps the given handler with an authorization method using the
 // Authorization Header and the authorization container
 func (a *API) AuthHandler(parent http.Handler) http.Handler {
-	log := a.log.New(log15.Ctx{"method": "AuthHandler"})
-
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		log := a.log.New(log15.Ctx{"method": "AuthHandler"})
+
 		if r.Header.Get("Authorization") == "" {
 			log.Debug("missing authorization header")
 			w.WriteHeader(http.StatusUnauthorized)
