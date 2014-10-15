@@ -16,6 +16,11 @@
 			"Rev": "c9a0e9891d8ff16d1d41100bf923145b2bf25812"
 		},
 		{
+			"ImportPath": "code.google.com/p/go.crypto/pbkdf2",
+			"Comment": "null-226",
+			"Rev": "c9a0e9891d8ff16d1d41100bf923145b2bf25812"
+		},
+		{
 			"ImportPath": "code.google.com/p/go.net/context",
 			"Comment": "null-157",
 			"Rev": "d94d34f344f8563415625719fe339726ed965d86"

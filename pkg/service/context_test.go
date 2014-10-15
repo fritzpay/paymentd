@@ -8,16 +8,20 @@ import (
 	"testing"
 )
 
-func TestContextSetup(t *testing.T) {
-	Convey("Given a new ServiceContext", t, func() {
+func WithContext(f func(ctx *Context)) func() {
+	return func() {
 		log := log15.New()
 		cfg := config.Config{}
 		ctx, err := NewContext(context.Background(), cfg, log)
 
-		Convey("It should not return an error if valid parameters were provided", func() {
-			So(err, ShouldBeNil)
-		})
+		So(err, ShouldBeNil)
 
+		f(ctx)
+	}
+}
+
+func TestContextSetup(t *testing.T) {
+	Convey("Given a new ServiceContext", t, WithContext(func(ctx *Context) {
 		Convey("When setting a principal DB with nil write connection", func() {
 			Convey("It should panic", func() {
 				So(func() { ctx.SetPrincipalDB(nil, nil) }, ShouldPanic)
@@ -29,11 +33,11 @@ func TestContextSetup(t *testing.T) {
 				So(func() { ctx.SetPaymentDB(nil, nil) }, ShouldPanic)
 			})
 		})
-	})
+	}))
 }
 
 func TestDBReadOnlyHandling(t *testing.T) {
-	Convey("Given a new service context", t, func() {
+	Convey("Given a new service context", t, WithContext(func(ctx *Context) {
 
 		Convey("With set principal DB connections", func() {
 
@@ -95,6 +99,6 @@ func TestDBReadOnlyHandling(t *testing.T) {
 
 		})
 
-	})
+	}))
 
 }

@@ -4,6 +4,7 @@ import (
 	"code.google.com/p/go.net/context"
 	"database/sql"
 	"errors"
+	"fmt"
 	"github.com/fritzpay/paymentd/pkg/config"
 	"gopkg.in/inconshreveable/log15.v2"
 )
@@ -14,6 +15,8 @@ type Context struct {
 
 	cfg config.Config
 	log log15.Logger
+
+	keychain *Keychain
 
 	principalDBWrite    *sql.DB
 	principalDBReadOnly *sql.DB
@@ -29,19 +32,40 @@ func (ctx *Context) Value(key interface{}) interface{} {
 		return ctx.cfg
 	case "log":
 		return ctx.log
+	case "keychain":
+		return ctx.keychain
 	default:
 		return ctx.Context.Value(key)
 	}
 }
 
+// SetValue creates a new service context with the given value
+func (ctx *Context) WithValue(key, value interface{}) *Context {
+	return &Context{
+		Context:             context.WithValue(ctx.Context, key, value),
+		cfg:                 ctx.cfg,
+		log:                 ctx.log,
+		keychain:            ctx.keychain,
+		principalDBWrite:    ctx.principalDBWrite,
+		principalDBReadOnly: ctx.principalDBReadOnly,
+		paymentDBWrite:      ctx.paymentDBWrite,
+		paymentDBReadOnly:   ctx.paymentDBReadOnly,
+	}
+}
+
 // Config returns the config.Config associated with the context
-func (ctx *Context) Config() config.Config {
-	return ctx.cfg
+func (ctx *Context) Config() *config.Config {
+	return &ctx.cfg
 }
 
 // Log returns the log15.Logger associated with the context
 func (ctx *Context) Log() log15.Logger {
 	return ctx.log
+}
+
+// Keychain returns the authorization container keychain associated with the context
+func (ctx *Context) Keychain() *Keychain {
+	return ctx.keychain
 }
 
 type dbRequestReadOnly bool
@@ -108,14 +132,31 @@ func (ctx *Context) SetPaymentDB(w, ro *sql.DB) {
 	ctx.paymentDBWrite, ctx.paymentDBReadOnly = w, ro
 }
 
+func (ctx *Context) registerKeychainFromConfig() error {
+	var err error
+	for _, k := range ctx.cfg.API.AuthKeys {
+		err = ctx.keychain.AddKey(k)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 // NewContext creates a new service context for use in the service pkg
 func NewContext(ctx context.Context, cfg config.Config, log log15.Logger) (*Context, error) {
 	if log == nil {
 		return nil, errors.New("log cannot be nil")
 	}
-	return &Context{
-		Context: ctx,
-		cfg:     cfg,
-		log:     log,
-	}, nil
+	c := &Context{
+		Context:  ctx,
+		cfg:      cfg,
+		log:      log,
+		keychain: NewKeychain(),
+	}
+	err := c.registerKeychainFromConfig()
+	if err != nil {
+		return nil, fmt.Errorf("error loading keys from config: %v", err)
+	}
+	return c, nil
 }

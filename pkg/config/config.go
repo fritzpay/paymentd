@@ -52,8 +52,18 @@ type Config struct {
 		Active bool
 		// API service config
 		Service ServiceConfig
+
 		// Should the API server provide administrative endpoints?
 		ServeAdmin bool
+		// Cookie-based authentication settings
+		Cookie struct {
+			// Should the API allow cookie-based authentication?
+			AllowCookieAuth bool
+			HttpOnly        bool
+			Secure          bool
+		}
+
+		AuthKeys []string
 	}
 	// Database config
 	Database struct {
@@ -78,6 +88,9 @@ func DefaultConfig() Config {
 	cfg.API.Service.ReadTimeout = 10 * time.Second
 	cfg.API.Service.WriteTimeout = 10 * time.Second
 	cfg.API.ServeAdmin = false
+	cfg.API.AuthKeys = make([]string, 0)
+
+	cfg.API.Cookie.HttpOnly = true
 
 	cfg.Database.Principal.Write = NewDatabaseConfig()
 	cfg.Database.Principal.Write["mysql"] = "paymentd@tcp(localhost:3306)/fritzpay_principal?charset=utf8mb4&parseTime=true&loc=UTC&timeout=1m&wait_timeout=30&interactive_timeout=30"
