@@ -83,7 +83,7 @@ func (a *API) respondWithAuthorization(w http.ResponseWriter) {
 	log := a.log.New(log15.Ctx{"method": "respondWithAuthorization"})
 	auth := service.NewAuthorization(a.authorizationHash())
 	auth.Payload[AuthUserIDKey] = systemUserID
-	auth.Expiry = time.Now().Add(AuthLifetime)
+	auth.Expires(time.Now().Add(AuthLifetime))
 	key, err := a.ctx.Keychain().BinKey()
 	if err != nil {
 		log.Error("error retrieving key from keychain", log15.Ctx{"err": err})

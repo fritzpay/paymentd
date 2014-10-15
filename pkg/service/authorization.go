@@ -164,7 +164,6 @@ type Authorization struct {
 	signature []byte
 	rawMsg    []byte
 
-	Expiry  time.Time
 	Payload map[string]interface{}
 	H       func() hash.Hash
 }
@@ -215,6 +214,16 @@ func (a *Authorization) ReadFrom(r io.Reader) (n int64, err error) {
 	}
 	n += int64(len(a.rawMsg))
 	return
+}
+
+// Expiry returns the expiry time
+func (a *Authorization) Expiry() time.Time {
+	return time.Unix(a.timestamp, 0)
+}
+
+// Expires sets the expiry time
+func (a *Authorization) Expires(t time.Time) {
+	a.timestamp = t.Unix()
 }
 
 // WriteTo writes the serialized authorization container to the given writer
@@ -321,8 +330,6 @@ func (a *Authorization) decrypt(b cipher.Block, value []byte) ([]byte, error) {
 // Encode() must be called prior to writing it using the WriteTo() method, otherwise
 // secret data might be written to the Writer
 func (a *Authorization) Encode(key []byte) error {
-	a.timestamp = a.Expiry.Unix()
-
 	encoded := bytes.NewBuffer(nil)
 	gzw := gzip.NewWriter(encoded)
 	enc := json.NewEncoder(gzw)
@@ -353,8 +360,6 @@ func (a *Authorization) Encode(key []byte) error {
 
 /// Decode decodes a container after it was read using the ReadFrom() method
 func (a *Authorization) Decode(key []byte) error {
-	a.Expiry = time.Unix(a.timestamp, 0)
-
 	blockKey := a.deriveKey(key)
 	b, err := aes.NewCipher(blockKey)
 	if err != nil {

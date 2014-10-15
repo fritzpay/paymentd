@@ -189,7 +189,7 @@ func TestEncodeDecodeAuthorization(t *testing.T) {
 		key := []byte("testKey")
 		auth := NewAuthorization(sha256.New)
 		auth.Payload["test"] = "testValue"
-		auth.Expiry = time.Now()
+		auth.Expires(time.Now())
 
 		Convey("When encoding it", func() {
 			err := auth.Encode(key)
@@ -233,7 +233,7 @@ func TestEncodeDecodeAuthorization(t *testing.T) {
 							})
 							Convey("It should match the original authorization", func() {
 								So(reflect.DeepEqual(newAuth.salt, auth.salt), ShouldBeTrue)
-								So(newAuth.Expiry.Unix(), ShouldEqual, auth.Expiry.Unix())
+								So(newAuth.Expiry().Unix(), ShouldEqual, auth.Expiry().Unix())
 								So(reflect.DeepEqual(newAuth.Payload, auth.Payload), ShouldBeTrue)
 							})
 						})
@@ -255,7 +255,7 @@ func TestAuthorizationChain(t *testing.T) {
 		Convey("Given an authorization", func() {
 			auth := NewAuthorization(sha256.New)
 			auth.Payload["test"] = "testAuthChain"
-			auth.Expiry = time.Now()
+			auth.Expires(time.Now())
 
 			Convey("When retrieving a key from the keychain", func() {
 				key, err := chain.BinKey()
