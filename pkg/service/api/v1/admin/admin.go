@@ -187,13 +187,28 @@ func (a *API) AuthHandler(parent http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		log := a.log.New(log15.Ctx{"method": "AuthHandler"})
 
-		if r.Header.Get("Authorization") == "" {
-			log.Debug("missing authorization header")
-			w.WriteHeader(http.StatusUnauthorized)
-			return
+		authStr := r.Header.Get("Authorization")
+		if authStr == "" {
+			if !a.ctx.Config().API.Cookie.AllowCookieAuth {
+				log.Debug("missing authorization header")
+				w.WriteHeader(http.StatusUnauthorized)
+				return
+			}
+			c, err := r.Cookie(AuthCookieName)
+			if err != nil {
+				if err != http.ErrNoCookie {
+					log.Warn("error retrieving auth cookie", log15.Ctx{"err": err})
+					w.WriteHeader(http.StatusInternalServerError)
+					return
+				}
+				// ErrNoCookie
+				w.WriteHeader(http.StatusUnauthorized)
+				return
+			}
+			authStr = c.Value
 		}
 		auth := service.NewAuthorization(a.authorizationHash())
-		_, err := auth.ReadFrom(strings.NewReader(r.Header.Get("Authorization")))
+		_, err := auth.ReadFrom(strings.NewReader(authStr))
 		if err != nil {
 			log.Debug("error reading authorization", log15.Ctx{"err": err})
 			w.WriteHeader(http.StatusUnauthorized)
