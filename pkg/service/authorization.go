@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"bytes"
 	"code.google.com/p/go.crypto/pbkdf2"
+	"compress/gzip"
 	"crypto/aes"
 	"crypto/cipher"
 	"crypto/hmac"
@@ -323,8 +324,10 @@ func (a *Authorization) Encode(key []byte) error {
 	a.timestamp = a.Expiry.Unix()
 
 	encoded := bytes.NewBuffer(nil)
-	enc := json.NewEncoder(encoded)
+	gzw := gzip.NewWriter(encoded)
+	enc := json.NewEncoder(gzw)
 	err := enc.Encode(a.Payload)
+	gzw.Close()
 	if err != nil {
 		return err
 	}
@@ -362,7 +365,12 @@ func (a *Authorization) Decode(key []byte) error {
 		return err
 	}
 	msgBuf := bytes.NewReader(a.rawMsg)
-	dec := json.NewDecoder(msgBuf)
+	gzr, err := gzip.NewReader(msgBuf)
+	if err != nil {
+		return err
+	}
+	dec := json.NewDecoder(gzr)
 	err = dec.Decode(&a.Payload)
+	gzr.Close()
 	return err
 }
