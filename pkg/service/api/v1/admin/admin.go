@@ -8,6 +8,7 @@ import (
 	"github.com/fritzpay/paymentd/pkg/paymentd/config"
 	"github.com/fritzpay/paymentd/pkg/service"
 	"gopkg.in/inconshreveable/log15.v2"
+	"hash"
 	"net/http"
 	"path"
 	"strings"
@@ -39,6 +40,10 @@ func NewAPI(ctx *service.Context) *API {
 		log: ctx.Log().New(log15.Ctx{"pkg": "github.com/fritzpay/paymentd/pkg/service/api/v1/admin"}),
 	}
 	return a
+}
+
+func (a *API) authorizationHash() func() hash.Hash {
+	return sha256.New
 }
 
 func (a *API) authenticateSystemPassword(pw string, w http.ResponseWriter) {
@@ -76,7 +81,7 @@ type GetCredentialsResponse struct {
 
 func (a *API) respondWithAuthorization(w http.ResponseWriter) {
 	log := a.log.New(log15.Ctx{"method": "respondWithAuthorization"})
-	auth := service.NewAuthorization(sha256.New)
+	auth := service.NewAuthorization(a.authorizationHash())
 	auth.Payload[AuthUserIDKey] = systemUserID
 	auth.Expiry = time.Now().Add(AuthLifetime)
 	key, err := a.ctx.Keychain().BinKey()
@@ -119,31 +124,35 @@ func (a *API) GetCredentials(w http.ResponseWriter, r *http.Request) {
 	}
 	switch getCredentialsMethod(r.URL.Path) {
 	case "basic":
-		if r.Header.Get("Authorization") == "" {
-			requestBasicAuth(w)
-			return
-		}
-		parts := strings.SplitN(r.Header.Get("Authorization"), " ", 2)
-		if parts[0] != "Basic" {
-			requestBasicAuth(w)
-			return
-		}
-		auth, err := base64.StdEncoding.DecodeString(parts[1])
-		if err != nil {
-			requestBasicAuth(w)
-			return
-		}
-		parts = strings.Split(string(auth), ":")
-		if len(parts) != 2 {
-			requestBasicAuth(w)
-			return
-		}
-		a.authenticateSystemPassword(parts[1], w)
+		a.authenticateBasicAuth(w, r)
 		return
 	default:
 		w.WriteHeader(http.StatusNotFound)
 		return
 	}
+}
+
+func (a *API) authenticateBasicAuth(w http.ResponseWriter, r *http.Request) {
+	if r.Header.Get("Authorization") == "" {
+		requestBasicAuth(w)
+		return
+	}
+	parts := strings.SplitN(r.Header.Get("Authorization"), " ", 2)
+	if parts[0] != "Basic" {
+		requestBasicAuth(w)
+		return
+	}
+	auth, err := base64.StdEncoding.DecodeString(parts[1])
+	if err != nil {
+		requestBasicAuth(w)
+		return
+	}
+	parts = strings.Split(string(auth), ":")
+	if len(parts) != 2 {
+		requestBasicAuth(w)
+		return
+	}
+	a.authenticateSystemPassword(parts[1], w)
 }
 
 func requestBasicAuth(w http.ResponseWriter) {
@@ -167,7 +176,7 @@ func (a *API) AuthHandler(parent http.Handler) http.Handler {
 			w.WriteHeader(http.StatusUnauthorized)
 			return
 		}
-		auth := service.NewAuthorization(sha256.New)
+		auth := service.NewAuthorization(a.authorizationHash())
 		_, err := auth.ReadFrom(strings.NewReader(r.Header.Get("Authorization")))
 		if err != nil {
 			log.Debug("error reading authorization", log15.Ctx{"err": err})
