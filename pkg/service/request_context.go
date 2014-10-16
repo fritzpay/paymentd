@@ -6,6 +6,12 @@ import (
 	"sync"
 )
 
+const (
+	// ContextVarAuthKey is the name of the key under which the auth container
+	// will be stored in request contexts
+	ContextVarAuthKey = "Auth"
+)
+
 var (
 	mutex           sync.RWMutex
 	requestContexts = make(map[*http.Request]context.Context)

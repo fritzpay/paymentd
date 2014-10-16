@@ -206,13 +206,8 @@ func (a *API) AuthHandler(parent http.Handler) http.Handler {
 			w.WriteHeader(http.StatusUnauthorized)
 			return
 		}
-		if userID, ok := auth.Payload[AuthUserIDKey]; !ok {
-			log.Debug("no userID present")
-			w.WriteHeader(http.StatusUnauthorized)
-			return
-		} else {
-			service.SetRequestContextVar(r, AuthUserIDKey, userID)
-		}
+		// store auth container in request context
+		service.SetRequestContextVar(r, service.ContextVarAuthKey, auth.Payload)
 
 		parent.ServeHTTP(w, r)
 	})
