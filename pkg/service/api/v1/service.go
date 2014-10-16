@@ -28,11 +28,13 @@ func NewService(ctx *service.Context, mux *http.ServeMux) *Service {
 	}
 
 	cfg := ctx.Config()
+	ctx = ctx.WithValue("ServicePath", ServicePath)
 
 	if cfg.API.ServeAdmin {
 		s.log.Info("registering admin API...")
 		admin := admin.NewAPI(ctx)
 		mux.HandleFunc(ServicePath+"/user/credentials/", admin.GetCredentials)
+		mux.Handle(ServicePath+"/user/", admin.AuthHandler(admin.GetUserID()))
 	}
 
 	s.log.Info("registering payment API...")

@@ -2,185 +2,380 @@ package service
 
 import (
 	"bufio"
+	"bytes"
+	"code.google.com/p/go.crypto/pbkdf2"
 	"compress/gzip"
 	"crypto/aes"
+	"crypto/cipher"
 	"crypto/hmac"
+	"crypto/rand"
 	"encoding/base64"
-	"encoding/gob"
+	"encoding/hex"
+	"encoding/json"
 	"errors"
-	"fmt"
 	"hash"
 	"io"
 	"io/ioutil"
 	"strconv"
+	"sync"
 	"time"
 )
 
 const (
-	keychainLen = 16
+	keychainLen    = 16
+	defaultKeySize = 32
+)
+
+const (
+	// MaxMsgSize is the maximum size the (encoded) content of an Authorization container
+	// can have
+	MaxMsgSize = 4096
 )
 
 var (
-	ErrInvalidHashFunc   = errors.New("invalid hash func")
-	ErrInvalidSignature  = errors.New("invalid signature")
-	ErrSignatureKey      = errors.New("internal error while decoding signature key")
-	ErrSignatureMismatch = errors.New("signature mismatch")
-	ErrNoKeys            = errors.New("no keys in keychain")
-	ErrNoEncryptionKey   = errors.New("no encryption key for signature key")
+	ErrInvalidKey    = errors.New("invalid key")
+	ErrNoKeys        = errors.New("no keys in keychain")
+	ErrNoMatchingKey = errors.New("no matching key for signature")
+	ErrBadContainer  = errors.New("bad container encoding")
+	ErrDecrypt       = errors.New("error decrypting container")
+	ErrMsgSize       = errors.New("message too big")
 )
 
+// Keychain stores (and rotates) keys for authorization container encryption
 type Keychain struct {
-	keys     map[string][]byte
-	keyOrder []string
+	m    sync.RWMutex
+	keys [][]byte
 }
 
+// NewKeychain creates an empty keychain
 func NewKeychain() *Keychain {
 	k := &Keychain{
-		keys:     make(map[string][]byte),
-		keyOrder: make([]string, 0, keychainLen),
+		keys: make([][]byte, 0, keychainLen),
 	}
 	return k
 }
 
-func (k *Keychain) AddPair(sigKey, blockKey []byte) error {
-	sigKeyStr := base64.StdEncoding.EncodeToString(sigKey)
-	if _, ok := k.keys[sigKeyStr]; ok {
-		return errors.New("signature key is already assigned to a block key")
-	}
-	// test if blockKey is a valid AES block key
-	_, err := aes.NewCipher(blockKey)
+// KeyCount returns the number of keys in the keychain
+func (k *Keychain) KeyCount() (c int) {
+	k.m.RLock()
+	c = len(k.keys)
+	k.m.RUnlock()
+	return
+}
+
+func (k *Keychain) pushKey(key []byte) {
+	k.m.Lock()
+	keys := make([][]byte, 1, cap(k.keys)+keychainLen)
+	keys[0] = key
+	k.keys = append(keys, k.keys...)
+	k.m.Unlock()
+}
+
+// AddKey adds a (hex-encoded) key to the keychain
+func (k *Keychain) AddKey(newKey string) error {
+	key, err := hex.DecodeString(newKey)
 	if err != nil {
-		return err
+		return ErrInvalidKey
 	}
-	k.keyOrder = append(k.keyOrder, sigKeyStr)
-	k.keys[sigKeyStr] = blockKey
+	k.pushKey(key)
 	return nil
 }
 
-func (k *Keychain) EncryptionKey(s Signed) ([]byte, error) {
-	if s.HashFunc() == nil {
-		return nil, ErrInvalidHashFunc
+// AddBinKey adds a binary key to the keychain
+func (k *Keychain) AddBinKey(key []byte) {
+	k.pushKey(key)
+}
+
+// GenerateKey generates a random key, adds it to the keychain and returns the generated key
+func (k *Keychain) GenerateKey() ([]byte, error) {
+	key := make([]byte, defaultKeySize)
+	_, err := rand.Read(key)
+	if err != nil {
+		return nil, err
 	}
-	if len(k.keyOrder) == 0 {
+	k.pushKey(key)
+	return key, nil
+}
+
+// Key returns a hex-encoded key from the keychain which can be used to encrypt authorization containers
+func (k *Keychain) Key() (string, error) {
+	key, err := k.BinKey()
+	if err != nil {
+		return "", err
+	}
+	return hex.EncodeToString(key), nil
+}
+
+// BinKey returns a binary key from the keychain which can be used to encrypt authorization containers
+func (k *Keychain) BinKey() ([]byte, error) {
+	k.m.RLock()
+	if len(k.keys) == 0 {
+		k.m.RUnlock()
 		return nil, ErrNoKeys
 	}
-	messageSig, err := base64.StdEncoding.DecodeString(s.Signature())
-	if err != nil {
-		return nil, ErrInvalidSignature
+	key := k.keys[0]
+	k.m.RUnlock()
+	return key, nil
+}
+
+// MatchKey returns the key which was used to sign the Signed
+// If no such key is in the keychain, it will return ErrNoMatchingKey
+func (k *Keychain) MatchKey(s Signed) ([]byte, error) {
+	k.m.RLock()
+	if len(k.keys) == 0 {
+		k.m.RUnlock()
+		return nil, ErrNoKeys
 	}
-	for i := len(k.keyOrder) - 1; i >= 0; i-- {
-		sigKey, err := base64.StdEncoding.DecodeString(k.keyOrder[i])
+	for _, key := range k.keys {
+		mac := hmac.New(s.HashFunc(), key)
+		_, err := mac.Write(s.Message())
 		if err != nil {
-			return nil, ErrSignatureKey
-		}
-		mac := hmac.New(s.HashFunc(), sigKey)
-		_, err = mac.Write(s.Message())
-		if err != nil {
+			k.m.RUnlock()
 			return nil, err
 		}
-		if hmac.Equal(messageSig, mac.Sum(nil)) {
-			if blockKey, ok := k.keys[s.Signature()]; !ok {
-				return nil, ErrNoEncryptionKey
-			} else {
-				return blockKey, nil
-			}
+		if hmac.Equal(s.Signature(), mac.Sum(nil)) {
+			k.m.RUnlock()
+			return key, nil
 		}
 	}
-	return nil, ErrSignatureMismatch
+	k.m.RUnlock()
+	return nil, ErrNoMatchingKey
 }
 
-func (k *Keychain) Pair() (string, []byte, error) {
-	if len(k.keyOrder) == 0 {
-		return "", nil, ErrNoKeys
-	}
-	sigKey := k.keyOrder[len(k.keyOrder)-1]
-	if key, ok := k.keys[sigKey]; !ok {
-		return "", nil, ErrNoEncryptionKey
-	} else {
-		return sigKey, key, nil
-	}
-}
-
+// Signable is a type which can be signed
 type Signable interface {
 	Message() []byte
 	HashFunc() func() hash.Hash
 }
 
+// Signed is a type which has been signed
+// The signature can be authenticated using the Signable interface and recreating the signature
 type Signed interface {
 	Signable
-	Signature() string
+	Signature() []byte
 }
 
+// Authorization is a container which can hold arbitrary authorization data,
+// can be encrypted and signed and safely passed between services. As long as those
+// share the same keychain, they are able to access the encrypted data.
 type Authorization struct {
-	Expiry    time.Time
-	expiry    []byte
-	rawMsg    []byte
-	UserID    string
-	Payload   interface{}
+	timestamp int64
+	salt      []byte
 	signature []byte
-	hashFunc  func() hash.Hash
+	rawMsg    []byte
+
+	Payload map[string]interface{}
+	H       func() hash.Hash
 }
 
-func (a *Authorization) WriteAuthorization(w io.Writer) error {
-	w = base64.NewEncoder(base64.StdEncoding, w)
-	w = gzip.NewWriter(w)
-	fmt.Fprintf(w, "%d|", a.Expiry.Unix())
-	gobEnc := gob.NewEncoder(w)
-	err := gobEnc.Encode(a.Payload)
-	if err != nil {
-		return err
+// NewAuthorization creates a new authorization container with the given Hash function
+// for signing and key derivation
+func NewAuthorization(h func() hash.Hash) *Authorization {
+	return &Authorization{
+		salt:      make([]byte, 8),
+		signature: make([]byte, h().Size()),
+		rawMsg:    make([]byte, 0, MaxMsgSize),
+
+		Payload: make(map[string]interface{}),
+		H:       h,
 	}
-	_, err = w.Write('|')
-	if err != nil {
-		return err
-	}
-	return nil
 }
 
-func ReadAuthorization(r io.Reader) (*Authorization, error) {
-	var err error
-	a := &Authorization{}
-	gzr, err := gzip.NewReader(base64.NewDecoder(base64.StdEncoding, r))
+// ReadFrom reads a serialized authorization container from the given reader
+//
+// After the container is read, it should be decoded using the Decode() method
+func (a *Authorization) ReadFrom(r io.Reader) (n int64, err error) {
+	r = base64.NewDecoder(base64.StdEncoding, r)
+	buf := bufio.NewReader(r)
+	// timestamp
+	timestamp, err := buf.ReadBytes('|')
 	if err != nil {
-		return nil, err
+		return
 	}
-	buf := bufio.NewReader(gzr)
-
-	a.expiry, err = buf.ReadBytes('|')
-	if err != nil {
-		return nil, err
-	}
+	n += int64(len(timestamp))
 	// remove delimiter
-	a.expiry = a.expiry[:len(a.expiry)-1]
-
-	timestamp, err := strconv.ParseInt(string(a.expiry), 10, 64)
+	timestamp = timestamp[:len(timestamp)-1]
+	a.timestamp, err = strconv.ParseInt(string(timestamp), 10, 64)
 	if err != nil {
-		return nil, err
+		return
 	}
-	a.Expiry = time.Unix(timestamp, 0)
-
-	a.rawMsg, err = buf.ReadBytes('|')
+	// read buffer parts
+	var read int
+	for _, binBuf := range [][]byte{a.salt, a.signature} {
+		read, err = buf.Read(binBuf)
+		if err != nil {
+			return
+		}
+		n += int64(read)
+	}
+	a.rawMsg, err = ioutil.ReadAll(buf)
 	if err != nil {
-		return nil, err
+		return
 	}
-	a.rawMsg = a.rawMsg[:len(a.rawMsg)-1]
-
-	a.signature, err = ioutil.ReadAll(buf)
-	if err != nil {
-		return nil, err
-	}
-
-	return a, nil
+	n += int64(len(a.rawMsg))
+	return
 }
 
+// Expiry returns the expiry time
+func (a *Authorization) Expiry() time.Time {
+	return time.Unix(a.timestamp, 0)
+}
+
+// Expires sets the expiry time
+func (a *Authorization) Expires(t time.Time) {
+	a.timestamp = t.Unix()
+}
+
+// WriteTo writes the serialized authorization container to the given writer
+//
+// Prior to writing the container to a writer, it must be encoded using the Encode() method
+func (a *Authorization) WriteTo(w io.Writer) (n int64, err error) {
+	wr := base64.NewEncoder(base64.StdEncoding, w)
+	defer wr.Close()
+	ts := a.timestampBytes()
+	written, err := wr.Write(append(ts, '|'))
+	if err != nil {
+		return
+	}
+	n += int64(written)
+	for _, binBuf := range [][]byte{a.salt, a.signature, a.rawMsg} {
+		written, err = wr.Write(binBuf)
+		if err != nil {
+			return
+		}
+		n += int64(written)
+	}
+	return
+}
+
+func (a *Authorization) Serialized() (string, error) {
+	buf := bytes.NewBuffer(nil)
+	_, err := a.WriteTo(buf)
+	if err != nil {
+		return "", err
+	}
+	return buf.String(), nil
+}
+
+func (a *Authorization) timestampBytes() []byte {
+	return []byte(strconv.FormatInt(a.timestamp, 10))
+}
+
+// Message implementing the Signable interface
 func (a *Authorization) Message() []byte {
-	return append(a.expiry, a.rawMsg...)
+	msg := append(a.timestampBytes(), a.salt...)
+	msg = append(msg, a.rawMsg...)
+	return msg
 }
 
+// Signature implementing the Signed interface
 func (a *Authorization) Signature() []byte {
 	return a.signature
 }
 
+// HashFunc implementing the Signable interface
 func (a *Authorization) HashFunc() func() hash.Hash {
-	return a.hashFunc
+	return a.H
+}
+
+// Sign signs the container with the given key
+func (a *Authorization) Sign(key []byte) error {
+	mac := hmac.New(a.HashFunc(), key)
+	_, err := mac.Write(a.Message())
+	if err != nil {
+		return err
+	}
+	a.signature = mac.Sum(nil)
+	return nil
+}
+
+func (a *Authorization) generateSalt() error {
+	_, err := rand.Read(a.salt)
+	return err
+}
+
+func (a *Authorization) deriveKey(key []byte) []byte {
+	const iter = 4096
+	// AES-256
+	const keyLen = 32
+	return pbkdf2.Key(key, a.salt, iter, keyLen, a.HashFunc())
+}
+
+func (a *Authorization) encrypt(b cipher.Block, value []byte) ([]byte, error) {
+	iv := make([]byte, b.BlockSize())
+	_, err := rand.Read(iv)
+	if err != nil {
+		return nil, err
+	}
+	stream := cipher.NewCTR(b, iv)
+	stream.XORKeyStream(value, value)
+	return append(iv, value...), nil
+}
+
+func (a *Authorization) decrypt(b cipher.Block, value []byte) ([]byte, error) {
+	size := b.BlockSize()
+	if len(value) <= size {
+		return nil, ErrDecrypt
+	}
+	iv := value[:size]
+	value = value[size:]
+	stream := cipher.NewCTR(b, iv)
+	stream.XORKeyStream(value, value)
+	return value, nil
+}
+
+// Encode encodes the message, encrypting its contents and signing it with the given
+// key
+//
+// Encode() must be called prior to writing it using the WriteTo() method, otherwise
+// secret data might be written to the Writer
+func (a *Authorization) Encode(key []byte) error {
+	encoded := bytes.NewBuffer(nil)
+	gzw := gzip.NewWriter(encoded)
+	enc := json.NewEncoder(gzw)
+	err := enc.Encode(a.Payload)
+	gzw.Close()
+	if err != nil {
+		return err
+	}
+	if encoded.Len() > MaxMsgSize {
+		return ErrMsgSize
+	}
+	err = a.generateSalt()
+	if err != nil {
+		return err
+	}
+	blockKey := a.deriveKey(key)
+	b, err := aes.NewCipher(blockKey)
+	if err != nil {
+		return err
+	}
+	a.rawMsg, err = a.encrypt(b, encoded.Bytes())
+	if err != nil {
+		return err
+	}
+	err = a.Sign(key)
+	return err
+}
+
+/// Decode decodes a container after it was read using the ReadFrom() method
+func (a *Authorization) Decode(key []byte) error {
+	blockKey := a.deriveKey(key)
+	b, err := aes.NewCipher(blockKey)
+	if err != nil {
+		return err
+	}
+	a.rawMsg, err = a.decrypt(b, a.rawMsg)
+	if err != nil {
+		return err
+	}
+	msgBuf := bytes.NewReader(a.rawMsg)
+	gzr, err := gzip.NewReader(msgBuf)
+	if err != nil {
+		return err
+	}
+	dec := json.NewDecoder(gzr)
+	err = dec.Decode(&a.Payload)
+	gzr.Close()
+	return err
 }
