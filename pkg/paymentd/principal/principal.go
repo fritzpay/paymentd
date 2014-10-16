@@ -12,4 +12,11 @@ type Principal struct {
 	Created   time.Time
 	CreatedBy string
 	Name      string
+
+	Metadata map[string]string
+}
+
+// Empty returns true if the principal is considered empty/unitialized
+func (p Principal) Empty() bool {
+	return p.ID == 0 && p.Name == ""
 }

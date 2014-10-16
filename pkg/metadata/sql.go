@@ -43,7 +43,7 @@ func MetadataByPrimaryDB(db *sql.DB, m MetadataModel, primary int64) (Metadata, 
 			rows.Close()
 			return nil, err
 		}
-		e.Timestamp = time.Unix(0, t)
+		e.timestamp = time.Unix(0, t)
 		metadata[e.Name] = e
 	}
 	err = rows.Err()
@@ -81,7 +81,7 @@ func MetadataByPrimaryAndNameDB(db *sql.DB, m MetadataModel, primary int64, name
 		}
 		return e, err
 	}
-	e.Timestamp = time.Unix(0, ts)
+	e.timestamp = time.Unix(0, ts)
 	return e, nil
 }
 
