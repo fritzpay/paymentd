@@ -5,7 +5,6 @@ package env
 import (
 	"bytes"
 	"gopkg.in/inconshreveable/log15.v2"
-	"sync"
 )
 
 // DaemonFormat returns a log15.Format, which produces records which can be forwarded to
