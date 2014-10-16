@@ -45,7 +45,7 @@ func TestGetCredentialsWithBasicAuth(t *testing.T) {
 
 					Convey("When the handler is called", func() {
 						w := testutil.NewResponseWriter()
-						a.GetCredentials(w, r)
+						a.GetAuthorization().ServeHTTP(w, r)
 						Convey("The handler should respond with method not allowed", func() {
 							So(w.HeaderWritten, ShouldBeTrue)
 							So(w.StatusCode, ShouldEqual, http.StatusMethodNotAllowed)
@@ -58,7 +58,7 @@ func TestGetCredentialsWithBasicAuth(t *testing.T) {
 
 					Convey("When the handler is called", func() {
 						w := testutil.NewResponseWriter()
-						a.GetCredentials(w, r)
+						a.GetAuthorization().ServeHTTP(w, r)
 						Convey("The handler should respond with a 404 (not found)", func() {
 							So(w.HeaderWritten, ShouldBeTrue)
 							So(w.StatusCode, ShouldEqual, http.StatusNotFound)

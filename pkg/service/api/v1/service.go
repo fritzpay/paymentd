@@ -33,8 +33,8 @@ func NewService(ctx *service.Context, mux *http.ServeMux) *Service {
 	if cfg.API.ServeAdmin {
 		s.log.Info("registering admin API...")
 		admin := admin.NewAPI(ctx)
-		mux.HandleFunc(ServicePath+"/user/credentials/", admin.GetCredentials)
-		mux.Handle(ServicePath+"/user/", admin.AuthHandler(admin.GetUserID()))
+		mux.Handle(ServicePath+"/authorization/", admin.GetAuthorization())
+		mux.Handle(ServicePath+"/user/", admin.AuthRequiredHandler(admin.GetUserID()))
 	}
 
 	s.log.Info("registering payment API...")

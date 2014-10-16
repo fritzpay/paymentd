@@ -103,21 +103,28 @@ func (a *API) respondWithAuthorization(w http.ResponseWriter) {
 	}
 }
 
-// GetCredentials implements the GET /user/credentials request
-func (a *API) GetCredentials(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "application/json")
-	if r.Method != "GET" {
-		w.WriteHeader(http.StatusMethodNotAllowed)
-		return
-	}
-	switch getCredentialsMethod(r.URL.Path) {
-	case "basic":
-		a.authenticateBasicAuth(w, r)
-		return
-	default:
-		w.WriteHeader(http.StatusNotFound)
-		return
-	}
+// GetCredentials implements the GET /authorization request
+func (a *API) GetAuthorization() http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		if r.Method != "GET" {
+			w.WriteHeader(http.StatusMethodNotAllowed)
+			return
+		}
+		switch getAuthorizationMethod(r.URL.Path) {
+		case "basic":
+			a.authenticateBasicAuth(w, r)
+			return
+		default:
+			w.WriteHeader(http.StatusNotFound)
+			return
+		}
+	})
+}
+
+func getAuthorizationMethod(p string) string {
+	_, method := path.Split(path.Clean(p))
+	return method
 }
 
 func (a *API) authenticateBasicAuth(w http.ResponseWriter, r *http.Request) {
@@ -148,14 +155,22 @@ func requestBasicAuth(w http.ResponseWriter) {
 	w.WriteHeader(http.StatusUnauthorized)
 }
 
-func getCredentialsMethod(p string) string {
-	_, method := path.Split(path.Clean(p))
-	return method
+// AuthRequiredHandler wraps the given handler with an authorization method using the
+// Authorization Header and the authorization container
+//
+// A failed authorization will lead to a http.StatusUnauthorized header
+func (a *API) AuthRequiredHandler(parent http.Handler) http.Handler {
+	return a.AuthHandler(parent, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusUnauthorized)
+	}))
 }
 
 // AuthHandler wraps the given handler with an authorization method using the
 // Authorization Header and the authorization container
-func (a *API) AuthHandler(parent http.Handler) http.Handler {
+//
+// When the request can be authorized, the success handler will be called, otherwise
+// the failed handler will be called
+func (a *API) AuthHandler(success, failed http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		log := a.log.New(log15.Ctx{"method": "AuthHandler"})
 
@@ -163,7 +178,7 @@ func (a *API) AuthHandler(parent http.Handler) http.Handler {
 		if authStr == "" {
 			if !a.ctx.Config().API.Cookie.AllowCookieAuth {
 				log.Debug("missing authorization header")
-				w.WriteHeader(http.StatusUnauthorized)
+				failed.ServeHTTP(w, r)
 				return
 			}
 			c, err := r.Cookie(AuthCookieName)
@@ -174,7 +189,7 @@ func (a *API) AuthHandler(parent http.Handler) http.Handler {
 					return
 				}
 				// ErrNoCookie
-				w.WriteHeader(http.StatusUnauthorized)
+				failed.ServeHTTP(w, r)
 				return
 			}
 			authStr = c.Value
@@ -183,12 +198,12 @@ func (a *API) AuthHandler(parent http.Handler) http.Handler {
 		_, err := auth.ReadFrom(strings.NewReader(authStr))
 		if err != nil {
 			log.Debug("error reading authorization", log15.Ctx{"err": err})
-			w.WriteHeader(http.StatusUnauthorized)
+			failed.ServeHTTP(w, r)
 			return
 		}
 		if auth.Expiry().Before(time.Now()) {
 			log.Debug("authorization expired", log15.Ctx{"expiry": auth.Expiry()})
-			w.WriteHeader(http.StatusUnauthorized)
+			failed.ServeHTTP(w, r)
 			return
 		}
 		key, err := a.ctx.Keychain().MatchKey(auth)
@@ -197,18 +212,18 @@ func (a *API) AuthHandler(parent http.Handler) http.Handler {
 				"err":            err,
 				"keysInKeychain": a.ctx.Keychain().KeyCount(),
 			})
-			w.WriteHeader(http.StatusUnauthorized)
+			failed.ServeHTTP(w, r)
 			return
 		}
 		err = auth.Decode(key)
 		if err != nil {
 			log.Debug("error decoding authorization", log15.Ctx{"err": err})
-			w.WriteHeader(http.StatusUnauthorized)
+			failed.ServeHTTP(w, r)
 			return
 		}
 		// store auth container in request context
 		service.SetRequestContextVar(r, service.ContextVarAuthKey, auth.Payload)
 
-		parent.ServeHTTP(w, r)
+		success.ServeHTTP(w, r)
 	})
 }
