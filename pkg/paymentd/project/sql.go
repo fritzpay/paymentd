@@ -2,6 +2,13 @@ package project
 
 import (
 	"database/sql"
+	"errors"
+)
+
+var (
+	// ErrProjectNotFound will be returned by select functions when the requested
+	// project was not found
+	ErrProjectNotFound = errors.New("project not found")
 )
 
 const insertProject = `
@@ -65,7 +72,7 @@ func scanProject(row *sql.Row) (Project, error) {
 	err := row.Scan(&p.ID, &p.PrincipalID, &p.Created, &p.CreatedBy, &p.Name)
 	if err != nil {
 		if err == sql.ErrNoRows {
-			return p, nil
+			return p, ErrProjectNotFound
 		}
 		return p, err
 	}
