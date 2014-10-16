@@ -2,6 +2,13 @@ package principal
 
 import (
 	"database/sql"
+	"errors"
+)
+
+var (
+	// ErrPrincipalNotFound is an error which various select methods will return
+	// if the requested principal was not found
+	ErrPrincipalNotFound = errors.New("principal not found")
 )
 
 const insertPrincipal = `
@@ -63,7 +70,7 @@ func scanPrincipal(row *sql.Row) (Principal, error) {
 	err := row.Scan(&p.ID, &p.Created, &p.CreatedBy, &p.Name)
 	if err != nil {
 		if err == sql.ErrNoRows {
-			return p, nil
+			return p, ErrPrincipalNotFound
 		}
 		return p, err
 	}
