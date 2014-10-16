@@ -24,12 +24,12 @@ func (a *API) authenticateSystemPassword(pw string, w http.ResponseWriter) {
 	log := a.log.New(log15.Ctx{"method": "authenticateSystemPassword"})
 	pwEntry, err := config.EntryByNameDB(a.ctx.PaymentDB(), config.ConfigNameSystemPassword)
 	if err != nil {
+		if err == config.ErrEntryNotFound {
+			log.Error("no password entry")
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
 		log.Error("error retrieving password entry", log15.Ctx{"err": err})
-		w.WriteHeader(http.StatusInternalServerError)
-		return
-	}
-	if pwEntry == nil {
-		log.Error("no password entry")
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
