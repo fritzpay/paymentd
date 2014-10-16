@@ -40,6 +40,6 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		}
 	}()
 	service.SetRequestContext(r, h.ctx)
-	defer service.Clear(r)
+	defer service.ClearRequestContext(r)
 	h.mux.ServeHTTP(w, r)
 }
