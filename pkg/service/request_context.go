@@ -4,13 +4,6 @@ import (
 	"code.google.com/p/go.net/context"
 	"net/http"
 	"sync"
-	"time"
-)
-
-const (
-	// the default purge timeout for the request context
-	// no request should take longer than 5 minutes
-	requestContextTimeout = 5 * time.Minute
 )
 
 const (
@@ -23,11 +16,6 @@ var (
 	mutex           sync.RWMutex
 	requestContexts = make(map[*http.Request]context.Context)
 )
-
-// RequestContextTimeout returns the timeout after a request context is purged
-var RequestContextTimeout func() time.Duration = func() time.Duration {
-	return requestContextTimeout
-}
 
 type key int
 
@@ -48,9 +36,7 @@ func (r *reqContext) Value(key interface{}) interface{} {
 // SetRequestContext sets a new context for a request
 func SetRequestContext(r *http.Request, ctx *Context) {
 	mutex.Lock()
-	c := &reqContext{ctx, r}
-	requestContexts[r], _ = context.WithTimeout(c, RequestContextTimeout())
-	go cancelRequestContext(requestContexts[r])
+	requestContexts[r] = &reqContext{ctx, r}
 	mutex.Unlock()
 }
 
@@ -79,13 +65,4 @@ func ClearRequestContext(r *http.Request) {
 	mutex.Lock()
 	delete(requestContexts, r)
 	mutex.Unlock()
-}
-
-func cancelRequestContext(ctx context.Context) {
-	select {
-	case <-ctx.Done():
-		if r, ok := ctx.Value(reqKey).(*http.Request); ok {
-			ClearRequestContext(r)
-		}
-	}
 }
