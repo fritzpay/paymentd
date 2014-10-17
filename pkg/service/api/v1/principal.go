@@ -1,4 +1,4 @@
-package admin
+package v1
 
 import (
 	"encoding/json"
@@ -13,7 +13,7 @@ const (
 	APIParamPrincipalName = "principalName"
 )
 
-func (a *API) PrincipalRequest() http.Handler {
+func (a *AdminAPI) PrincipalRequest() http.Handler {
 
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "text/plain")

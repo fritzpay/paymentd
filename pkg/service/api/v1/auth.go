@@ -1,4 +1,4 @@
-package admin
+package v1
 
 import (
 	"crypto/sha256"
@@ -16,11 +16,11 @@ import (
 	"gopkg.in/inconshreveable/log15.v2"
 )
 
-func (a *API) authorizationHash() func() hash.Hash {
+func (a *AdminAPI) authorizationHash() func() hash.Hash {
 	return sha256.New
 }
 
-func (a *API) authenticateSystemPassword(pw string, w http.ResponseWriter) {
+func (a *AdminAPI) authenticateSystemPassword(pw string, w http.ResponseWriter) {
 	log := a.log.New(log15.Ctx{"method": "authenticateSystemPassword"})
 	pwEntry, err := config.EntryByNameDB(a.ctx.PaymentDB(), config.ConfigNameSystemPassword)
 	if err != nil {
@@ -53,7 +53,7 @@ type GetCredentialsResponse struct {
 	Authorization string
 }
 
-func (a *API) respondWithAuthorization(w http.ResponseWriter) {
+func (a *AdminAPI) respondWithAuthorization(w http.ResponseWriter) {
 	log := a.log.New(log15.Ctx{"method": "respondWithAuthorization"})
 
 	auth := service.NewAuthorization(a.authorizationHash())
@@ -104,7 +104,7 @@ func (a *API) respondWithAuthorization(w http.ResponseWriter) {
 }
 
 // GetCredentials implements the GET /user/credentials request
-func (a *API) GetCredentials(w http.ResponseWriter, r *http.Request) {
+func (a *AdminAPI) GetCredentials(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	if r.Method != "GET" {
 		w.WriteHeader(http.StatusMethodNotAllowed)
@@ -120,7 +120,7 @@ func (a *API) GetCredentials(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func (a *API) authenticateBasicAuth(w http.ResponseWriter, r *http.Request) {
+func (a *AdminAPI) authenticateBasicAuth(w http.ResponseWriter, r *http.Request) {
 	if r.Header.Get("Authorization") == "" {
 		requestBasicAuth(w)
 		return
@@ -155,7 +155,7 @@ func getCredentialsMethod(p string) string {
 
 // AuthHandler wraps the given handler with an authorization method using the
 // Authorization Header and the authorization container
-func (a *API) AuthHandler(parent http.Handler) http.Handler {
+func (a *AdminAPI) AuthHandler(parent http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		log := a.log.New(log15.Ctx{"method": "AuthHandler"})
 

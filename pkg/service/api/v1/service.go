@@ -2,8 +2,6 @@ package v1
 
 import (
 	"github.com/fritzpay/paymentd/pkg/service"
-	"github.com/fritzpay/paymentd/pkg/service/api/v1/admin"
-	"github.com/fritzpay/paymentd/pkg/service/api/v1/payment"
 	"gopkg.in/inconshreveable/log15.v2"
 	"net/http"
 )
@@ -32,7 +30,7 @@ func NewService(ctx *service.Context, mux *http.ServeMux) *Service {
 
 	if cfg.API.ServeAdmin {
 		s.log.Info("registering admin API...")
-		admin := admin.NewAPI(ctx)
+		admin := NewAdminAPI(ctx)
 		mux.HandleFunc(ServicePath+"/user/credentials/", admin.GetCredentials)
 		mux.Handle(ServicePath+"/user/", admin.AuthHandler(admin.GetUserID()))
 
@@ -40,6 +38,6 @@ func NewService(ctx *service.Context, mux *http.ServeMux) *Service {
 	}
 
 	s.log.Info("registering payment API...")
-	payment.NewAPI()
+	NewPaymentAPI()
 	return s
 }
