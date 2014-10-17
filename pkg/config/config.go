@@ -103,12 +103,18 @@ func DefaultConfig() Config {
 	return cfg
 }
 
+// ReadConfig reads a JSON from the given reader into the config
+func (c *Config) ReadConfig(r io.Reader) error {
+	dec := json.NewDecoder(r)
+	err := dec.Decode(&c)
+	return err
+}
+
 // ReadConfig reads the JSON from the given reader into a new Config
 func ReadConfig(r io.Reader) (Config, error) {
-	dec := json.NewDecoder(r)
-	cfg := Config{}
-	err := dec.Decode(&cfg)
-	return cfg, err
+	cfg := &Config{}
+	err := cfg.ReadConfig(r)
+	return *cfg, err
 }
 
 // WriteConfig will write the given config to the given Writer as JSON (pretty printed
