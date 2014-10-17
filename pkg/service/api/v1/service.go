@@ -38,6 +38,6 @@ func NewService(ctx *service.Context, mux *http.ServeMux) *Service {
 	}
 
 	s.log.Info("registering payment API...")
-	payment.NewAPI()
+	payment.NewAPI(ctx)
 	return s
 }
