@@ -53,6 +53,7 @@ func main() {
 
 	// initialize root context
 	ctx, cancel = context.WithCancel(context.Background())
+	ctx = context.WithValue(ctx, "log", log)
 
 	log.Info("initializing server...")
 	srv = server.NewServer(ctx)
