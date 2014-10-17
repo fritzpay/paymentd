@@ -25,15 +25,14 @@ func (a *API) PrincipalRequest() http.Handler {
 			// get principal by name
 			principalName := strings.TrimLeft(r.RequestURI, path.Dir(r.RequestURI))
 			if len(principalName) < 1 {
-				w.WriteHeader(http.StatusInternalServerError)
+				w.WriteHeader(http.StatusBadRequest)
 				log.Info("principalName missing")
 				return
 			}
-			log.Info("Param principalName " + principalName)
 
 			pr, err := principal.PrincipalByNameDB(a.ctx.PrincipalDB(), principalName)
 			if err != nil {
-				w.WriteHeader(http.StatusInternalServerError)
+				w.WriteHeader(http.StatusNotFound)
 				log.Error("DB get by name failed.", log15.Ctx{"err": err})
 				return
 			}
@@ -54,10 +53,24 @@ func (a *API) PrincipalRequest() http.Handler {
 			}
 
 			db := a.ctx.PrincipalDB()
-			err = principal.InsertPrincipalDB(db, &pr)
-			if err != nil {
+			_, err = principal.PrincipalByNameDB(db, pr.Name)
+			if err == principal.ErrPrincipalNotFound {
+				// insert if not exists
+				err = principal.InsertPrincipalDB(db, &pr)
+				if err != nil {
+					w.WriteHeader(http.StatusInternalServerError)
+					log.Error("DB insert failed.", log15.Ctx{"err": err})
+					return
+				}
+			} else if err != nil {
+				// other db error
 				w.WriteHeader(http.StatusInternalServerError)
-				log.Error("DB insert failed.", log15.Ctx{"err": err})
+				log.Error("DB get by name failed.", log15.Ctx{"err": err})
+				return
+			} else {
+				// already exists
+				w.WriteHeader(http.StatusConflict)
+				log.Warn("principal already exist: " + pr.Name)
 				return
 			}
 
