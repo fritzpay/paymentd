@@ -31,6 +31,10 @@
 			"Rev": "f7ebb761e83e21225d1d8954fde853bf8edd46c4"
 		},
 		{
+			"ImportPath": "github.com/facebookgo/grace",
+			"Rev": "5369e5af9da8df86ab8ed51b55d0b2b7ea32c4ec"
+		},
+		{
 			"ImportPath": "github.com/go-sql-driver/mysql",
 			"Comment": "v1.2-26-g9543750",
 			"Rev": "9543750295406ef070f7de8ae9c43ccddd44e15e"
