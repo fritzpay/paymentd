@@ -130,22 +130,6 @@ func (s *Server) listen() (bool, error) {
 		if len(s.listeners) != len(s.httpServers) {
 			return true, fmt.Errorf("listener handoff mismatch. got %d listeners and %d servers", len(s.listeners), len(s.httpServers))
 		}
-		for i, l := range s.listeners {
-			listenerAddr, listenerPort, err := net.SplitHostPort(l.Addr().String())
-			if err != nil {
-				return true, fmt.Errorf("error determining host/port for listener: %v:", err)
-			}
-			serverAddr, serverPort, err := net.SplitHostPort(s.httpServers[i].Addr)
-			if err != nil {
-				return true, fmt.Errorf("error determining host/port for server: %v", err)
-			}
-			if listenerAddr != serverAddr {
-				return true, fmt.Errorf("listener address %s does not match server address %s", listenerAddr, serverAddr)
-			}
-			if listenerPort != serverPort {
-				return true, fmt.Errorf("listener port %s does not match server port %s", listenerPort, serverPort)
-			}
-		}
 		return true, nil
 	} else if err == grace.ErrNotInheriting {
 		// new listeners
