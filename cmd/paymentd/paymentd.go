@@ -53,6 +53,7 @@ func main() {
 
 	// initialize root context
 	ctx, cancel = context.WithCancel(context.Background())
+	ctx = context.WithValue(ctx, "log", log)
 
 	log.Info("initializing server...")
 	srv = server.NewServer(ctx)
@@ -104,9 +105,9 @@ func main() {
 }
 
 func loadConfig() {
+	cfg = config.DefaultConfig()
 	if cfgFileName == "" {
 		log.Info("no config file provided. trying default config...")
-		cfg = config.DefaultConfig()
 	} else {
 		cfgFile, err := os.Open(cfgFileName)
 		if err != nil {
@@ -114,7 +115,7 @@ func loadConfig() {
 			log.Info("exiting...")
 			os.Exit(1)
 		}
-		cfg, err = config.ReadConfig(cfgFile)
+		err = (&cfg).ReadConfig(cfgFile)
 		if err != nil {
 			log.Crit("error reading config file", log15.Ctx{"cfgFileName": cfgFileName, "err": err})
 			log.Info("exiting...")
