@@ -28,6 +28,10 @@ var (
 	cfgFileName string
 )
 
+const (
+	envVarConfigFileName = "PAYMENTDCFG"
+)
+
 var (
 	log    log15.Logger
 	cfg    config.Config
@@ -106,9 +110,17 @@ func main() {
 
 func loadConfig() {
 	cfg = config.DefaultConfig()
+	if cfgFileName == "" && os.Getenv(envVarConfigFileName) != "" {
+		cfgFileName = os.Getenv(envVarConfigFileName)
+		log.Info("using config file name from env", log15.Ctx{
+			"envVar":      envVarConfigFileName,
+			"cfgFileName": cfgFileName,
+		})
+	}
 	if cfgFileName == "" {
 		log.Info("no config file provided. trying default config...")
 	} else {
+		log.Info("opening config file...", log15.Ctx{"cfgFileName": cfgFileName})
 		cfgFile, err := os.Open(cfgFileName)
 		if err != nil {
 			log.Crit("could not open config file", log15.Ctx{"cfgFileName": cfgFileName})
