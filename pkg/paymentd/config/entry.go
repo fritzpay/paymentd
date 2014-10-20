@@ -2,7 +2,12 @@ package config
 
 import (
 	"database/sql"
+	"errors"
 	"time"
+)
+
+var (
+	ErrEntryNotFound = errors.New("config entry not found")
 )
 
 // Entry represents a configuration entry
@@ -10,6 +15,11 @@ type Entry struct {
 	Name       string
 	lastChange time.Time
 	Value      string
+}
+
+// Empty returns true if the entry is considered empty/not set
+func (e Entry) Empty() bool {
+	return e.Name == ""
 }
 
 const selectEntryCountByName = `
@@ -31,21 +41,21 @@ WHERE
 	)
 `
 
-func readSingleEntry(row *sql.Row) (*Entry, error) {
-	e := &Entry{}
+func readSingleEntry(row *sql.Row) (Entry, error) {
+	e := Entry{}
 	err := row.Scan(&e.Name, &e.lastChange, &e.Value)
 	if err != nil {
 		if err == sql.ErrNoRows {
-			return nil, nil
+			return e, ErrEntryNotFound
 		}
-		return nil, err
+		return e, err
 	}
 	return e, nil
 }
 
 // EntryByNameDB selects the current configuration entry for the given name
 // If the name is not present, it returns nil
-func EntryByNameDB(db *sql.DB, name string) (*Entry, error) {
+func EntryByNameDB(db *sql.DB, name string) (Entry, error) {
 	row := db.QueryRow(selectEntryByName, name)
 	return readSingleEntry(row)
 }
@@ -54,7 +64,7 @@ func EntryByNameDB(db *sql.DB, name string) (*Entry, error) {
 // If the name is not present, it returns nil
 //
 // This function should be used inside a (SQL-)transaction
-func EntryByNameTx(db *sql.Tx, name string) (*Entry, error) {
+func EntryByNameTx(db *sql.Tx, name string) (Entry, error) {
 	row := db.QueryRow(selectEntryByName, name)
 	return readSingleEntry(row)
 }
