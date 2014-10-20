@@ -7,6 +7,12 @@ import (
 	"gopkg.in/inconshreveable/log15.v2"
 )
 
+// setDefaults will do the following:
+//
+//   - Check if a system password is set. If not, it will generate a system password,
+//     emit a warning message and write the generated password to another warning msg
+//   - Check the authorization keychain for existing keys. If no authorization keys
+//     are present it will generate a new one and emit a warning
 func setDefaults(ctx *service.Context) error {
 	paymentDB := ctx.PaymentDB()
 	err := checkSystemPassword(paymentDB)
