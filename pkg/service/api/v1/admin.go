@@ -1,4 +1,4 @@
-package admin
+package v1
 
 import (
 	"github.com/fritzpay/paymentd/pkg/service"
@@ -21,16 +21,19 @@ const (
 )
 
 // API represents the admin API in version 1.x
-type API struct {
+type AdminAPI struct {
 	ctx *service.Context
 	log log15.Logger
 }
 
 // NewAPI creates a new admin API
-func NewAPI(ctx *service.Context) *API {
-	a := &API{
+func NewAdminAPI(ctx *service.Context) *AdminAPI {
+	a := &AdminAPI{
 		ctx: ctx,
-		log: ctx.Log().New(log15.Ctx{"pkg": "github.com/fritzpay/paymentd/pkg/service/api/v1/admin"}),
+		log: ctx.Log().New(log15.Ctx{
+			"pkg": "github.com/fritzpay/paymentd/pkg/service/api/v1",
+			"API": "AdminAPI",
+		}),
 	}
 	return a
 }

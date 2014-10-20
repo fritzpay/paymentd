@@ -1,4 +1,4 @@
-package payment
+package v1
 
 import (
 	"bytes"
@@ -307,7 +307,7 @@ func (r *CreatePaymentResponse) SignatureBaseString() string {
 	return s
 }
 
-func (a *API) InitPayment() http.Handler {
+func (a *PaymentAPI) InitPayment() http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		log := a.log.New(log15.Ctx{
 			"method": "InitPayment",

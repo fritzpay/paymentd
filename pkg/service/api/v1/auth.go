@@ -1,4 +1,4 @@
-package admin
+package v1
 
 import (
 	"crypto/sha256"
@@ -16,11 +16,11 @@ import (
 	"gopkg.in/inconshreveable/log15.v2"
 )
 
-func (a *API) authorizationHash() func() hash.Hash {
+func (a *AdminAPI) authorizationHash() func() hash.Hash {
 	return sha256.New
 }
 
-func (a *API) authenticateSystemPassword(pw string, w http.ResponseWriter) {
+func (a *AdminAPI) authenticateSystemPassword(pw string, w http.ResponseWriter) {
 	log := a.log.New(log15.Ctx{"method": "authenticateSystemPassword"})
 	pwEntry, err := config.EntryByNameDB(a.ctx.PaymentDB(), config.ConfigNameSystemPassword)
 	if err != nil {
@@ -53,7 +53,7 @@ type GetCredentialsResponse struct {
 	Authorization string
 }
 
-func (a *API) respondWithAuthorization(w http.ResponseWriter) {
+func (a *AdminAPI) respondWithAuthorization(w http.ResponseWriter) {
 	log := a.log.New(log15.Ctx{"method": "respondWithAuthorization"})
 
 	auth := service.NewAuthorization(a.authorizationHash())
@@ -88,12 +88,10 @@ func (a *API) respondWithAuthorization(w http.ResponseWriter) {
 		c := &http.Cookie{
 			Name:     AuthCookieName,
 			Value:    resp.Authorization,
+			Path:     ServicePath,
 			Expires:  auth.Expiry(),
 			HttpOnly: a.ctx.Config().API.Cookie.HttpOnly,
 			Secure:   a.ctx.Config().API.Cookie.Secure,
-		}
-		if servicePath, ok := a.ctx.Value("ServicePath").(string); ok {
-			c.Path = servicePath
 		}
 		http.SetCookie(w, c)
 	}
@@ -104,7 +102,7 @@ func (a *API) respondWithAuthorization(w http.ResponseWriter) {
 }
 
 // GetCredentials implements the GET /authorization request
-func (a *API) GetAuthorization() http.Handler {
+func (a *AdminAPI) GetAuthorization() http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		if r.Method != "GET" {
@@ -127,7 +125,7 @@ func getAuthorizationMethod(p string) string {
 	return method
 }
 
-func (a *API) authenticateBasicAuth(w http.ResponseWriter, r *http.Request) {
+func (a *AdminAPI) authenticateBasicAuth(w http.ResponseWriter, r *http.Request) {
 	if r.Header.Get("Authorization") == "" {
 		requestBasicAuth(w)
 		return
@@ -159,7 +157,7 @@ func requestBasicAuth(w http.ResponseWriter) {
 // Authorization Header and the authorization container
 //
 // A failed authorization will lead to a http.StatusUnauthorized header
-func (a *API) AuthRequiredHandler(parent http.Handler) http.Handler {
+func (a *AdminAPI) AuthRequiredHandler(parent http.Handler) http.Handler {
 	return a.AuthHandler(parent, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusUnauthorized)
 	}))
@@ -170,7 +168,7 @@ func (a *API) AuthRequiredHandler(parent http.Handler) http.Handler {
 //
 // When the request can be authorized, the success handler will be called, otherwise
 // the failed handler will be called
-func (a *API) AuthHandler(success, failed http.Handler) http.Handler {
+func (a *AdminAPI) AuthHandler(success, failed http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		log := a.log.New(log15.Ctx{"method": "AuthHandler"})
 
