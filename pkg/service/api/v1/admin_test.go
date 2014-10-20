@@ -1,4 +1,4 @@
-package admin
+package v1
 
 import (
 	"github.com/fritzpay/paymentd/pkg/service"
@@ -9,9 +9,9 @@ import (
 	"testing"
 )
 
-func WithAPI(ctx *service.Context, logChan <-chan *log15.Record, f func(a *API)) func() {
+func WithAPI(ctx *service.Context, logChan <-chan *log15.Record, f func(a *AdminAPI)) func() {
 	return func() {
-		a := NewAPI(ctx)
+		a := NewAdminAPI(ctx)
 
 		testMsg := "testmsg"
 		a.log.Info(testMsg)
@@ -26,7 +26,7 @@ func WithAPI(ctx *service.Context, logChan <-chan *log15.Record, f func(a *API))
 			pkg = logMsg.Ctx[i+1].(string)
 			break
 		}
-		So(pkg, ShouldEqual, "github.com/fritzpay/paymentd/pkg/service/api/v1/admin")
+		So(pkg, ShouldEqual, "github.com/fritzpay/paymentd/pkg/service/api/v1")
 
 		f(a)
 	}
@@ -34,10 +34,10 @@ func WithAPI(ctx *service.Context, logChan <-chan *log15.Record, f func(a *API))
 
 func TestGetCredentialsWithBasicAuth(t *testing.T) {
 	Convey("Given a new context", t, testutil.WithContext(func(ctx *service.Context, logChan <-chan *log15.Record) {
-		Convey("Given a new API handler", WithAPI(ctx, logChan, func(a *API) {
+		Convey("Given a new API handler", WithAPI(ctx, logChan, func(a *AdminAPI) {
 
 			Convey("Given a new get credentials request", func() {
-				r, err := http.NewRequest("GET", "/user/credentials", nil)
+				r, err := http.NewRequest("GET", "/authorization", nil)
 				So(err, ShouldBeNil)
 
 				Convey("When the request method is not GET", func() {
@@ -45,7 +45,7 @@ func TestGetCredentialsWithBasicAuth(t *testing.T) {
 
 					Convey("When the handler is called", func() {
 						w := testutil.NewResponseWriter()
-						a.GetCredentials(w, r)
+						a.GetAuthorization().ServeHTTP(w, r)
 						Convey("The handler should respond with method not allowed", func() {
 							So(w.HeaderWritten, ShouldBeTrue)
 							So(w.StatusCode, ShouldEqual, http.StatusMethodNotAllowed)
@@ -58,7 +58,7 @@ func TestGetCredentialsWithBasicAuth(t *testing.T) {
 
 					Convey("When the handler is called", func() {
 						w := testutil.NewResponseWriter()
-						a.GetCredentials(w, r)
+						a.GetAuthorization().ServeHTTP(w, r)
 						Convey("The handler should respond with a 404 (not found)", func() {
 							So(w.HeaderWritten, ShouldBeTrue)
 							So(w.StatusCode, ShouldEqual, http.StatusNotFound)

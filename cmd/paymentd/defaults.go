@@ -9,12 +9,12 @@ import (
 
 func setDefaults(ctx *service.Context) error {
 	paymentDB := ctx.PaymentDB()
-	systemPassword, err := getSystemPassword(paymentDB)
+	err := checkSystemPassword(paymentDB)
 	if err != nil {
-		log.Crit("error checking for system password", log15.Ctx{"err": err})
-		return err
-	}
-	if systemPassword == nil {
+		if err != config.ErrEntryNotFound {
+			log.Crit("error checking for system password", log15.Ctx{"err": err})
+			return err
+		}
 		log.Warn("system password not set. will generate a new system password...")
 		genPwd := config.DefaultPassword("")
 		err = genPwd.Generate()
@@ -48,6 +48,7 @@ func setDefaults(ctx *service.Context) error {
 	return nil
 }
 
-func getSystemPassword(db *sql.DB) (*config.Entry, error) {
-	return config.EntryByNameDB(db, config.ConfigNameSystemPassword)
+func checkSystemPassword(db *sql.DB) error {
+	_, err := config.EntryByNameDB(db, config.ConfigNameSystemPassword)
+	return err
 }
