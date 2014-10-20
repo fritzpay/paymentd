@@ -36,11 +36,17 @@ func (d DatabaseConfig) DSN() string {
 	panic("invalid database config")
 }
 
+type Duration string
+
+func (d Duration) Duration() (time.Duration, error) {
+	return time.ParseDuration(string(d))
+}
+
 // ServiceConfig represents a configuration for an HTTP server for a service
 type ServiceConfig struct {
 	Address        string
-	ReadTimeout    time.Duration
-	WriteTimeout   time.Duration
+	ReadTimeout    Duration
+	WriteTimeout   Duration
 	MaxHeaderBytes int
 }
 
@@ -85,8 +91,8 @@ func DefaultConfig() Config {
 	cfg := Config{}
 	cfg.API.Active = true
 	cfg.API.Service.Address = ":8080"
-	cfg.API.Service.ReadTimeout = 10 * time.Second
-	cfg.API.Service.WriteTimeout = 10 * time.Second
+	cfg.API.Service.ReadTimeout = Duration("10s")
+	cfg.API.Service.WriteTimeout = Duration("10s")
 	cfg.API.ServeAdmin = false
 	cfg.API.AuthKeys = make([]string, 0)
 

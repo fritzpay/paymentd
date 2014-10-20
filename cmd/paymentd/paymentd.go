@@ -96,7 +96,12 @@ func main() {
 			log.Info("exiting...")
 			os.Exit(1)
 		}
-		srv.RegisterService(cfg.API.Service, apiHandler)
+		err = srv.RegisterService(cfg.API.Service, apiHandler)
+		if err != nil {
+			log.Crit("error registering API service", log15.Ctx{"err": err})
+			log.Info("exiting...")
+			os.Exit(1)
+		}
 	}
 
 	log.Info("serving...")
