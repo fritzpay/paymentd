@@ -31,7 +31,8 @@ func NewService(ctx *service.Context, mux *http.ServeMux) *Service {
 		s.log.Info("registering admin API...")
 
 		admin := NewAdminAPI(ctx)
-		mux.Handle(ServicePath+"/authorization/", admin.GetAuthorization())
+		mux.Handle(ServicePath+"/authorization", admin.AuthorizationHandler())
+		mux.Handle(ServicePath+"/authorization/", admin.AuthorizationHandler())
 		mux.Handle(ServicePath+"/user/", admin.AuthRequiredHandler(admin.GetUserID()))
 
 		mux.Handle(ServicePath+"/principal/", admin.AuthRequiredHandler(admin.PrincipalRequest()))

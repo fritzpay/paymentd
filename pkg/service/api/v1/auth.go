@@ -4,7 +4,9 @@ import (
 	"crypto/sha256"
 	"encoding/base64"
 	"encoding/json"
+	"errors"
 	"hash"
+	"io/ioutil"
 	"net/http"
 	"path"
 	"strings"
@@ -101,20 +103,27 @@ func (a *AdminAPI) respondWithAuthorization(w http.ResponseWriter) {
 	}
 }
 
-// GetCredentials implements the GET /authorization request
-func (a *AdminAPI) GetAuthorization() http.Handler {
+// GetCredentials implements /authorization requests
+func (a *AdminAPI) AuthorizationHandler() http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
-		if r.Method != "GET" {
-			w.WriteHeader(http.StatusMethodNotAllowed)
+		switch r.Method {
+		case "GET":
+			switch getAuthorizationMethod(r.URL.Path) {
+			case "basic":
+				a.authenticateBasicAuth(w, r)
+				return
+			default:
+				w.WriteHeader(http.StatusNotFound)
+				return
+			}
+
+		case "POST":
+			a.AuthRequiredHandler(a.updateSystemUserPasswordHandler()).ServeHTTP(w, r)
 			return
-		}
-		switch getAuthorizationMethod(r.URL.Path) {
-		case "basic":
-			a.authenticateBasicAuth(w, r)
-			return
+
 		default:
-			w.WriteHeader(http.StatusNotFound)
+			w.WriteHeader(http.StatusMethodNotAllowed)
 			return
 		}
 	})
@@ -125,32 +134,63 @@ func getAuthorizationMethod(p string) string {
 	return method
 }
 
+func getBasicAuthPassword(authHeader string) (string, error) {
+	parts := strings.SplitN(authHeader, " ", 2)
+	if parts[0] != "Basic" {
+		return "", errors.New("not basic auth")
+	}
+	auth, err := base64.StdEncoding.DecodeString(parts[1])
+	if err != nil {
+		return "", err
+	}
+	parts = strings.Split(string(auth), ":")
+	if len(parts) != 2 {
+		return "", errors.New("expect two parts")
+	}
+	return parts[1], nil
+}
+
 func (a *AdminAPI) authenticateBasicAuth(w http.ResponseWriter, r *http.Request) {
 	if r.Header.Get("Authorization") == "" {
 		requestBasicAuth(w)
 		return
 	}
-	parts := strings.SplitN(r.Header.Get("Authorization"), " ", 2)
-	if parts[0] != "Basic" {
+	if pw, err := getBasicAuthPassword(r.Header.Get("Authorization")); err != nil {
+		a.log.Warn("error on basic auth", log15.Ctx{"err": err})
 		requestBasicAuth(w)
 		return
+	} else {
+		a.authenticateSystemPassword(pw, w)
 	}
-	auth, err := base64.StdEncoding.DecodeString(parts[1])
-	if err != nil {
-		requestBasicAuth(w)
-		return
-	}
-	parts = strings.Split(string(auth), ":")
-	if len(parts) != 2 {
-		requestBasicAuth(w)
-		return
-	}
-	a.authenticateSystemPassword(parts[1], w)
 }
 
 func requestBasicAuth(w http.ResponseWriter) {
 	w.Header().Set("WWW-Authenticate", "Basic realm=\"Authorization\"")
 	w.WriteHeader(http.StatusUnauthorized)
+}
+
+func (a *AdminAPI) updateSystemUserPasswordHandler() http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		log := a.log.New(log15.Ctx{"method": "updateSystemUserPasswordHandler"})
+		w.Header().Set("Content-Type", "text/plain")
+		if !strings.Contains(r.Header.Get("Content-Type"), "text/plain") {
+			w.WriteHeader(http.StatusUnsupportedMediaType)
+			return
+		}
+		pw, err := ioutil.ReadAll(r.Body)
+		if err != nil {
+			log.Error("error reading request body", log15.Ctx{"err": err})
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+		err = config.Set(a.ctx.PaymentDB(), config.SetPassword(pw))
+		if err != nil {
+			log.Error("error setting system password", log15.Ctx{"err": err})
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+		w.WriteHeader(http.StatusOK)
+	})
 }
 
 // AuthRequiredHandler wraps the given handler with an authorization method using the
