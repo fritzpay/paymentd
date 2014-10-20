@@ -37,7 +37,7 @@ func TestGetCredentialsWithBasicAuth(t *testing.T) {
 		Convey("Given a new API handler", WithAPI(ctx, logChan, func(a *AdminAPI) {
 
 			Convey("Given a new get credentials request", func() {
-				r, err := http.NewRequest("GET", "/user/credentials", nil)
+				r, err := http.NewRequest("GET", "/authorization", nil)
 				So(err, ShouldBeNil)
 
 				Convey("When the request method is not GET", func() {
