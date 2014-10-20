@@ -46,12 +46,7 @@ func (a *API) GetUserID() http.Handler {
 			return
 		}
 		ctx := service.RequestContext(r)
-		userID, ok := ctx.Value(AuthUserIDKey).(string)
-		if !ok {
-			a.log.Error("internal error. missing userID")
-			w.WriteHeader(http.StatusInternalServerError)
-			return
-		}
-		w.Write([]byte(userID))
+		auth := ctx.Value(service.ContextVarAuthKey).(map[string]interface{})
+		w.Write([]byte(auth[AuthUserIDKey].(string)))
 	})
 }
