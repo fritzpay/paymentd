@@ -103,8 +103,27 @@ func (a *AdminAPI) respondWithAuthorization(w http.ResponseWriter) {
 	}
 }
 
-// GetCredentials implements /authorization requests
+// AuthorizationHandler implements /authorization requests
 func (a *AdminAPI) AuthorizationHandler() http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		switch r.Method {
+		case "GET":
+			a.AuthRequiredHandler(a.refreshAuthorizationHandler()).ServeHTTP(w, r)
+
+		case "POST":
+			a.AuthRequiredHandler(a.updateSystemUserPasswordHandler()).ServeHTTP(w, r)
+			return
+
+		default:
+			w.WriteHeader(http.StatusMethodNotAllowed)
+			return
+		}
+	})
+}
+
+// AuthorizeHandler handles new authorizations
+func (a *AdminAPI) AuthorizeHandler() http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		switch r.Method {
@@ -117,11 +136,6 @@ func (a *AdminAPI) AuthorizationHandler() http.Handler {
 				w.WriteHeader(http.StatusNotFound)
 				return
 			}
-
-		case "POST":
-			a.AuthRequiredHandler(a.updateSystemUserPasswordHandler()).ServeHTTP(w, r)
-			return
-
 		default:
 			w.WriteHeader(http.StatusMethodNotAllowed)
 			return
@@ -190,6 +204,12 @@ func (a *AdminAPI) updateSystemUserPasswordHandler() http.Handler {
 			return
 		}
 		w.WriteHeader(http.StatusOK)
+	})
+}
+
+func (a *AdminAPI) refreshAuthorizationHandler() http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		a.respondWithAuthorization(w)
 	})
 }
 
