@@ -26,7 +26,6 @@ func NewService(ctx *service.Context, mux *http.ServeMux) *Service {
 	}
 
 	cfg := ctx.Config()
-	ctx = ctx.WithValue("ServicePath", ServicePath)
 
 	if cfg.API.ServeAdmin {
 		s.log.Info("registering admin API...")

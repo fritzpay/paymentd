@@ -88,12 +88,10 @@ func (a *AdminAPI) respondWithAuthorization(w http.ResponseWriter) {
 		c := &http.Cookie{
 			Name:     AuthCookieName,
 			Value:    resp.Authorization,
+			Path:     ServicePath,
 			Expires:  auth.Expiry(),
 			HttpOnly: a.ctx.Config().API.Cookie.HttpOnly,
 			Secure:   a.ctx.Config().API.Cookie.Secure,
-		}
-		if servicePath, ok := a.ctx.Value("ServicePath").(string); ok {
-			c.Path = servicePath
 		}
 		http.SetCookie(w, c)
 	}
