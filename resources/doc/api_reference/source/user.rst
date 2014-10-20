@@ -8,7 +8,7 @@ Authentication and Authorization
 	TODO replace Authorization example fields with reasonable example values
 	Curently dEFFEFeddedeGGEGMceokr353521234 acts as a placeholder
 
-.. http:get:: /v1/user/credentials/basic
+.. http:get:: /v1/authorization/basic
 
 	Receive an authorization token for given basic auth.
 
@@ -19,7 +19,7 @@ Authentication and Authorization
 
 	.. sourcecode:: http
 
-		GET /user/credentials/basic HTTP/1.1
+		GET /v1/authorization/basic HTTP/1.1
 		Host: example.com
 		Accept: application/json
 		Authorization: Basic cm9vdDpyb290
@@ -49,7 +49,7 @@ Authentication and Authorization
 Informational
 -------------
 
-.. http:get:: /user/(username)
+.. http:get:: /v1/user
 
 	Retrieve the current state of the user.
 
@@ -57,9 +57,8 @@ Informational
 
 	.. sourcecode:: http
 
-		GET /user/root HTTP/1.1
+		GET /v1/user HTTP/1.1
 		Host: example.com
-		Accept: application/json
 		Authorization: dEFFEFeddedeGGEGMceokr353521234
 
 	**Example response**:
@@ -67,21 +66,11 @@ Informational
 	.. sourcecode:: http
 
 		HTTP/1.1 200 OK
-		Content-Type: application/json
+		Content-Type: text/plain
 
-		{
-			"ID": "1234",
-			"Username": "root",
-			"Email": "root@example.com",
-			"Created": "2006-01-02T15:04:05Z07:00"
-		}
-
-	:param username: The username.
+		root
 
 	:reqheader Authorization: A valid authorization token.
-
-	:resjson ID: The user ID as a string-encoded integer.
-	:resjson Created: The timestamp when the user was created (:rfc:`3339` timestamp).
 
 .. _user-credentials:
 
