@@ -52,6 +52,7 @@ type ServiceConfig struct {
 
 // Config represents a full configuration for any paymentd related applications
 type Config struct {
+	DevMode bool
 	// API server config
 	API struct {
 		// Should the API server be activated?

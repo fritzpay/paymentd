@@ -5,11 +5,13 @@ import (
 	"code.google.com/p/go.text/language"
 	"crypto/sha256"
 	"encoding/hex"
+	"encoding/json"
 	"fmt"
-	"github.com/fritzpay/paymentd/pkg/json"
+	jsonutil "github.com/fritzpay/paymentd/pkg/json"
 	"github.com/fritzpay/paymentd/pkg/maputil"
 	"github.com/fritzpay/paymentd/pkg/paymentd/nonce"
 	"github.com/fritzpay/paymentd/pkg/paymentd/payment"
+	"github.com/fritzpay/paymentd/pkg/service"
 	"gopkg.in/inconshreveable/log15.v2"
 	"hash"
 	"net/http"
@@ -22,8 +24,8 @@ import (
 type InitPaymentRequest struct {
 	ProjectKey      string
 	Ident           string
-	Amount          json.RequiredInt64
-	Subunits        json.RequiredInt8
+	Amount          jsonutil.RequiredInt64
+	Subunits        jsonutil.RequiredInt8
 	Currency        string
 	Country         string
 	PaymentMethodID int64  `json:"PaymentMethodId,string"`
@@ -341,10 +343,46 @@ func (r *InitPaymentResponse) SignatureBaseString() (string, error) {
 	return s, nil
 }
 
+// will handle request/response mapping inside the HTTP handler
 type initPaymentHandler struct {
+	ctx *service.Context
+	log log15.Logger
+
+	w http.ResponseWriter
+	r *http.Request
+
+	req *InitPaymentRequest
+
 	httpStatus int
-	req        *InitPaymentRequest
-	resp       *InitPaymentResponse
+	resp       ServiceResponse
+}
+
+// deferred function
+//
+// will send the response
+func (h *initPaymentHandler) finish() {
+	h.w.WriteHeader(h.httpStatus)
+	enc := json.NewEncoder(h.w)
+	err := enc.Encode(h.resp)
+	if err != nil {
+		h.log.Error("error writing JSON response", log15.Ctx{"err": err})
+		return
+	}
+}
+
+func (h *initPaymentHandler) readRequest() bool {
+	h.req = &InitPaymentRequest{}
+	dec := json.NewDecoder(h.r.Body)
+	err := dec.Decode(&h.req)
+	if err != nil {
+		h.httpStatus = http.StatusBadRequest
+		h.resp = ErrReadJson
+		if h.ctx.Config().DevMode {
+			h.resp.Error = err.Error()
+		}
+		return false
+	}
+	return true
 }
 
 func (a *PaymentAPI) InitPayment() http.Handler {
