@@ -2,6 +2,7 @@ package json
 
 import (
 	j "encoding/json"
+	. "github.com/smartystreets/goconvey/convey"
 	"testing"
 )
 
@@ -42,4 +43,25 @@ func TestUnmarshalInt64(t *testing.T) {
 	if tT.C != 34 {
 		t.Errorf("Expect B to be %d, got %d", 34, tT.C)
 	}
+}
+
+func TestRequiredInt64(t *testing.T) {
+	Convey("Given a struct with a required int64", t, func() {
+		ts := struct {
+			A RequiredInt64
+		}{}
+		ts.A.Int64 = 1234
+
+		Convey("When marshaling the struct", func() {
+			marshalled, err := j.Marshal(ts)
+
+			Convey("It should succeed", func() {
+				So(err, ShouldBeNil)
+			})
+			Convey("It should be marshalled correctly", func() {
+				expected := "{\"A\":\"1234\"}"
+				So(string(marshalled), ShouldEqual, expected)
+			})
+		})
+	})
 }
