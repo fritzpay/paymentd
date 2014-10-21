@@ -1,3 +1,7 @@
 # backup files
 *.bak
+# sublimtext configs
 paymentd.sublime-*
+# pyc
+*.pyc
+
