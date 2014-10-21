@@ -198,7 +198,7 @@ type InitPaymentResponse struct {
 		Subunits        int8  `json:",string"`
 		Currency        string
 		Country         string
-		PaymentMethodId int64             `json:",string,omitempty"`
+		PaymentMethodID int64             `json:"PaymentMethodId,string,omitempty"`
 		Locale          string            `json:",omitempty"`
 		CallbackURL     string            `json:",omitempty"`
 		ReturnURL       string            `json:",omitempty"`
@@ -243,85 +243,108 @@ func (r *InitPaymentResponse) ConfirmationFromRequest(req *InitPaymentRequest) {
 	}
 }
 
+// Message returns the signature base string as a byte slice, nil if an error occured
+func (r *InitPaymentResponse) Message() []byte {
+	str, err := r.SignatureBaseString()
+	if err != nil {
+		return nil
+	}
+	return []byte(str)
+}
+
+// HashFunc returns the hash function for signing an init payment response
+func (r *InitPaymentResponse) HashFunc() func() hash.Hash {
+	return sha256.New
+}
+
 // Returns the signature base string
 //
 // implementing SignableMessage
-func (r *InitPaymentResponse) SignatureBaseString() string {
+func (r *InitPaymentResponse) SignatureBaseString() (string, error) {
 	var err error
 	buf := bytes.NewBuffer(nil)
 	_, err = buf.WriteString(r.Confirmation.Ident)
 	if err != nil {
-		panic("buffer error: " + err.Error())
+		return "", fmt.Errorf("buffer error: %v", err)
 	}
 	_, err = buf.WriteString(strconv.FormatInt(r.Confirmation.Amount, 10))
 	if err != nil {
-		panic("buffer error: " + err.Error())
+		return "", fmt.Errorf("buffer error: %v", err)
 	}
 	_, err = buf.WriteString(strconv.FormatInt(int64(r.Confirmation.Subunits), 10))
 	if err != nil {
-		panic("buffer error: " + err.Error())
+		return "", fmt.Errorf("buffer error: %v", err)
 	}
 	_, err = buf.WriteString(r.Confirmation.Currency)
 	if err != nil {
-		panic("buffer error: " + err.Error())
+		return "", fmt.Errorf("buffer error: %v", err)
 	}
 	_, err = buf.WriteString(r.Confirmation.Country)
 	if err != nil {
-		panic("buffer error: " + err.Error())
+		return "", fmt.Errorf("buffer error: %v", err)
 	}
-	if r.Confirmation.PaymentMethodId != 0 {
-		_, err = buf.WriteString(strconv.FormatInt(r.Confirmation.PaymentMethodId, 10))
+	if r.Confirmation.PaymentMethodID != 0 {
+		_, err = buf.WriteString(strconv.FormatInt(r.Confirmation.PaymentMethodID, 10))
 		if err != nil {
-			panic("buffer error: " + err.Error())
+			return "", fmt.Errorf("buffer error: %v", err)
 		}
 	}
 	if r.Confirmation.Locale != "" {
 		_, err = buf.WriteString(r.Confirmation.Locale)
 		if err != nil {
-			panic("buffer error: " + err.Error())
+			return "", fmt.Errorf("buffer error: %v", err)
 		}
 	}
 	if r.Confirmation.CallbackURL != "" {
 		_, err = buf.WriteString(r.Confirmation.CallbackURL)
 		if err != nil {
-			panic("buffer error: " + err.Error())
+			return "", fmt.Errorf("buffer error: %v", err)
 		}
 	}
 	if r.Confirmation.ReturnURL != "" {
 		_, err = buf.WriteString(r.Confirmation.ReturnURL)
 		if err != nil {
-			panic("buffer error: " + err.Error())
+			return "", fmt.Errorf("buffer error: %v", err)
 		}
 	}
 	if r.Confirmation.Metadata != nil {
-		maputil.WriteSortedMap(buf, r.Confirmation.Metadata)
+		err = maputil.WriteSortedMap(buf, r.Confirmation.Metadata)
+		if err != nil {
+			return "", fmt.Errorf("error writing map: %v", err)
+		}
 	}
 	_, err = buf.WriteString(r.Payment.PaymentId.String())
 	if err != nil {
-		panic("buffer error: " + err.Error())
+		return "", fmt.Errorf("buffer error: %v", err)
 	}
 	_, err = buf.WriteString(r.Payment.Created)
 	if err != nil {
-		panic("buffer error: " + err.Error())
+		return "", fmt.Errorf("buffer error: %v", err)
 	}
 	_, err = buf.WriteString(r.Payment.Token)
 	if err != nil {
-		panic("buffer error: " + err.Error())
+		return "", fmt.Errorf("buffer error: %v", err)
 	}
 	_, err = buf.WriteString(r.Payment.RedirectURL)
 	if err != nil {
-		panic("buffer error: " + err.Error())
+		return "", fmt.Errorf("buffer error: %v", err)
 	}
 	_, err = buf.WriteString(strconv.FormatInt(r.Timestamp, 10))
 	if err != nil {
-		panic("buffer error: " + err.Error())
+		return "", fmt.Errorf("buffer error: %v", err)
 	}
 	_, err = buf.WriteString(r.Nonce)
 	if err != nil {
-		panic("buffer error: " + err.Error())
+		return "", fmt.Errorf("buffer error: %v", err)
 	}
 	s := buf.String()
-	return s
+	return s, nil
+}
+
+type initPaymentHandler struct {
+	httpStatus int
+	req        *InitPaymentRequest
+	resp       *InitPaymentResponse
 }
 
 func (a *PaymentAPI) InitPayment() http.Handler {
