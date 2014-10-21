@@ -12,6 +12,7 @@ const (
 	IdentMaxLen = 175
 )
 
+// Payment represents a payment
 type Payment struct {
 	projectID int64
 	id        int64
@@ -26,6 +27,7 @@ type Payment struct {
 	ReturnURL   sql.NullString
 }
 
+// PaymentID returns the indentifier for the payment
 func (p *Payment) PaymentID() PaymentID {
 	return PaymentID{p.ProjectID(), p.ID()}
 }
@@ -42,6 +44,7 @@ func (p *Payment) SetProjectID(projectID int64) {
 	p.projectID = projectID
 }
 
+// Decimal returns the decimal representation of the Amount and Subunits values
 func (p *Payment) Decimal() *decimal.Decimal {
 	d := dec.NewDecInt64(p.Amount)
 	sc := dec.Scale(int32(p.Subunits))

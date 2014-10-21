@@ -7,11 +7,19 @@ import (
 	"strings"
 )
 
+// PaymentID represents an identifier for a payment
+//
+// It consists of a project ID and a payment ID
 type PaymentID struct {
 	ProjectID int64
 	PaymentID int64
 }
 
+// ParsePaymentIDStr parses a given string of the format
+//
+//   123-12345
+//
+// into a PaymentID.
 func ParsePaymentIDStr(str string) (PaymentID, error) {
 	parts := strings.Split(str, "-")
 	var id PaymentID
@@ -30,14 +38,19 @@ func ParsePaymentIDStr(str string) (PaymentID, error) {
 	return id, nil
 }
 
+// String returns the string representation of a payment ID
+//
+// It is the inverse of the ParsePaymentIDStr
 func (p PaymentID) String() string {
 	return strconv.FormatInt(p.ProjectID, 10) + "-" + strconv.FormatInt(p.PaymentID, 10)
 }
 
+// MarshalJSON so it can be marshalled to JSON
 func (p PaymentID) MarshalJSON() ([]byte, error) {
 	return json.Marshal(p.String())
 }
 
+// UnmarshalJSON so it can be unmarshalled from JSON
 func (p *PaymentID) UnmarshalJSON(data []byte) error {
 	var str string
 	err := json.Unmarshal(data, &str)
