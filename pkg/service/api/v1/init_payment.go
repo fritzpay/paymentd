@@ -3,6 +3,7 @@ package v1
 import (
 	"bytes"
 	"code.google.com/p/go.text/language"
+	"crypto/sha256"
 	"encoding/hex"
 	"fmt"
 	"github.com/fritzpay/paymentd/pkg/json"
@@ -10,23 +11,22 @@ import (
 	"github.com/fritzpay/paymentd/pkg/paymentd/nonce"
 	"github.com/fritzpay/paymentd/pkg/paymentd/payment"
 	"gopkg.in/inconshreveable/log15.v2"
+	"hash"
 	"net/http"
 	"net/url"
 	"strconv"
 	"unicode/utf8"
 )
 
-// Request JSON struct for POST /payment
-//
-// TODO Check for maximum lengths
-type CreatePaymentRequest struct {
+// InitPaymentRequest is the request JSON struct for POST /payment
+type InitPaymentRequest struct {
 	ProjectKey      string
 	Ident           string
 	Amount          json.RequiredInt64
 	Subunits        json.RequiredInt8
 	Currency        string
 	Country         string
-	PaymentMethodId int64  `json:",string"`
+	PaymentMethodID int64  `json:"PaymentMethodId,string"`
 	Locale          string `json:",omitempty"`
 	CallbackURL     string `json:",omitempty"`
 	ReturnURL       string `json:",omitempty"`
@@ -41,7 +41,7 @@ type CreatePaymentRequest struct {
 }
 
 // Validate input
-func (r *CreatePaymentRequest) Validate() error {
+func (r *InitPaymentRequest) Validate() error {
 	if r.ProjectKey == "" {
 		return fmt.Errorf("missing ProjectKey")
 	}
@@ -102,79 +102,96 @@ func (r *CreatePaymentRequest) Validate() error {
 // Return the (binary) signature from the request
 //
 // implementing AuthenticatedRequest
-func (r *CreatePaymentRequest) Signature() ([]byte, error) {
+func (r *InitPaymentRequest) Signature() ([]byte, error) {
 	return hex.DecodeString(r.HexSignature)
 }
 
+// Message returns the signature base string as bytes or nil on error
+func (r *InitPaymentRequest) Message() []byte {
+	str, err := r.SignatureBaseString()
+	if err != nil {
+		return nil
+	}
+	return []byte(str)
+}
+
+// HashFunc returns the hash function used to generate a signature
+func (r *InitPaymentRequest) HashFunc() func() hash.Hash {
+	return sha256.New
+}
+
 // Return the signature base string (msg)
-func (r *CreatePaymentRequest) SignatureBaseString() string {
+func (r *InitPaymentRequest) SignatureBaseString() (string, error) {
 	var err error
 	buf := bytes.NewBuffer(nil)
 	_, err = buf.WriteString(r.ProjectKey)
 	if err != nil {
-		panic("buffer error: " + err.Error())
+		return "", fmt.Errorf("buffer error: %v", err)
 	}
 	_, err = buf.WriteString(r.Ident)
 	if err != nil {
-		panic("buffer error: " + err.Error())
+		return "", fmt.Errorf("buffer error: %v", err)
 	}
 	_, err = buf.WriteString(strconv.FormatInt(r.Amount.Int64, 10))
 	if err != nil {
-		panic("buffer error: " + err.Error())
+		return "", fmt.Errorf("buffer error: %v", err)
 	}
 	_, err = buf.WriteString(strconv.FormatInt(int64(r.Subunits.Int8), 10))
 	if err != nil {
-		panic("buffer error: " + err.Error())
+		return "", fmt.Errorf("buffer error: %v", err)
 	}
 	_, err = buf.WriteString(r.Currency)
 	if err != nil {
-		panic("buffer error: " + err.Error())
+		return "", fmt.Errorf("buffer error: %v", err)
 	}
 	_, err = buf.WriteString(r.Country)
 	if err != nil {
-		panic("buffer error: " + err.Error())
+		return "", fmt.Errorf("buffer error: %v", err)
 	}
-	if r.PaymentMethodId != 0 {
-		_, err = buf.WriteString(strconv.FormatInt(r.PaymentMethodId, 10))
+	if r.PaymentMethodID != 0 {
+		_, err = buf.WriteString(strconv.FormatInt(r.PaymentMethodID, 10))
 		if err != nil {
-			panic("buffer error: " + err.Error())
+			return "", fmt.Errorf("buffer error: %v", err)
 		}
 	}
 	if r.Locale != "" {
 		_, err = buf.WriteString(r.Locale)
 		if err != nil {
-			panic("buffer error: " + err.Error())
+			return "", fmt.Errorf("buffer error: %v", err)
 		}
 	}
 	if r.CallbackURL != "" {
 		_, err = buf.WriteString(r.CallbackURL)
 		if err != nil {
-			panic("buffer error: " + err.Error())
+			return "", fmt.Errorf("buffer error: %v", err)
 		}
 	}
 	if r.ReturnURL != "" {
 		_, err = buf.WriteString(r.ReturnURL)
 		if err != nil {
-			panic("buffer error: " + err.Error())
+			return "", fmt.Errorf("buffer error: %v", err)
 		}
 	}
 	if r.Metadata != nil {
-		maputil.WriteSortedMap(buf, r.Metadata)
+		err = maputil.WriteSortedMap(buf, r.Metadata)
+		if err != nil {
+			return "", fmt.Errorf("error writing map: %v", err)
+		}
 	}
 	_, err = buf.WriteString(strconv.FormatInt(r.Timestamp, 10))
 	if err != nil {
-		panic("buffer error: " + err.Error())
+		return "", fmt.Errorf("buffer error: %v", err)
 	}
 	_, err = buf.WriteString(r.Nonce)
 	if err != nil {
-		panic("buffer error: " + err.Error())
+		return "", fmt.Errorf("buffer error: %v", err)
 	}
 	s := buf.String()
-	return s
+	return s, nil
 }
 
-// The JSON response struct for POST /payment
-type CreatePaymentResponse struct {
+// InitPaymentResponse is the JSON response struct for POST /payment
+type InitPaymentResponse struct {
 	Confirmation struct {
 		Ident           string
 		Amount          int64 `json:",string"`
@@ -201,7 +218,7 @@ type CreatePaymentResponse struct {
 
 // ConfirmationFromPayment populates the response "Confirmation" object with
 // the fields from the given payment
-func (r *CreatePaymentResponse) ConfirmationFromPayment(p payment.Payment) {
+func (r *InitPaymentResponse) ConfirmationFromPayment(p payment.Payment) {
 	r.Confirmation.Ident = p.Ident
 	r.Confirmation.Amount = p.Amount
 	r.Confirmation.Subunits = p.Subunits
@@ -211,7 +228,7 @@ func (r *CreatePaymentResponse) ConfirmationFromPayment(p payment.Payment) {
 
 // ConfirmationFromRequest populates the response "Confirmation" object with
 // the fields from the given request
-func (r *CreatePaymentResponse) ConfirmationFromRequest(req *CreatePaymentRequest) {
+func (r *InitPaymentResponse) ConfirmationFromRequest(req *InitPaymentRequest) {
 	if req.Locale != "" {
 		r.Confirmation.Locale = req.Locale
 	}
@@ -229,7 +246,7 @@ func (r *CreatePaymentResponse) ConfirmationFromRequest(req *CreatePaymentReques
 // Returns the signature base string
 //
 // implementing SignableMessage
-func (r *CreatePaymentResponse) SignatureBaseString() string {
+func (r *InitPaymentResponse) SignatureBaseString() string {
 	var err error
 	buf := bytes.NewBuffer(nil)
 	_, err = buf.WriteString(r.Confirmation.Ident)
