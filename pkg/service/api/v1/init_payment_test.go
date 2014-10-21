@@ -2,6 +2,7 @@ package v1
 
 import (
 	. "github.com/smartystreets/goconvey/convey"
+	"strings"
 	"testing"
 )
 
@@ -54,8 +55,8 @@ func TestInitPaymentRequestValidation(t *testing.T) {
 		Convey("When populated with test values", func() {
 			req.ProjectKey = "abcdef123456"
 			req.Ident = "testIdent"
-			req.Amount.Int64 = 1234
-			req.Subunits.Int8 = 2
+			req.Amount.Int64, req.Amount.Set = 1234, true
+			req.Subunits.Int8, req.Subunits.Set = 2, true
 			req.Currency = "EUR"
 			req.Country = "DE"
 			req.PaymentMethodID = 12
@@ -77,6 +78,42 @@ func TestInitPaymentRequestValidation(t *testing.T) {
 				Convey("It should return an error", func() {
 					So(err, ShouldNotBeNil)
 					So(err.Error(), ShouldContainSubstring, "Ident")
+				})
+			})
+
+			Convey("When validating with a too large ident", func() {
+				req.Ident = strings.Repeat("s", 200)
+				err := req.Validate()
+				Convey("It should return an error", func() {
+					So(err, ShouldNotBeNil)
+					So(err.Error(), ShouldContainSubstring, "Ident")
+				})
+			})
+
+			Convey("When validating without an Amount", func() {
+				req.Amount.Set = false
+				err := req.Validate()
+				Convey("It should return an error", func() {
+					So(err, ShouldNotBeNil)
+					So(err.Error(), ShouldContainSubstring, "Amount")
+				})
+			})
+
+			Convey("When validating with a negative Amount", func() {
+				req.Amount.Int64 = -1000
+				err := req.Validate()
+				Convey("It should return an error", func() {
+					So(err, ShouldNotBeNil)
+					So(err.Error(), ShouldContainSubstring, "Amount")
+				})
+			})
+
+			Convey("When validating without a Subunit", func() {
+				req.Subunits.Set = false
+				err := req.Validate()
+				Convey("It should return an error", func() {
+					So(err, ShouldNotBeNil)
+					So(err.Error(), ShouldContainSubstring, "Subunits")
 				})
 			})
 		})
