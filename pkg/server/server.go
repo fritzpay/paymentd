@@ -47,15 +47,23 @@ func NewServer(ctx context.Context) *Server {
 
 // RegisterService adds a service to the server
 // It will serve the HTTP with the given service
-func (s *Server) RegisterService(cfg config.ServiceConfig, handler http.Handler) {
+func (s *Server) RegisterService(cfg config.ServiceConfig, handler http.Handler) error {
 	srv := &http.Server{
 		Addr:           cfg.Address,
 		Handler:        handler,
-		ReadTimeout:    cfg.ReadTimeout,
-		WriteTimeout:   cfg.WriteTimeout,
 		MaxHeaderBytes: cfg.MaxHeaderBytes,
 	}
+	var err error
+	srv.ReadTimeout, err = cfg.ReadTimeout.Duration()
+	if err != nil {
+		return fmt.Errorf("error parsing duration for server %s: %v", cfg.Address, err)
+	}
+	srv.WriteTimeout, err = cfg.WriteTimeout.Duration()
+	if err != nil {
+		return fmt.Errorf("error parsing duration for server %s: %v", cfg.Address, err)
+	}
 	s.httpServers = append(s.httpServers, srv)
+	return nil
 }
 
 // Serve starts serving
