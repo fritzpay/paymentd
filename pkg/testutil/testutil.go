@@ -17,9 +17,11 @@ const (
 const (
 	// EnvVarMySQLTest is the environment var, which must be present to run
 	// MySQL tests
-	EnvVarMySQLTest = "MYSQLTEST"
+	EnvVarMySQLTest = "PAYMENTD_MYSQLTEST"
 	// EnvVarMySQLTestPaymentDSN holds the DSN for the test database for payment
-	EnvVarMySQLTestPaymentDSN = "MYSQLTEST_PAYMENTDSN"
+	EnvVarMySQLTestPaymentDSN = "PAYMENTD_MYSQLTEST_PAYMENTDSN"
+	// EnvVarMySQLTestPaymentDSN holds the DSN for the test database for payment
+	EnvVarMySQLTestPrincipalDSN = "PAYMENTD_MYSQLTEST_PRINCIPALDSN"
 )
 
 // WithContext is a decorator for GoConvey based tests
