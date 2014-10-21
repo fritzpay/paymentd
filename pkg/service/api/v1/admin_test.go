@@ -9,27 +9,11 @@ import (
 	"testing"
 )
 
-func WithService(ctx *service.Context, logChan <-chan *log15.Record, f func(s *Service, mux *http.ServeMux)) func() {
-	return func() {
-		ctx.Config().API.ServeAdmin = true
-
-		So(ctx.Config().API.ServeAdmin, ShouldBeTrue)
-
-		testMsg := "testmsg"
-		ctx.Log().Info(testMsg)
-		logMsg := <-logChan
-
-		So(logMsg.Msg, ShouldEqual, testMsg)
-
-		mux := http.NewServeMux()
-		service := NewService(ctx, mux)
-
-		f(service, mux)
-	}
-}
-
 func TestGetCredentialsWithBasicAuth(t *testing.T) {
 	Convey("Given a new context", t, testutil.WithContext(func(ctx *service.Context, logChan <-chan *log15.Record) {
+		ctx.Config().API.ServeAdmin = true
+		So(ctx.Config().API.ServeAdmin, ShouldBeTrue)
+
 		Convey("Given a new API service", WithService(ctx, logChan, func(s *Service, mux *http.ServeMux) {
 
 			Convey("Given a new get credentials request", func() {
