@@ -18,6 +18,8 @@ import (
 	"gopkg.in/inconshreveable/log15.v2"
 )
 
+const badAuthWaitTime = 2 * time.Second
+
 func (a *AdminAPI) authorizationHash() func() hash.Hash {
 	return sha256.New
 }

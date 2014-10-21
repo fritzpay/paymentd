@@ -11,12 +11,14 @@ import (
 	"github.com/fritzpay/paymentd/pkg/maputil"
 	"github.com/fritzpay/paymentd/pkg/paymentd/nonce"
 	"github.com/fritzpay/paymentd/pkg/paymentd/payment"
+	"github.com/fritzpay/paymentd/pkg/paymentd/project"
 	"github.com/fritzpay/paymentd/pkg/service"
 	"gopkg.in/inconshreveable/log15.v2"
 	"hash"
 	"net/http"
 	"net/url"
 	"strconv"
+	"time"
 	"unicode/utf8"
 )
 
@@ -83,13 +85,19 @@ func (r *InitPaymentRequest) Validate() error {
 	if len(r.Nonce) > nonce.NonceBytes {
 		return fmt.Errorf("invalid Nonce")
 	}
+	var err error
+	if r.HexSignature == "" {
+		return fmt.Errorf("missing Signature")
+	} else if r.binarySignature, err = hex.DecodeString(r.HexSignature); err != nil {
+		return fmt.Errorf("invalid Signature format")
+	}
 	if r.Locale != "" {
 		if _, err := language.Parse(r.Locale); err != nil {
 			return fmt.Errorf("invalid Locale")
 		}
 	}
 	if r.CallbackURL != "" {
-		if _, err := url.Parse(r.CallbackURL); err != nil {
+		if _, err = url.Parse(r.CallbackURL); err != nil {
 			return fmt.Errorf("invalid CallbackURL")
 		}
 	}
@@ -104,8 +112,8 @@ func (r *InitPaymentRequest) Validate() error {
 // Return the (binary) signature from the request
 //
 // implementing AuthenticatedRequest
-func (r *InitPaymentRequest) Signature() ([]byte, error) {
-	return hex.DecodeString(r.HexSignature)
+func (r *InitPaymentRequest) Signature() []byte {
+	return r.binarySignature
 }
 
 // Message returns the signature base string as bytes or nil on error
@@ -361,6 +369,9 @@ type initPaymentHandler struct {
 //
 // will send the response
 func (h *initPaymentHandler) finish() {
+	if h.httpStatus == http.StatusUnauthorized {
+		time.Sleep(badAuthWaitTime)
+	}
 	h.w.WriteHeader(h.httpStatus)
 	enc := json.NewEncoder(h.w)
 	err := enc.Encode(h.resp)
@@ -368,6 +379,16 @@ func (h *initPaymentHandler) finish() {
 		h.log.Error("error writing JSON response", log15.Ctx{"err": err})
 		return
 	}
+}
+
+func (h *initPaymentHandler) requiredRequest() *InitPaymentRequest {
+	if h.req == nil {
+		h.log.Crit("internal error. missing required request")
+		h.httpStatus = http.StatusInternalServerError
+		h.resp = ErrSystem
+		return nil
+	}
+	return h.req
 }
 
 func (h *initPaymentHandler) readRequest() bool {
@@ -385,11 +406,89 @@ func (h *initPaymentHandler) readRequest() bool {
 	return true
 }
 
+func (h *initPaymentHandler) validateRequest() bool {
+	if h.requiredRequest() == nil {
+		return false
+	}
+	err := h.req.Validate()
+	if err != nil {
+		h.httpStatus = http.StatusBadRequest
+		h.resp = ErrInval
+		h.resp.Error = err.Error()
+		return false
+	}
+	return true
+}
+
+func (h *initPaymentHandler) setUnauthorized(detailedErrorMsg string) {
+	h.httpStatus = http.StatusUnauthorized
+	h.resp = ErrUnauthorized
+	if h.ctx.Config().DevMode {
+		h.resp.Error = detailedErrorMsg
+	}
+}
+
+func (a *PaymentAPI) authenticateMessage(projectKey project.Projectkey, msg service.Signed) (bool, error) {
+	return true, nil
+}
+
 func (a *PaymentAPI) InitPayment() http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		log := a.log.New(log15.Ctx{
 			"method": "InitPayment",
 		})
-		_ = log
+		handler := &initPaymentHandler{
+			ctx: a.ctx,
+			log: log,
+			w:   w,
+			r:   r,
+		}
+		defer handler.finish()
+		if !handler.readRequest() {
+			return
+		}
+		if !handler.validateRequest() {
+			return
+		}
+		var req *InitPaymentRequest
+		if req = handler.requiredRequest(); req == nil {
+			return
+		}
+		projectKey, err := project.ProjectKeyByKeyDB(a.ctx.PrincipalDB(service.ReadOnly), req.ProjectKey)
+		if err != nil {
+			if err == project.ErrProjectKeyNotFound {
+				handler.setUnauthorized(fmt.Sprintf("project key %s not found", req.ProjectKey))
+				return
+			}
+			log.Error("error on retrieving project key", log15.Ctx{"err": err})
+			handler.httpStatus = http.StatusInternalServerError
+			handler.resp = ErrDatabase
+			if a.ctx.Config().DevMode {
+				handler.resp.Error = fmt.Sprintf("database error: %v", err)
+			}
+			return
+		}
+		if !projectKey.IsValid() {
+			log.Warn("invalid project key on request", log15.Ctx{
+				"ProjectKey": projectKey.Key,
+			})
+			handler.setUnauthorized(fmt.Sprintf("project key %s is not valid (inactive project key?)", projectKey.Key))
+			return
+		}
+		// skip if dev mode
+		if !a.ctx.Config().DevMode {
+			if auth, err := a.authenticateMessage(projectKey, req); err != nil {
+				log.Error("error on authenticate message", log15.Ctx{"err": err})
+				handler.httpStatus = http.StatusInternalServerError
+				handler.resp = ErrSystem
+				if a.ctx.Config().DevMode {
+					handler.resp.Error = fmt.Sprintf("error authenticating message: %v", err)
+				}
+				return
+			} else if !auth {
+				handler.setUnauthorized("could not authorize message")
+				return
+			}
+		}
 	})
 }

@@ -7,8 +7,7 @@ import (
 )
 
 const (
-	badAuthWaitTime = 2 * time.Second
-	systemUserID    = "root"
+	systemUserID = "root"
 )
 
 const (
