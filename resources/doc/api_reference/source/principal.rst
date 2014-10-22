@@ -10,6 +10,8 @@ Create a new principal
 
 	**Example request**:
 
+	.. sourcecode:: http
+
 		PUT /principal
 		Host: example.com
 		Accept: application/json
@@ -17,23 +19,26 @@ Create a new principal
 
 	.. sourcecode:: http
 
-		Content-Type: application/json
 
 		{
         	"Name": "acme_corporation",
 			"CreatedBy": "Jane Doe"
 		}
 
-**Example reponse**:
+	:reqheader Authorization: HTTP Basic Auth
+
+	**Example response**:
 
 		Accept: application/json
 		Authorization: Basic cm9vdDpyb290
+		Content-Type: application/json
 
 	.. sourcecode:: http
 
 		HTTP/1.1 200 OK
 		Content-Type: application/json
 
+	.. sourcecode:: http
 
 		{
 			"ID":1,
@@ -43,6 +48,11 @@ Create a new principal
 			"Metadata":null
 		}
  
+	
+	:statuscode 200: No error, principal data served.
+	:statuscode 400: The request was malformed; the princial data could not be understood.
+	:statuscode 401: Unauthorized, either the username does not exist or the credentials
+	:statuscode 409: principal with given id already exists
 
 
 Informational
@@ -61,6 +71,9 @@ Informational
 		Accept: application/json
 		Authorization: dEFFEFeddedeGGEGMceokr353521234
 
+	:param name: The principal name.
+	:reqheader Authorization: HTTP Basic Auth
+	
 	**Example response**:
 
 	.. sourcecode:: http
@@ -76,5 +89,9 @@ Informational
 			"Metadata":null
 		}
 
-	:param name: The principal name.
 	
+	
+	:statuscode 200: No error, principal data served.
+	:statuscode 400: The request was malformed; the given princial name could not be understood.
+	:statuscode 401: Unauthorized, either the username does not exist or the credentials
+	:statuscode 404: principal with given name could not be found

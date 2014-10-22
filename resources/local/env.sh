@@ -1,4 +1,4 @@
 #!/bin/bash
-export GOPATH=/home/seong/workspace/fritzpub
+export GOPATH=/home/$USER/workspace/fritzpub
 export PAYMENTDCFG=$GOPATH/bin/paymentd.config.json
 
