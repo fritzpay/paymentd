@@ -6,6 +6,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"fmt"
 	jsonutil "github.com/fritzpay/paymentd/pkg/json"
 	"github.com/fritzpay/paymentd/pkg/maputil"
@@ -428,6 +429,35 @@ func (h *initPaymentHandler) setUnauthorized(detailedErrorMsg string) {
 	}
 }
 
+func (h *initPaymentHandler) getProjectKey() (pk project.Projectkey, err error) {
+	if h.requiredRequest() == nil {
+		return pk, errors.New("no request")
+	}
+	pk, err = project.ProjectKeyByKeyDB(h.ctx.PrincipalDB(service.ReadOnly), h.req.ProjectKey)
+	if err != nil {
+		if err == project.ErrProjectKeyNotFound {
+			h.setUnauthorized(fmt.Sprintf("project key %s not found", h.req.ProjectKey))
+			return
+		}
+		h.log.Error("error on retrieving project key", log15.Ctx{"err": err})
+		h.httpStatus = http.StatusInternalServerError
+		h.resp = ErrDatabase
+		if Debug {
+			h.resp.Error = fmt.Sprintf("database error: %v", err)
+		}
+		return
+	}
+	if !pk.IsValid() {
+		h.log.Warn("invalid project key on request", log15.Ctx{
+			"ProjectKey": pk.Key,
+		})
+		err = fmt.Errorf("project key %s is not valid (inactive project key?)", pk.Key)
+		h.setUnauthorized(err.Error())
+		return
+	}
+	return
+}
+
 func (a *PaymentAPI) authenticateMessage(projectKey project.Projectkey, msg service.Signed) (bool, error) {
 	return true, nil
 }
@@ -454,25 +484,8 @@ func (a *PaymentAPI) InitPayment() http.Handler {
 		if req = handler.requiredRequest(); req == nil {
 			return
 		}
-		projectKey, err := project.ProjectKeyByKeyDB(a.ctx.PrincipalDB(service.ReadOnly), req.ProjectKey)
+		projectKey, err := handler.getProjectKey()
 		if err != nil {
-			if err == project.ErrProjectKeyNotFound {
-				handler.setUnauthorized(fmt.Sprintf("project key %s not found", req.ProjectKey))
-				return
-			}
-			log.Error("error on retrieving project key", log15.Ctx{"err": err})
-			handler.httpStatus = http.StatusInternalServerError
-			handler.resp = ErrDatabase
-			if Debug {
-				handler.resp.Error = fmt.Sprintf("database error: %v", err)
-			}
-			return
-		}
-		if !projectKey.IsValid() {
-			log.Warn("invalid project key on request", log15.Ctx{
-				"ProjectKey": projectKey.Key,
-			})
-			handler.setUnauthorized(fmt.Sprintf("project key %s is not valid (inactive project key?)", projectKey.Key))
 			return
 		}
 		// skip if dev mode
