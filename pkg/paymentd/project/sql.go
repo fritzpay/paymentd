@@ -131,7 +131,7 @@ SELECT
 	k.timestamp,
 	k.created_by,
 	k.secret,
-	k.active
+	k.active,
 	p.id,
 	p.principal_id,
 	p.name,
