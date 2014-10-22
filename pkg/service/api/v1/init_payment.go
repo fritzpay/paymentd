@@ -398,7 +398,7 @@ func (h *initPaymentHandler) readRequest() bool {
 	if err != nil {
 		h.httpStatus = http.StatusBadRequest
 		h.resp = ErrReadJson
-		if h.ctx.Config().DevMode {
+		if Debug {
 			h.resp.Error = err.Error()
 		}
 		return false
@@ -423,7 +423,7 @@ func (h *initPaymentHandler) validateRequest() bool {
 func (h *initPaymentHandler) setUnauthorized(detailedErrorMsg string) {
 	h.httpStatus = http.StatusUnauthorized
 	h.resp = ErrUnauthorized
-	if h.ctx.Config().DevMode {
+	if Debug {
 		h.resp.Error = detailedErrorMsg
 	}
 }
@@ -463,7 +463,7 @@ func (a *PaymentAPI) InitPayment() http.Handler {
 			log.Error("error on retrieving project key", log15.Ctx{"err": err})
 			handler.httpStatus = http.StatusInternalServerError
 			handler.resp = ErrDatabase
-			if a.ctx.Config().DevMode {
+			if Debug {
 				handler.resp.Error = fmt.Sprintf("database error: %v", err)
 			}
 			return
@@ -476,14 +476,11 @@ func (a *PaymentAPI) InitPayment() http.Handler {
 			return
 		}
 		// skip if dev mode
-		if !a.ctx.Config().DevMode {
+		if !Debug {
 			if auth, err := a.authenticateMessage(projectKey, req); err != nil {
 				log.Error("error on authenticate message", log15.Ctx{"err": err})
 				handler.httpStatus = http.StatusInternalServerError
 				handler.resp = ErrSystem
-				if a.ctx.Config().DevMode {
-					handler.resp.Error = fmt.Sprintf("error authenticating message: %v", err)
-				}
 				return
 			} else if !auth {
 				handler.setUnauthorized("could not authorize message")
