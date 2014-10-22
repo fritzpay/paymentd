@@ -49,6 +49,12 @@ func TestLogPkgIsBridged(t *testing.T) {
 	})
 }
 
+type TestStringer string
+
+func (t TestStringer) String() string {
+	return string(t)
+}
+
 func TestDaemonLogFmt(t *testing.T) {
 	Convey("Given a handler with the DaemonLog format", t, func() {
 		handler := &testHandler{}
@@ -104,6 +110,17 @@ func TestDaemonLogFmt(t *testing.T) {
 
 		Convey("When logging a complex string", func() {
 			str := "this\\should\tbe\r\nescaped\""
+			Log.Debug("escape", log15.Ctx{"this": str})
+
+			Convey("The log message should be properly escaped", func() {
+				expect := "this=\"this\\\\should\\tbe\\r\\nescaped\\\"\""
+				logStr := string(DaemonFormat().Format(handler.record))
+				So(logStr, ShouldContainSubstring, expect)
+			})
+		})
+
+		Convey("When logging a complex Stringer", func() {
+			str := TestStringer("this\\should\tbe\r\nescaped\"")
 			Log.Debug("escape", log15.Ctx{"this": str})
 
 			Convey("The log message should be properly escaped", func() {
