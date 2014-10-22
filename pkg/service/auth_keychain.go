@@ -1,7 +1,6 @@
 package service
 
 import (
-	"crypto/hmac"
 	"crypto/rand"
 	"encoding/hex"
 	"errors"
@@ -104,13 +103,10 @@ func (k *Keychain) MatchKey(s Signed) ([]byte, error) {
 		return nil, ErrNoKeys
 	}
 	for _, key := range k.keys {
-		mac := hmac.New(s.HashFunc(), key)
-		_, err := mac.Write(s.Message())
-		if err != nil {
+		if ok, err := IsAuthentic(s, key); err != nil {
 			k.m.RUnlock()
 			return nil, err
-		}
-		if hmac.Equal(s.Signature(), mac.Sum(nil)) {
+		} else if ok {
 			k.m.RUnlock()
 			return key, nil
 		}
