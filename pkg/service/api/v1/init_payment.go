@@ -376,8 +376,10 @@ type initPaymentHandler struct {
 //
 // will send the response
 func (h *initPaymentHandler) finish() {
-	if h.httpStatus == http.StatusUnauthorized {
-		time.Sleep(badAuthWaitTime)
+	if !Debug {
+		if h.httpStatus == http.StatusUnauthorized {
+			time.Sleep(badAuthWaitTime)
+		}
 	}
 	h.w.WriteHeader(h.httpStatus)
 	enc := json.NewEncoder(h.w)
