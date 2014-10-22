@@ -136,7 +136,7 @@ func TestDaemonLogFmt(t *testing.T) {
 			Log.Debug("escape", log15.Ctx{"err": err})
 
 			Convey("The log message should be properly escaped", func() {
-				expect := "this=\"this\\\\should\\tbe\\r\\nescaped\\\"\""
+				expect := "err=\"this\\\\should\\tbe\\r\\nescaped\\\"\""
 				logStr := string(DaemonFormat().Format(handler.record))
 				So(logStr, ShouldContainSubstring, expect)
 			})
