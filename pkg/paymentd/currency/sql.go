@@ -34,7 +34,7 @@ func scanCurrency(row *sql.Row) (Currency, error) {
 	return c, nil
 }
 
-// CurrencyByCodeIso4217DB selects a currency by the given code
+// CurrencyByCodeISO4217DB selects a currency by the given code
 //
 // If no such currency exists, it will return an empty currency
 func CurrencyByCodeISO4217DB(db *sql.DB, codeISO4217 string) (Currency, error) {
@@ -42,7 +42,7 @@ func CurrencyByCodeISO4217DB(db *sql.DB, codeISO4217 string) (Currency, error) {
 	return scanCurrency(row)
 }
 
-// CurrencyByCodeIso4217Tx selects a currency by the given code
+// CurrencyByCodeISO4217Tx selects a currency by the given code
 //
 // If no such currency exists, it will return an empty currency
 func CurrencyByCodeISO4217Tx(db *sql.Tx, codeISO4217 string) (Currency, error) {
