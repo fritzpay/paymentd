@@ -10,6 +10,7 @@ import (
 	"fmt"
 	jsonutil "github.com/fritzpay/paymentd/pkg/json"
 	"github.com/fritzpay/paymentd/pkg/maputil"
+	"github.com/fritzpay/paymentd/pkg/paymentd/currency"
 	"github.com/fritzpay/paymentd/pkg/paymentd/nonce"
 	"github.com/fritzpay/paymentd/pkg/paymentd/payment"
 	"github.com/fritzpay/paymentd/pkg/paymentd/project"
@@ -21,6 +22,10 @@ import (
 	"strconv"
 	"time"
 	"unicode/utf8"
+)
+
+const (
+	initPaymentTimestampMaxAge = time.Minute
 )
 
 // InitPaymentRequest is the request JSON struct for POST /payment
@@ -360,7 +365,8 @@ type initPaymentHandler struct {
 	w http.ResponseWriter
 	r *http.Request
 
-	req *InitPaymentRequest
+	req             *InitPaymentRequest
+	requestCurrency currency.Currency
 
 	httpStatus int
 	resp       ServiceResponse
@@ -407,6 +413,7 @@ func (h *initPaymentHandler) readRequest() bool {
 	return true
 }
 
+// validates request format
 func (h *initPaymentHandler) validateRequest() bool {
 	if h.requiredRequest() == nil {
 		return false
@@ -421,11 +428,42 @@ func (h *initPaymentHandler) validateRequest() bool {
 	return true
 }
 
+// validates whether request fields are acceptable
+func (h *initPaymentHandler) validateRequestPaymentFields() bool {
+	var err error
+	// currency
+	h.requestCurrency, err = currency.CurrencyByCodeISO4217DB(h.ctx.PaymentDB(service.ReadOnly), h.req.Currency)
+	if err != nil {
+		if err == currency.ErrCurrencyNotFound {
+			h.httpStatus = http.StatusBadRequest
+			h.resp = ErrInval
+			h.resp.Error = "invalid Currency"
+			return false
+		}
+		h.log.Error("error retrieving currency", log15.Ctx{"err": err})
+		h.httpStatus = http.StatusInternalServerError
+		h.resp = ErrDatabase
+		if Debug {
+			h.resp.Error = err.Error()
+		}
+		return false
+	}
+	return true
+}
+
 func (h *initPaymentHandler) setUnauthorized(detailedErrorMsg string) {
 	h.httpStatus = http.StatusUnauthorized
 	h.resp = ErrUnauthorized
 	if Debug {
 		h.resp.Error = detailedErrorMsg
+	}
+}
+
+func (h *initPaymentHandler) setSystemError(err error) {
+	h.httpStatus = http.StatusInternalServerError
+	h.resp = ErrSystem
+	if Debug {
+		h.resp.Error = err.Error()
 	}
 }
 
@@ -459,11 +497,20 @@ func (h *initPaymentHandler) getProjectKey() (pk project.Projectkey, err error) 
 }
 
 func (a *PaymentAPI) authenticateMessage(projectKey project.Projectkey, msg service.Signed) (bool, error) {
-	return true, nil
+	secret, err := projectKey.SecretBytes()
+	if err != nil {
+		return false, err
+	}
+	return service.IsAuthentic(msg, secret)
 }
 
 func (a *PaymentAPI) InitPayment() http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		if r.Method != "POST" {
+			w.WriteHeader(http.StatusMethodNotAllowed)
+			return
+		}
 		log := a.log.New(log15.Ctx{
 			"method": "InitPayment",
 		})
@@ -488,6 +535,7 @@ func (a *PaymentAPI) InitPayment() http.Handler {
 		if err != nil {
 			return
 		}
+		// authenticate
 		// skip if dev mode
 		if !Debug {
 			if auth, err := a.authenticateMessage(projectKey, req); err != nil {
@@ -499,6 +547,20 @@ func (a *PaymentAPI) InitPayment() http.Handler {
 				handler.setUnauthorized("could not authorize message")
 				return
 			}
+			if time.Since(time.Unix(req.Timestamp, 0)) > initPaymentTimestampMaxAge {
+				handler.setUnauthorized("timestamp too old")
+				return
+			}
+			// TODO include nonce handling
+		}
+		// validate payment fields
+		if !handler.validateRequestPaymentFields() {
+			return
+		}
+		if handler.requestCurrency.IsEmpty() {
+			log.Crit("internal error. request currency is empty")
+			handler.setSystemError(nil)
+			return
 		}
 	})
 }
