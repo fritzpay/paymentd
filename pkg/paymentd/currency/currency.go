@@ -9,8 +9,8 @@ type Currency struct {
 	CodeISO4217 string
 }
 
-// Empty returns true if the currency is considered empty/uninitialized
-func (c Currency) Empty() bool {
+// IsEmpty returns true if the currency is considered empty/uninitialized
+func (c Currency) IsEmpty() bool {
 	return c.CodeISO4217 == ""
 }
 

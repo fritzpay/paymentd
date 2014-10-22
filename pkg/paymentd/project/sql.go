@@ -9,6 +9,9 @@ var (
 	// ErrProjectNotFound will be returned by select functions when the requested
 	// project was not found
 	ErrProjectNotFound = errors.New("project not found")
+	// ErrProjectKeyNotFound will be returned by select functions when the requested
+	// project key was not found
+	ErrProjectKeyNotFound = errors.New("project key not found")
 )
 
 const insertProject = `
@@ -120,4 +123,61 @@ func ProjectByNameDB(db *sql.DB, projectName string) (Project, error) {
 func ProjectByNameTx(db *sql.Tx, projectName string) (Project, error) {
 	row := db.QueryRow(selectProjectByName, projectName)
 	return scanProject(row)
+}
+
+const selectProjectKey = `
+SELECT
+	k.key,
+	k.timestamp,
+	k.created_by,
+	k.secret,
+	k.active,
+	p.id,
+	p.principal_id,
+	p.name,
+	p.created,
+	p.created_by
+FROM project_key AS k
+INNER JOIN project AS p ON
+	p.id = k.project_id
+`
+
+const selectProjectKeyByKey = selectProjectKey + `
+WHERE
+	k.key = ?
+	AND
+	k.timestamp = (
+		SELECT MAX(timestamp) FROM project_key AS mk
+		WHERE
+			mk.key = k.key
+	)
+`
+
+func scanProjectKey(row *sql.Row) (Projectkey, error) {
+	pk := Projectkey{}
+	err := row.Scan(
+		&pk.Key,
+		&pk.Timestamp,
+		&pk.CreatedBy,
+		&pk.Secret,
+		&pk.Active,
+		&pk.Project.ID,
+		&pk.Project.PrincipalID,
+		&pk.Project.Name,
+		&pk.Project.Created,
+		&pk.Project.CreatedBy,
+	)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return pk, ErrProjectKeyNotFound
+		}
+		return pk, err
+	}
+	return pk, nil
+}
+
+// ProjectKeyByKeyDB selects a project key by the given key
+func ProjectKeyByKeyDB(db *sql.DB, key string) (Projectkey, error) {
+	row := db.QueryRow(selectProjectKeyByKey, key)
+	return scanProjectKey(row)
 }

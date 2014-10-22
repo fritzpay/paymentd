@@ -18,6 +18,8 @@ import (
 	"gopkg.in/inconshreveable/log15.v2"
 )
 
+const badAuthWaitTime = 2 * time.Second
+
 func (a *AdminAPI) authorizationHash() func() hash.Hash {
 	return sha256.New
 }
@@ -235,7 +237,9 @@ func (a *AdminAPI) AuthHandler(success, failed http.Handler) http.Handler {
 		authStr := r.Header.Get("Authorization")
 		if authStr == "" {
 			if !a.ctx.Config().API.Cookie.AllowCookieAuth {
-				log.Debug("missing authorization header")
+				if Debug {
+					log.Debug("missing authorization header")
+				}
 				failed.ServeHTTP(w, r)
 				return
 			}
@@ -255,27 +259,35 @@ func (a *AdminAPI) AuthHandler(success, failed http.Handler) http.Handler {
 		auth := service.NewAuthorization(a.authorizationHash())
 		_, err := auth.ReadFrom(strings.NewReader(authStr))
 		if err != nil {
-			log.Debug("error reading authorization", log15.Ctx{"err": err})
+			if Debug {
+				log.Debug("error reading authorization", log15.Ctx{"err": err})
+			}
 			failed.ServeHTTP(w, r)
 			return
 		}
 		if auth.Expiry().Before(time.Now()) {
-			log.Debug("authorization expired", log15.Ctx{"expiry": auth.Expiry()})
+			if Debug {
+				log.Debug("authorization expired", log15.Ctx{"expiry": auth.Expiry()})
+			}
 			failed.ServeHTTP(w, r)
 			return
 		}
 		key, err := a.ctx.Keychain().MatchKey(auth)
 		if err != nil {
-			log.Debug("error retrieving matching key from keychain", log15.Ctx{
-				"err":            err,
-				"keysInKeychain": a.ctx.Keychain().KeyCount(),
-			})
+			if Debug {
+				log.Debug("error retrieving matching key from keychain", log15.Ctx{
+					"err":            err,
+					"keysInKeychain": a.ctx.Keychain().KeyCount(),
+				})
+			}
 			failed.ServeHTTP(w, r)
 			return
 		}
 		err = auth.Decode(key)
 		if err != nil {
-			log.Debug("error decoding authorization", log15.Ctx{"err": err})
+			if Debug {
+				log.Debug("error decoding authorization", log15.Ctx{"err": err})
+			}
 			failed.ServeHTTP(w, r)
 			return
 		}

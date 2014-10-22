@@ -7,8 +7,7 @@ import (
 )
 
 const (
-	badAuthWaitTime = 2 * time.Second
-	systemUserID    = "root"
+	systemUserID = "root"
 )
 
 const (
@@ -30,7 +29,10 @@ type AdminAPI struct {
 func NewAdminAPI(ctx *service.Context) *AdminAPI {
 	a := &AdminAPI{
 		ctx: ctx,
-		log: ctx.Log().New(log15.Ctx{"pkg": "github.com/fritzpay/paymentd/pkg/service/api/v1"}),
+		log: ctx.Log().New(log15.Ctx{
+			"pkg": "github.com/fritzpay/paymentd/pkg/service/api/v1",
+			"API": "AdminAPI",
+		}),
 	}
 	return a
 }
