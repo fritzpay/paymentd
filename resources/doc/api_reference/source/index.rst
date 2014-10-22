@@ -10,3 +10,5 @@ Contents:
 
    user
    principal
+   project
+   currency
