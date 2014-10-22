@@ -1,7 +1,7 @@
 // +build ignore
 
 // ignored since go-sqlmock does not yet support instances
-package project
+package currency
 
 import (
 	"database/sql"
@@ -14,32 +14,40 @@ func TestProjectSQLMapping(t *testing.T) {
 	Convey("Given a database mock connection", t, func() {
 		mockID, mock, err := sqlmock.NewMockConn()
 		So(err, ShouldBeNil)
-		mock.ExpectQuery("SELECT(.+)FROM project(.+)id = ?").
+		mock.ExpectQuery("SELECT(.+)FROM currency(.+)code_iso_4217 = ?").
 			WithArgs("nonexistent").
-			WillReturnRows(sqlmock.NewRows(int64{1}))
+			WillReturnRows(sqlmock.NewRows(string("EUR")))
 
-		db, err := sql.Open("mock", "id="+mockID)
+		db, err := sql.Open("mock", "code_iso_4217="+mockID)
 		So(err, ShouldBeNil)
 		err = db.Ping()
 		So(err, ShouldBeNil)
 
-		Convey("When requesting a nonexistent project", func() {
-			project, err := ProjectByProjectIdDB(db, 1, "nonexistent")
+		Convey("When requesting a nonexistent currency", func() {
+			currency, err := CurrencyByCodeISO4217(db, "nonexistent")
 
-			Convey("It should return an empty project", func() {
-				So(project.Empty(), ShouldBeTrue)
+			Convey("It should return an empty currency", func() {
+				So(currency.Empty(), ShouldBeTrue)
 				Convey("The mock should complete successfully", func() {
 					err = db.Close()
 					So(err, ShouldBeNil)
 				})
 			})
 			Convey("It should return an error not found", func() {
-				So(err, ShouldEqual, ErrProjectNotFound)
+				So(err, ShouldEqual, ErrCurrencyNotFound)
 				Convey("The mock should complete successfully", func() {
 					err = db.Close()
 					So(err, ShouldBeNil)
 				})
 			})
+		})
+
+		Convey("When requesting all currencies", func() {
+			currencyList, err CurrencyAllDB(db)
+
+			Convey("It should return a list of currencies", func (){
+
+				})
 		})
 
 	})

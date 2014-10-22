@@ -32,7 +32,7 @@ func execInsertProject(insert *sql.Stmt, p *Project) error {
 // InsertProjectDB inserts a project
 //
 // This will modify the given project, setting the ID field.
-func InsertPrincipalDB(db *sql.DB, p *Project) error {
+func InsertProjectDB(db *sql.DB, p *Project) error {
 	insert, err := db.Prepare(insertProject)
 	if err != nil {
 		return err
@@ -54,22 +54,33 @@ func InsertProjectTx(db *sql.Tx, p *Project) error {
 const selectProject = `
 SELECT
 	id,
+	principal_id,
+	name,
 	created,
-	created_by,
-	name
+	created_by
 FROM project
 `
 
-const selectProjectByPrincipalIDAndName = selectProject + `
+const selectProjectById = selectProject + `
+WHERE
+	id = ?
+`
+
+const selectProjectByPrincipalIdAndName = selectProject + `
 WHERE
 	principal_id = ?
 AND
+	name = ?	
+`
+
+const selectProjectByName = selectProject + `
+WHERE
 	name = ?
 `
 
 func scanProject(row *sql.Row) (Project, error) {
 	p := Project{}
-	err := row.Scan(&p.ID, &p.PrincipalID, &p.Created, &p.CreatedBy, &p.Name)
+	err := row.Scan(&p.ID, &p.PrincipalID, &p.Name, &p.Created, &p.CreatedBy)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return p, ErrProjectNotFound
@@ -79,20 +90,34 @@ func scanProject(row *sql.Row) (Project, error) {
 	return p, nil
 }
 
-// ProjectByPrincipalAndNameDB selects a project by the given
-// principal id and project name
+// ProjectByIdDB selects a project by the given project id
 //
 // If no such project exists, it will return an empty project
-func ProjectByPrincipalIdAndNameDB(db *sql.DB, principalID int64, name string) (Project, error) {
-	row := db.QueryRow(selectProjectByPrincipalIDAndName, principalID, name)
+func ProjectByIdDB(db *sql.DB, projectId int64) (Project, error) {
+	row := db.QueryRow(selectProjectById, projectId)
 	return scanProject(row)
 }
 
-// ProjectByPrincipalAndNameDB selects a project by the given
-// principal id and project name
+// ProjectByIdTx selects a project by the given project id
 //
-// If no such principal exists, it will return an empty project
-func ProjectByPrincipalIdAndNameTx(db *sql.Tx, principalID int64, name string) (Project, error) {
-	row := db.QueryRow(selectProjectByPrincipalIDAndName, name)
+// If no such project exists, it will return an empty project
+func ProjectByIdTx(db *sql.Tx, projectId int64) (Project, error) {
+	row := db.QueryRow(selectProjectById, projectId)
+	return scanProject(row)
+}
+
+// ProjectByName selects a project by the given project name
+//
+// If no such project exists, it will return an empty project
+func ProjectByNameDB(db *sql.DB, projectName string) (Project, error) {
+	row := db.QueryRow(selectProjectByName, projectName)
+	return scanProject(row)
+}
+
+// ProjectByNameTx selects a project by the given project name
+//
+// If no such project exists, it will return an empty project
+func ProjectByNameTx(db *sql.Tx, projectName string) (Project, error) {
+	row := db.QueryRow(selectProjectByName, projectName)
 	return scanProject(row)
 }
