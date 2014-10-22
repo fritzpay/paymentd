@@ -3,10 +3,10 @@ package v1
 import (
 	"encoding/json"
 	"github.com/fritzpay/paymentd/pkg/paymentd/principal"
+	"github.com/fritzpay/paymentd/pkg/service"
 	"gopkg.in/inconshreveable/log15.v2"
 	"net/http"
 	"path"
-	"strings"
 )
 
 const (
@@ -16,21 +16,24 @@ const (
 func (a *AdminAPI) PrincipalRequest() http.Handler {
 
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "text/plain")
+		w.Header().Set("Content-Type", "application/json")
 
 		log := a.log.New(log15.Ctx{"method": "Principal Request"})
 		log.Info("Method:" + r.Method)
 
 		if r.Method == "GET" {
 			// get principal by name
-			principalName := strings.TrimLeft(r.RequestURI, path.Dir(r.RequestURI))
+			urlpath, principalName := path.Split(path.Clean(r.URL.Path))
+
 			if len(principalName) < 1 {
 				w.WriteHeader(http.StatusBadRequest)
 				log.Info("principalName missing")
 				return
 			}
+			log.Info("principalName: " + principalName)
+			log.Info("url path: " + urlpath)
 
-			pr, err := principal.PrincipalByNameDB(a.ctx.PrincipalDB(), principalName)
+			pr, err := principal.PrincipalByNameDB(a.ctx.PrincipalDB(service.ReadOnly), principalName)
 			if err != nil {
 				w.WriteHeader(http.StatusNotFound)
 				log.Error("DB get by name failed.", log15.Ctx{"err": err})
