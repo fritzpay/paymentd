@@ -102,7 +102,7 @@ func logValue(value interface{}) string {
 	case error:
 		return v.Error()
 	case fmt.Stringer:
-		return v.String()
+		return escapeString(v.String())
 	case bool:
 		return strconv.FormatBool(v)
 	case float32:
