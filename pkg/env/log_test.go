@@ -1,6 +1,7 @@
 package env
 
 import (
+	"errors"
 	. "github.com/smartystreets/goconvey/convey"
 	"gopkg.in/inconshreveable/log15.v2"
 	golog "log"
@@ -122,6 +123,17 @@ func TestDaemonLogFmt(t *testing.T) {
 		Convey("When logging a complex Stringer", func() {
 			str := TestStringer("this\\should\tbe\r\nescaped\"")
 			Log.Debug("escape", log15.Ctx{"this": str})
+
+			Convey("The log message should be properly escaped", func() {
+				expect := "this=\"this\\\\should\\tbe\\r\\nescaped\\\"\""
+				logStr := string(DaemonFormat().Format(handler.record))
+				So(logStr, ShouldContainSubstring, expect)
+			})
+		})
+
+		Convey("When logging a complex error", func() {
+			err := errors.New("this\\should\tbe\r\nescaped\"")
+			Log.Debug("escape", log15.Ctx{"err": err})
 
 			Convey("The log message should be properly escaped", func() {
 				expect := "this=\"this\\\\should\\tbe\\r\\nescaped\\\"\""
