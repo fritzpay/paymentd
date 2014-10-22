@@ -1,4 +1,5 @@
 # backup files
 *.bak
 paymentd.sublime-*
+#pyc
 *.pyc
