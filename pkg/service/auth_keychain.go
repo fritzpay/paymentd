@@ -4,11 +4,18 @@ import (
 	"crypto/hmac"
 	"crypto/rand"
 	"encoding/hex"
+	"errors"
 	"sync"
 )
 
 const (
 	keychainLen = 16
+)
+
+var (
+	ErrInvalidKey    = errors.New("invalid key")
+	ErrNoKeys        = errors.New("no keys in keychain")
+	ErrNoMatchingKey = errors.New("no matching key for signature")
 )
 
 // Keychain stores (and rotates) keys for authorization container encryption

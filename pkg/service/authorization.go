@@ -23,33 +23,16 @@ const (
 	defaultKeySize = 32
 )
 
+var (
+	ErrDecrypt = errors.New("error decrypting container")
+	ErrMsgSize = errors.New("message too big")
+)
+
 const (
 	// MaxMsgSize is the maximum size the (encoded) content of an Authorization container
 	// can have
 	MaxMsgSize = 4096
 )
-
-var (
-	ErrInvalidKey    = errors.New("invalid key")
-	ErrNoKeys        = errors.New("no keys in keychain")
-	ErrNoMatchingKey = errors.New("no matching key for signature")
-	ErrBadContainer  = errors.New("bad container encoding")
-	ErrDecrypt       = errors.New("error decrypting container")
-	ErrMsgSize       = errors.New("message too big")
-)
-
-// Signable is a type which can be signed
-type Signable interface {
-	Message() []byte
-	HashFunc() func() hash.Hash
-}
-
-// Signed is a type which has been signed
-// The signature can be authenticated using the Signable interface and recreating the signature
-type Signed interface {
-	Signable
-	Signature() []byte
-}
 
 // Authorization is a container which can hold arbitrary authorization data,
 // can be encrypted and signed and safely passed between services. As long as those
