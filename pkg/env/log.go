@@ -100,7 +100,7 @@ func logValue(value interface{}) string {
 	case time.Time:
 		return v.Format(timeFormat)
 	case error:
-		return v.Error()
+		return escapeString(v.Error())
 	case fmt.Stringer:
 		return escapeString(v.String())
 	case bool:
