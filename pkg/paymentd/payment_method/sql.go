@@ -3,11 +3,13 @@ package payment_method
 import (
 	"database/sql"
 	"errors"
+	"github.com/fritzpay/paymentd/pkg/metadata"
 	"time"
 )
 
 var (
-	ErrPaymentMethodNotFound = errors.New("payment method not found")
+	ErrPaymentMethodNotFound  = errors.New("payment method not found")
+	ErrPaymentMethodWithoutID = errors.New("payment method has no id")
 )
 
 const selectPaymentMethod = `
@@ -81,3 +83,24 @@ INSERT INTO payment_method
 VALUES
 (?, ?, ?, ?, ?)
 `
+
+func InsertPaymentMethodTx(db *sql.Tx, pm PaymentMethod) (int64, error) {
+	stmt, err := db.Prepare(insertPaymentMethod)
+	if err != nil {
+		return 0, err
+	}
+	res, err := stmt.Exec(pm.ProjectID, pm.Provider.ID, pm.MethodKey, pm.Created, pm.CreatedBy)
+	stmt.Close()
+	if err != nil {
+		return 0, err
+	}
+	return res.LastInsertId()
+}
+
+func InsertPaymentMethodMetadataTx(db *sql.Tx, pm PaymentMethod, createdBy string) error {
+	if pm.ID == 0 {
+		return ErrPaymentMethodWithoutID
+	}
+	m := metadata.MetadataFromValues(pm.Metadata, createdBy)
+	return metadata.InsertMetadataTx(db, MetadataModel, pm.ID, m)
+}
