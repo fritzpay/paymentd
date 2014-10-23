@@ -45,13 +45,12 @@ const (
 //
 // It is associated with a Provider and can be configured on a per-project base.
 type PaymentMethod struct {
-	ID         int64 `json:",string"`
-	ProjectID  int64 `json:",string"`
-	providerID int64 `json:"ProviderID,string"`
-	Provider   provider.Provider
-	MethodKey  string
-	Created    time.Time
-	CreatedBy  string
+	ID        int64 `json:",string"`
+	ProjectID int64 `json:",string"`
+	Provider  provider.Provider
+	MethodKey string
+	Created   time.Time
+	CreatedBy string
 
 	Status          PaymentMethodStatus
 	StatusChanged   time.Time
