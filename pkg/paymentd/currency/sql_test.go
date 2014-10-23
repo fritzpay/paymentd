@@ -3,7 +3,6 @@ package currency
 import (
 	"database/sql"
 	"github.com/fritzpay/paymentd/pkg/testutil"
-	_ "github.com/go-sql-driver/mysql"
 	. "github.com/smartystreets/goconvey/convey"
 	"testing"
 )
