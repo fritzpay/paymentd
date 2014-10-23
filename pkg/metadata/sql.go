@@ -8,10 +8,10 @@ import (
 
 const metadataFields = `
 SELECT
-	md.name,
-	md.timestamp,
-	md.created_by,
-	md.value
+	m.name,
+	m.timestamp,
+	m.created_by,
+	m.value
 `
 
 const metadataByPrimary = metadataFields + `
