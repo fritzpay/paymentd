@@ -65,7 +65,7 @@ type Config struct {
 		Cookie struct {
 			// Should the API allow cookie-based authentication?
 			AllowCookieAuth bool
-			HttpOnly        bool
+			HTTPOnly        bool
 			Secure          bool
 		}
 
@@ -96,7 +96,7 @@ func DefaultConfig() Config {
 	cfg.API.ServeAdmin = false
 	cfg.API.AuthKeys = make([]string, 0)
 
-	cfg.API.Cookie.HttpOnly = true
+	cfg.API.Cookie.HTTPOnly = true
 
 	cfg.Database.Principal.Write = NewDatabaseConfig()
 	cfg.Database.Principal.Write["mysql"] = "paymentd@tcp(localhost:3306)/fritzpay_principal?charset=utf8mb4&parseTime=true&loc=UTC&timeout=1m&wait_timeout=30&interactive_timeout=30"
