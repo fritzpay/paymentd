@@ -83,6 +83,26 @@ func TestPaymentMethodSQL(t *testing.T) {
 										})
 									})
 								})
+
+								Convey("When setting metadata", func() {
+									pm.Metadata = map[string]string{
+										"key":  "value",
+										"test": "check",
+									}
+									err = InsertPaymentMethodMetadataTx(tx, pm, "metatest")
+									So(err, ShouldBeNil)
+
+									Convey("When selecting metadata", func() {
+										metadata, err := PaymentMethodMetadataTx(tx, pm)
+										So(err, ShouldBeNil)
+
+										Convey("It should match", func() {
+											So(metadata, ShouldNotBeNil)
+											So(metadata["key"], ShouldEqual, "value")
+											So(metadata["test"], ShouldEqual, "check")
+										})
+									})
+								})
 							})
 						})
 					})

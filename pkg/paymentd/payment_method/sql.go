@@ -122,3 +122,14 @@ func InsertPaymentMethodMetadataTx(db *sql.Tx, pm PaymentMethod, createdBy strin
 	m := metadata.MetadataFromValues(pm.Metadata, createdBy)
 	return metadata.InsertMetadataTx(db, MetadataModel, pm.ID, m)
 }
+
+func PaymentMethodMetadataTx(db *sql.Tx, pm PaymentMethod) (map[string]string, error) {
+	if pm.ID == 0 {
+		return nil, ErrPaymentMethodWithoutID
+	}
+	m, err := metadata.MetadataByPrimaryTx(db, MetadataModel, pm.ID)
+	if err != nil {
+		return nil, err
+	}
+	return m.Values(), nil
+}
