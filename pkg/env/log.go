@@ -100,9 +100,9 @@ func logValue(value interface{}) string {
 	case time.Time:
 		return v.Format(timeFormat)
 	case error:
-		return v.Error()
+		return escapeString(v.Error())
 	case fmt.Stringer:
-		return v.String()
+		return escapeString(v.String())
 	case bool:
 		return strconv.FormatBool(v)
 	case float32:

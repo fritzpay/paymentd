@@ -41,6 +41,8 @@ func NewService(ctx *service.Context, mux *http.ServeMux) *Service {
 	}
 
 	s.log.Info("registering payment API...")
-	NewPaymentAPI()
+	payment := NewPaymentAPI(ctx)
+	mux.Handle(ServicePath+"/payment", payment.InitPayment())
+
 	return s
 }

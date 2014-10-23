@@ -26,6 +26,15 @@
 			"Rev": "d94d34f344f8563415625719fe339726ed965d86"
 		},
 		{
+			"ImportPath": "code.google.com/p/go.text/language",
+			"Comment": "null-102",
+			"Rev": "f8db539672d039f96d1531d03c21e3a381c9f473"
+		},
+		{
+			"ImportPath": "code.google.com/p/godec/dec",
+			"Rev": "cea24d5d22d74c47ba160146afbc303cbcc5f41a"
+		},
+		{
 			"ImportPath": "github.com/codegangsta/cli",
 			"Comment": "1.2.0-26-gf7ebb76",
 			"Rev": "f7ebb761e83e21225d1d8954fde853bf8edd46c4"

@@ -14,6 +14,16 @@ const (
 	logChanBufferSize = 32
 )
 
+const (
+	// EnvVarMySQLTest is the environment var, which must be present to run
+	// MySQL tests
+	EnvVarMySQLTest = "PAYMENTD_MYSQLTEST"
+	// EnvVarMySQLTestPaymentDSN holds the DSN for the test database for payment
+	EnvVarMySQLTestPaymentDSN = "PAYMENTD_MYSQLTEST_PAYMENTDSN"
+	// EnvVarMySQLTestPaymentDSN holds the DSN for the test database for payment
+	EnvVarMySQLTestPrincipalDSN = "PAYMENTD_MYSQLTEST_PRINCIPALDSN"
+)
+
 // WithContext is a decorator for GoConvey based tests
 //
 // It will inject a service context and a log channel, where log messages can be read from
