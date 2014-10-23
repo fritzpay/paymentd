@@ -4,9 +4,9 @@ import (
 	"time"
 )
 
-// MetadataModel describes the concrete metadata model
-type MetadataModel interface {
-	Schema() string
+// MetadataModeler describes the construct for a concrete metadata model
+type MetadataModeler interface {
+	Table() string
 	PrimaryField() string
 }
 

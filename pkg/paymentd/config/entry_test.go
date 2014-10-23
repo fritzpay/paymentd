@@ -3,38 +3,14 @@ package config
 import (
 	"database/sql"
 	"github.com/fritzpay/paymentd/pkg/testutil"
-	_ "github.com/go-sql-driver/mysql"
 	. "github.com/smartystreets/goconvey/convey"
 	"math/rand"
-	"os"
 	"strconv"
 	"testing"
 )
 
-func WithDB(t *testing.T, f func(db *sql.DB)) func() {
-	return func() {
-		if os.Getenv(testutil.EnvVarMySQLTest) == "" {
-			t.Skip("Skipping MySQL test")
-			return
-		}
-		if os.Getenv(testutil.EnvVarMySQLTestPaymentDSN) == "" {
-			t.Skip("No payment DB DSN present. Skipping.")
-			return
-		}
-		db, err := sql.Open("mysql", os.Getenv(testutil.EnvVarMySQLTestPaymentDSN))
-
-		So(err, ShouldBeNil)
-		So(db, ShouldNotBeNil)
-
-		err = db.Ping()
-		So(err, ShouldBeNil)
-
-		f(db)
-	}
-}
-
 func TestConfigEntry(t *testing.T) {
-	Convey("Given a DB connection", t, WithDB(t, func(db *sql.DB) {
+	Convey("Given a DB connection", t, testutil.WithPaymentDB(t, func(db *sql.DB) {
 		Convey("Given a random entry name", func() {
 			name := "test" + strconv.FormatInt(rand.Int63(), 10)
 
