@@ -57,4 +57,14 @@ const (
 	metadataPrimaryField = "payment_method_id"
 )
 
+const MetadataModel metadataModel = 0
+
 type metadataModel int
+
+func (m metadataModel) Table() string {
+	return metadataTable
+}
+
+func (m metadataModel) PrimaryField() string {
+	return metadataPrimaryField
+}
