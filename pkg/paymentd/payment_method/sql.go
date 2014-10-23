@@ -97,6 +97,24 @@ func InsertPaymentMethodTx(db *sql.Tx, pm PaymentMethod) (int64, error) {
 	return res.LastInsertId()
 }
 
+const insertPaymentMethodStatus = `
+INSERT INTO payment_method_status
+(payment_method_id, timestamp, status, created_by)
+VALUES
+(?, ?, ?, ?)
+`
+
+func InsertPaymentMethodStatusTx(db *sql.Tx, pm PaymentMethod) error {
+	stmt, err := db.Prepare(insertPaymentMethodStatus)
+	if err != nil {
+		return err
+	}
+	ts := time.Now()
+	_, err = stmt.Exec(pm.ID, ts.UnixNano(), pm.Status, pm.StatusCreatedBy)
+	stmt.Close()
+	return err
+}
+
 func InsertPaymentMethodMetadataTx(db *sql.Tx, pm PaymentMethod, createdBy string) error {
 	if pm.ID == 0 {
 		return ErrPaymentMethodWithoutID
