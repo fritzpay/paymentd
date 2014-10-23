@@ -7,9 +7,9 @@ import (
 	"time"
 )
 
-type PaymentMethodStatus string
+type paymentMethodStatus string
 
-func (s PaymentMethodStatus) String() string {
+func (s paymentMethodStatus) String() string {
 	if s == "" {
 		return "invalid"
 	}
@@ -17,13 +17,13 @@ func (s PaymentMethodStatus) String() string {
 }
 
 // Scan implements the (database/sql).Scanner
-func (s *PaymentMethodStatus) Scan(src interface{}) error {
+func (s *paymentMethodStatus) Scan(src interface{}) error {
 	switch v := src.(type) {
 	case []byte:
-		*s = PaymentMethodStatus(string(v))
+		*s = paymentMethodStatus(string(v))
 		return nil
 	case string:
-		*s = PaymentMethodStatus(v)
+		*s = paymentMethodStatus(v)
 		return nil
 	default:
 		return fmt.Errorf("error scanning into PaymentMethodStatus type. got invalid type %T", src)
@@ -32,13 +32,13 @@ func (s *PaymentMethodStatus) Scan(src interface{}) error {
 
 // Value implements the (database/sql/driver).Valuer so it can be used in SQL statements
 // as a value
-func (s PaymentMethodStatus) Value() (driver.Value, error) {
+func (s paymentMethodStatus) Value() (driver.Value, error) {
 	return string(s), nil
 }
 
 const (
-	PaymentMethodStatusActive   PaymentMethodStatus = "active"
-	PaymentMethodStatusInactive PaymentMethodStatus = "inactive"
+	PaymentMethodStatusActive   paymentMethodStatus = "active"
+	PaymentMethodStatusInactive paymentMethodStatus = "inactive"
 )
 
 // PaymentMethod represents a mode (method of payment)
@@ -52,7 +52,7 @@ type PaymentMethod struct {
 	Created   time.Time
 	CreatedBy string
 
-	Status          PaymentMethodStatus
+	Status          paymentMethodStatus
 	StatusChanged   time.Time
 	StatusCreatedBy string
 
