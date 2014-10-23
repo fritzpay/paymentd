@@ -43,11 +43,11 @@ func TestProjectSQLMapping(t *testing.T) {
 		})
 
 		Convey("When requesting all currencies", func() {
-			currencyList, err CurrencyAllDB(db)
+			currencyList, err := CurrencyAllDB(db)
 
-			Convey("It should return a list of currencies", func (){
+			Convey("It should return a list of currencies", func() {
 
-				})
+			})
 		})
 
 	})
