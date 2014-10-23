@@ -66,6 +66,23 @@ func TestPaymentMethodSQL(t *testing.T) {
 								pm.ID, err = InsertPaymentMethodTx(tx, pm)
 								So(err, ShouldBeNil)
 								So(pm.ID, ShouldNotEqual, 0)
+
+								Convey("When setting the status to active", func() {
+									pm.Status = PaymentMethodStatusActive
+									pm.CreatedBy = "test"
+
+									err = InsertPaymentMethodStatusTx(tx, pm)
+									So(err, ShouldBeNil)
+
+									Convey("When retrieving the payment method", func() {
+										newPm, err := PaymentMethodByIDTx(tx, pm.ID)
+										So(err, ShouldBeNil)
+
+										Convey("The retrieved payment method should match", func() {
+											So(newPm.Status, ShouldEqual, PaymentMethodStatusActive)
+										})
+									})
+								})
 							})
 						})
 					})

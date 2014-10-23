@@ -14,7 +14,7 @@ var (
 
 const selectPaymentMethod = `
 SELECT
-	m.id
+	m.id,
 	m.project_id,
 	p.id,
 	p.name,

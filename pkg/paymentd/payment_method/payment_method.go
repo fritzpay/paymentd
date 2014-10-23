@@ -1,6 +1,7 @@
 package payment_method
 
 import (
+	"database/sql/driver"
 	"fmt"
 	"github.com/fritzpay/paymentd/pkg/paymentd/provider"
 	"time"
@@ -27,6 +28,12 @@ func (s *PaymentMethodStatus) Scan(src interface{}) error {
 	default:
 		return fmt.Errorf("error scanning into PaymentMethodStatus type. got invalid type %T", src)
 	}
+}
+
+// Value implements the (database/sql/driver).Valuer so it can be used in SQL statements
+// as a value
+func (s PaymentMethodStatus) Value() (driver.Value, error) {
+	return string(s), nil
 }
 
 const (
