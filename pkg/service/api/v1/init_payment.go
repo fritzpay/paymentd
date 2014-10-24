@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"code.google.com/p/go.text/language"
 	"crypto/sha256"
+	"database/sql"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
@@ -15,6 +16,7 @@ import (
 	"github.com/fritzpay/paymentd/pkg/paymentd/payment"
 	"github.com/fritzpay/paymentd/pkg/paymentd/project"
 	"github.com/fritzpay/paymentd/pkg/service"
+	"github.com/go-sql-driver/mysql"
 	"gopkg.in/inconshreveable/log15.v2"
 	"hash"
 	"net/http"
@@ -239,7 +241,6 @@ func (r *InitPaymentResponse) ConfirmationFromPayment(p payment.Payment) {
 	r.Confirmation.Amount = p.Amount
 	r.Confirmation.Subunits = p.Subunits
 	r.Confirmation.Currency = p.Currency
-	r.Confirmation.Country = p.Country
 }
 
 // ConfirmationFromRequest populates the response "Confirmation" object with
@@ -554,6 +555,8 @@ func (a *PaymentAPI) InitPayment() http.Handler {
 			}
 			// TODO include nonce handling
 		}
+		// extend log info
+		log = log.New(log15.Ctx{"projectId": projectKey.Project.ID})
 		// validate payment fields
 		if !handler.readRequestCurrency() {
 			return
@@ -563,5 +566,146 @@ func (a *PaymentAPI) InitPayment() http.Handler {
 			handler.setSystemError(nil)
 			return
 		}
+		// create payment
+		p := &payment.Payment{
+			Created:  time.Now(),
+			Ident:    req.Ident,
+			Amount:   req.Amount.Int64,
+			Subunits: req.Subunits.Int8,
+			Currency: handler.requestCurrency.CodeISO4217,
+		}
+		err = p.SetProject(projectKey.Project)
+		if err != nil {
+			log.Error("error setting payment project", log15.Ctx{"err": err})
+			handler.httpStatus = http.StatusInternalServerError
+			handler.resp = ErrSystem
+			if Debug {
+				handler.resp.Error = fmt.Sprintf("error setting payment project: %v", err)
+			}
+			return
+		}
+		if req.CallbackURL != "" {
+			p.CallbackURL.String, p.CallbackURL.Valid = req.CallbackURL, true
+		}
+		if req.ReturnURL != "" {
+			p.ReturnURL.String, p.ReturnURL.Valid = req.ReturnURL, true
+		}
+
+		// DB
+		var tx *sql.Tx
+		var commit bool
+		// deferred rollback if commit == false
+		defer func() {
+			if tx != nil && !commit {
+				txErr := tx.Rollback()
+				if txErr != nil {
+					log.Crit("error on rollback", log15.Ctx{"err": txErr})
+					handler.httpStatus = http.StatusInternalServerError
+					handler.resp = ErrDatabase
+					if Debug {
+						handler.resp.Error = fmt.Sprintf("error on rollback: %v", err)
+					}
+				}
+			}
+		}()
+		maxRetries := a.ctx.Config().Database.TransactionMaxRetries
+		var retries int
+	beginTx:
+		if retries >= maxRetries {
+			// no need to roll back
+			commit = true
+			log.Crit("too many retries on tx. aborting...", log15.Ctx{"maxRetries": maxRetries})
+			handler.resp = ErrDatabase
+			return
+		}
+		tx, err = a.ctx.PaymentDB().Begin()
+		if err != nil {
+			commit = true
+			log.Crit("error on begin", log15.Ctx{"err": err})
+			handler.httpStatus = http.StatusInternalServerError
+			handler.resp = ErrDatabase
+			return
+		}
+		err = payment.InsertPaymentTx(tx, p)
+		if err != nil {
+			if mysqlErr, ok := err.(*mysql.MySQLError); ok {
+				// lock error
+				if mysqlErr.Number == 1213 {
+					retries++
+					time.Sleep(time.Second)
+					goto beginTx
+				}
+			}
+			_, existErr := payment.PaymentByProjectIDAndIdentTx(tx, p.ProjectID(), p.Ident)
+			if existErr != nil && existErr != payment.ErrPaymentNotFound {
+				log.Error("error on checking duplicate ident", log15.Ctx{"err": err})
+				handler.httpStatus = http.StatusInternalServerError
+				handler.resp = ErrDatabase
+				if Debug {
+					handler.resp.Info = fmt.Sprintf("error on checking duplicate ident: %v", existErr)
+				}
+				return
+			}
+			// payment found => duplicate error
+			if existErr == nil {
+				handler.httpStatus = http.StatusConflict
+				handler.resp.Status = StatusError
+				handler.resp.Info = "your ident was already used"
+				handler.resp.Response = nil
+				return
+			}
+			log.Error("error on insert payment", log15.Ctx{"err": err})
+			handler.httpStatus = http.StatusInternalServerError
+			handler.resp = ErrDatabase
+			if Debug {
+				handler.resp.Info = fmt.Sprintf("error on insert payment: %v", err)
+			}
+			return
+		}
+		// payment config fields
+		paymentCfg := payment.PaymentConfig{Payment: *p}
+		if req.PaymentMethodID != 0 {
+			paymentCfg.PaymentMethodID.Int64, paymentCfg.PaymentMethodID.Valid = req.PaymentMethodID, true
+		}
+		if req.Country != "" {
+			paymentCfg.Country.String, paymentCfg.Country.Valid = req.Country, true
+		}
+		if req.Locale != "" {
+			paymentCfg.Locale.String, paymentCfg.Locale.Valid = req.Locale, true
+		}
+		err = payment.InsertPaymentConfigTx(tx, paymentCfg)
+		if err != nil {
+			log.Error("error on insert payment config", log15.Ctx{"err": err})
+			handler.httpStatus = http.StatusInternalServerError
+			handler.resp = ErrDatabase
+			return
+		}
+		// payment metadata
+		if req.Metadata != nil {
+			err = payment.InsertPaymentMetadataTx(tx, p.PaymentID(), req.Metadata)
+			if err != nil {
+				log.Error("error on insert payment metadata", log15.Ctx{"err": err})
+				handler.httpStatus = http.StatusInternalServerError
+				handler.resp = ErrDatabase
+				return
+			}
+		}
+		err = tx.Commit()
+		if err != nil {
+			if mysqlErr, ok := err.(*mysql.MySQLError); ok {
+				// lock error
+				if mysqlErr.Number == 1213 {
+					retries++
+					time.Sleep(time.Second)
+					goto beginTx
+				}
+			}
+			commit = true
+			log.Crit("error on commit tx", log15.Ctx{"err": err})
+			handler.httpStatus = http.StatusInternalServerError
+			handler.resp = ErrDatabase
+			return
+		}
+		commit = true
 	})
 }

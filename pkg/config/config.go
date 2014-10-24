@@ -73,6 +73,8 @@ type Config struct {
 	}
 	// Database config
 	Database struct {
+		// Maximum number of retries on transaction lock errors
+		TransactionMaxRetries int
 		// Principal database
 		Principal struct {
 			Write    DatabaseConfig
@@ -97,6 +99,8 @@ func DefaultConfig() Config {
 	cfg.API.AuthKeys = make([]string, 0)
 
 	cfg.API.Cookie.HTTPOnly = true
+
+	cfg.Database.TransactionMaxRetries = 5
 
 	cfg.Database.Principal.Write = NewDatabaseConfig()
 	cfg.Database.Principal.Write["mysql"] = "paymentd@tcp(localhost:3306)/fritzpay_principal?charset=utf8mb4&parseTime=true&loc=UTC&timeout=1m&wait_timeout=30&interactive_timeout=30"
