@@ -12,6 +12,17 @@ const (
 	ServicePath = "/" + serviceVersion
 )
 
+// Log is the default logger for the API service v1
+var Log log15.Logger
+
+func init() {
+	Log = log15.New(log15.Ctx{
+		"pkg":  "github.com/fritzpay/paymentd/pkg/service/api/v1",
+		"type": "ServiceResponse",
+	})
+	Log.SetHandler(log15.StderrHandler)
+}
+
 // Service represents the API service version 1.x
 type Service struct {
 	log log15.Logger
