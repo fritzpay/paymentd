@@ -25,6 +25,11 @@ type AdminAPI struct {
 	log log15.Logger
 }
 
+// type used for formated AdminAPI Responses
+type AdminAPIResponse struct {
+	ServiceResponse
+}
+
 // NewAPI creates a new admin API
 func NewAdminAPI(ctx *service.Context) *AdminAPI {
 	a := &AdminAPI{

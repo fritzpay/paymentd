@@ -21,12 +21,13 @@ func (a *AdminAPI) ProjectRequest() http.Handler {
 
 		// @todo ristrict by projectid
 		if r.Method == "GET" {
-			a.getProjectById(w, r)
+			a.getProject(w, r)
 		} else if r.Method == "PUT" {
 			a.putNewProject(w, r)
 		} else if r.Method == "POST" {
 			a.postChangeProject(w, r)
 		} else {
+			log.Info("request method not supported: " + r.Method)
 			w.WriteHeader(http.StatusBadRequest)
 		}
 
@@ -35,7 +36,7 @@ func (a *AdminAPI) ProjectRequest() http.Handler {
 	return h
 }
 
-func (a *AdminAPI) getProjectById(w http.ResponseWriter, r *http.Request) {
+func (a *AdminAPI) getProject(w http.ResponseWriter, r *http.Request) {
 
 	log := a.log.New(log15.Ctx{"method": "Project request GET"})
 
