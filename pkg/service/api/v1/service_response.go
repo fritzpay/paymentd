@@ -12,10 +12,15 @@ const (
 	StatusSuccess             = "success"
 )
 
+const (
+	ServiceVersion = "1.1"
+)
+
 // ServiceResponse represents a general response container for (payment-related) API
 // requests
 type ServiceResponse struct {
 	HttpStatus int `json:"-"`
+	Version    string
 	Status     string
 	Info       string
 	Response   interface{}
@@ -26,6 +31,7 @@ type ServiceResponse struct {
 var (
 	ErrReadJson = ServiceResponse{
 		http.StatusBadRequest,
+		ServiceVersion,
 		StatusImplementationError,
 		"could not read request",
 		nil,
@@ -33,6 +39,7 @@ var (
 	}
 	ErrUnauthorized = ServiceResponse{
 		http.StatusUnauthorized,
+		ServiceVersion,
 		StatusUnauthorized,
 		"unauthorized",
 		nil,
@@ -40,6 +47,7 @@ var (
 	}
 	ErrDatabase = ServiceResponse{
 		http.StatusInternalServerError,
+		ServiceVersion,
 		StatusError,
 		"database error",
 		nil,
@@ -47,6 +55,7 @@ var (
 	}
 	ErrSystem = ServiceResponse{
 		http.StatusInternalServerError,
+		ServiceVersion,
 		StatusError,
 		"internal error",
 		nil,
@@ -54,6 +63,7 @@ var (
 	}
 	ErrInval = ServiceResponse{
 		http.StatusBadRequest,
+		ServiceVersion,
 		StatusImplementationError,
 		"invalid value",
 		nil,
@@ -61,6 +71,7 @@ var (
 	}
 	ErrNotFound = ServiceResponse{
 		http.StatusNotFound,
+		ServiceVersion,
 		StatusError,
 		"resource not found",
 		nil,
