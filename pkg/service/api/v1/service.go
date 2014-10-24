@@ -37,8 +37,10 @@ func NewService(ctx *service.Context, mux *http.ServeMux) *Service {
 
 		mux.Handle(ServicePath+"/principal", admin.AuthRequiredHandler(admin.PrincipalRequest()))
 		mux.Handle(ServicePath+"/principal/", admin.AuthRequiredHandler(admin.PrincipalGetRequest()))
-		mux.Handle(ServicePath+"/project/", admin.AuthRequiredHandler(admin.ProjectRequest()))
-		mux.Handle(ServicePath+"/currency/", admin.AuthRequiredHandler(admin.CurrencyRequest()))
+		mux.Handle(ServicePath+"/project", admin.AuthRequiredHandler(admin.ProjectRequest()))
+		mux.Handle(ServicePath+"/project/", admin.AuthRequiredHandler(admin.ProjectGetRequest()))
+		mux.Handle(ServicePath+"/currency", admin.AuthRequiredHandler(admin.CurrencyGetAllRequest()))
+		mux.Handle(ServicePath+"/currency/", admin.AuthRequiredHandler(admin.CurrencyGetRequest()))
 	}
 
 	s.log.Info("registering payment API...")

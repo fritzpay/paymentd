@@ -4,6 +4,11 @@ import (
 	"time"
 )
 
+const (
+	metadataTable        = "project_metadata"
+	metadataPrimaryField = "project_id"
+)
+
 // Project represents a project
 //
 // A project is a resource of a principle.
@@ -30,4 +35,20 @@ func (p *Project) IsValid() bool {
 		return false
 	}
 	return true
+}
+
+// representation of the metadata schema structure
+const MetadataModel metadataModel = 0
+
+// pattern for nicer package usage
+// this prevents the initialistation of a struct object{}
+// instead devs can just take the MetadataModel const
+type metadataModel int
+
+func (m metadataModel) Table() string {
+	return metadataTable
+}
+
+func (m metadataModel) PrimaryField() string {
+	return metadataPrimaryField
 }

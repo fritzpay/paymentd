@@ -39,6 +39,20 @@ var (
 		nil,
 		"resource already exits",
 	}
+	ErrReadParam = ServiceResponse{
+		http.StatusBadRequest,
+		StatusError,
+		"parameter malformed",
+		nil,
+		"parameter malformed",
+	}
+	ErrMethod = ServiceResponse{
+		http.StatusMethodNotAllowed,
+		StatusError,
+		"method not allowed",
+		nil,
+		"method not allowed",
+	}
 )
 
 // NewAPI creates a new admin API

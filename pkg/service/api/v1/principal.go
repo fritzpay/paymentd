@@ -11,10 +11,6 @@ import (
 	"time"
 )
 
-const (
-	APIParamPrincipalName = "principalName"
-)
-
 type PrincipalAdminAPIResponse struct {
 	AdminAPIResponse
 }
@@ -34,7 +30,7 @@ func (a *AdminAPI) PrincipalRequest() http.Handler {
 			a.postChangePrincipal(w, r)
 		} else {
 			log.Info("http method not supported: " + r.Method)
-			w.WriteHeader(http.StatusBadRequest)
+			ErrMethod.Write(w)
 		}
 	})
 }
@@ -82,6 +78,7 @@ func (a *AdminAPI) PrincipalGetRequest() http.Handler {
 		err = resp.Write(w)
 		if err != nil {
 			log.Error("write error", log15.Ctx{"err": err})
+
 			return
 		}
 	})
