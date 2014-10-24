@@ -28,6 +28,9 @@ func NewHandler(ctx *service.Context) (*Handler, error) {
 
 	h.log.Info("registering API service v1...")
 	v1.NewService(h.ctx, h.mux)
+	v1.Log = h.log.New(log15.Ctx{
+		"pkg": "github.com/fritzpay/paymentd/pkg/service/api/v1",
+	})
 
 	return h, nil
 }
