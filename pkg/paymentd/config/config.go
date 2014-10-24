@@ -6,7 +6,6 @@ import (
 	"database/sql"
 	"encoding/hex"
 	"fmt"
-	"time"
 )
 
 // Config represents a config set
@@ -15,60 +14,6 @@ type Config map[string]string
 // NewConfig creates a new config set
 func NewConfig() Config {
 	return Config(make(map[string]string))
-}
-
-// InsertConfigTx saves a config set
-//
-// This function should be used inside a (SQL-)transaction
-func InsertConfigTx(db *sql.Tx, cfg Config) error {
-	stmt, err := db.Prepare(insertEntry)
-	if err != nil {
-		return err
-	}
-	t := time.Now()
-	for n, v := range cfg {
-		_, err = stmt.Exec(n, t, v)
-		if err != nil {
-			stmt.Close()
-			return err
-		}
-	}
-	stmt.Close()
-	return nil
-}
-
-// InsertConfigIfNotPresentTx saves a config set if the names are not present
-//
-// This funtion should be used inside a (SQL-)transaction
-func InsertConfigIfNotPresentTx(db *sql.Tx, cfg Config) error {
-	checkExists, err := db.Prepare(selectEntryCountByName)
-	if err != nil {
-		return err
-	}
-	defer checkExists.Close()
-	insert, err := db.Prepare(insertEntry)
-	if err != nil {
-		return err
-	}
-	defer insert.Close()
-	var exists *sql.Row
-	var numEntries int
-	t := time.Now()
-	for n, v := range cfg {
-		exists = checkExists.QueryRow(&numEntries)
-		err = exists.Scan(&numEntries)
-		if err != nil {
-			return err
-		}
-		if numEntries > 0 {
-			continue
-		}
-		_, err = insert.Exec(n, t, v)
-		if err != nil {
-			return err
-		}
-	}
-	return nil
 }
 
 const (
