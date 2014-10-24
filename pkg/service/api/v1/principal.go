@@ -8,6 +8,7 @@ import (
 	"gopkg.in/inconshreveable/log15.v2"
 	"net/http"
 	"path"
+	"time"
 )
 
 const (
@@ -18,6 +19,10 @@ type PrincipalAdminAPIResponse struct {
 	AdminAPIResponse
 }
 
+// handler to create or change a principal
+//
+// PUT creates new principal
+// POST can be used to change the principals metadata
 func (a *AdminAPI) PrincipalRequest() http.Handler {
 
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -34,6 +39,7 @@ func (a *AdminAPI) PrincipalRequest() http.Handler {
 	})
 }
 
+// handler to display a specific existing principal
 func (a *AdminAPI) PrincipalGetRequest() http.Handler {
 
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -91,20 +97,29 @@ func (a *AdminAPI) putNewPrincipal(w http.ResponseWriter, r *http.Request) {
 	err := jd.Decode(&pr)
 	r.Body.Close()
 	if err != nil {
-		w.WriteHeader(http.StatusBadRequest)
+		ErrReadJson.Write(w)
 		log.Error("json decode failed", log15.Ctx{"err": err})
 		return
 	}
 
+	// validation createdBy has to be set
+	if len(pr.CreatedBy) < 1 {
+		ErrInval.Info = "CreatedBy has to be set"
+		log.Info("CreatedBy has to be set:" + pr.Name)
+		return
+	}
+	// set created time
+	pr.Created = time.Now()
+
+	// check if principal exists
 	db := a.ctx.PrincipalDB()
 	_, err = principal.PrincipalByNameDB(db, pr.Name)
-
 	if err == principal.ErrPrincipalNotFound {
 		// insert pr if not exists
 		// start dbtx to save metadata and pr together
 		tx, err := db.Begin()
 		if err != nil {
-			w.WriteHeader(http.StatusInternalServerError)
+			ErrDatabase.Write(w)
 			log.Error("Tx begin failed.", log15.Ctx{"err": err})
 		}
 
@@ -112,7 +127,7 @@ func (a *AdminAPI) putNewPrincipal(w http.ResponseWriter, r *http.Request) {
 		err = principal.InsertPrincipalTx(tx, &pr)
 		if err != nil {
 			tx.Rollback()
-			w.WriteHeader(http.StatusInternalServerError)
+			ErrSystem.Write(w)
 			log.Error("TX insert failed.", log15.Ctx{"err": err})
 			return
 		}
@@ -122,7 +137,7 @@ func (a *AdminAPI) putNewPrincipal(w http.ResponseWriter, r *http.Request) {
 		err = metadata.InsertMetadataTx(tx, principal.MetadataModel, pr.ID, md)
 		if err != nil {
 			tx.Rollback()
-			w.WriteHeader(http.StatusInternalServerError)
+			ErrDatabase.Write(w)
 			log.Error("TX metadata insert failed.", log15.Ctx{"err": err})
 			return
 		}
@@ -130,18 +145,18 @@ func (a *AdminAPI) putNewPrincipal(w http.ResponseWriter, r *http.Request) {
 		err = tx.Commit()
 		if err != nil {
 			tx.Rollback()
-			w.WriteHeader(http.StatusInternalServerError)
+			ErrSystem.Write(w)
 			log.Error("TX commit failed.", log15.Ctx{"err": err})
 			return
 		}
 	} else if err != nil {
 		// other db error
-		w.WriteHeader(http.StatusInternalServerError)
+		ErrSystem.Write(w)
 		log.Error("DB get by name failed.", log15.Ctx{"err": err})
 		return
 	} else {
 		// already exists
-		w.WriteHeader(http.StatusConflict)
+		ErrConflict.Write(w)
 		log.Warn("principal already exist: " + string(pr.ID) + " " + pr.Name)
 		return
 	}
@@ -149,16 +164,28 @@ func (a *AdminAPI) putNewPrincipal(w http.ResponseWriter, r *http.Request) {
 	// get data explicit from DB
 	pr, err = principal.PrincipalByNameDB(db, pr.Name)
 	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
+		ErrSystem.Write(w)
 		log.Error("DB get by name failed.", log15.Ctx{"err": err})
 		return
 	}
+	md, err := metadata.MetadataByPrimaryDB(db, principal.MetadataModel, pr.ID)
+	if len(md) > 0 {
+		pr.Metadata = md.Values()
+	}
+	if err != nil {
+		log.Error("get metadata failed.", log15.Ctx{"err": err})
+		return
+	}
 
-	je := json.NewEncoder(w)
-	err = je.Encode(&pr)
+	resp := PrincipalAdminAPIResponse{}
+	resp.HttpStatus = http.StatusOK
+	resp.Status = StatusSuccess
+	resp.Response = pr
+	resp.Info = "principal " + pr.Name + " created"
+	err = resp.Write(w)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
-		log.Error("json encode failed.", log15.Ctx{"err": err})
+		log.Error("write error", log15.Ctx{"err": err})
 		return
 	}
 }
@@ -174,7 +201,7 @@ func (a *AdminAPI) postChangePrincipal(w http.ResponseWriter, r *http.Request) {
 	err := jd.Decode(&pr)
 	r.Body.Close()
 	if err != nil {
-		w.WriteHeader(http.StatusBadRequest)
+		ErrReadJson.Write(w)
 		log.Error("json decode failed: ", log15.Ctx{"err": err})
 		return
 	}
@@ -182,7 +209,7 @@ func (a *AdminAPI) postChangePrincipal(w http.ResponseWriter, r *http.Request) {
 
 	// validation createdBy has to be set
 	if len(pr.CreatedBy) < 1 {
-		w.WriteHeader(http.StatusBadRequest)
+		ErrInval.Write(w)
 		log.Info("CreatedBy has to be set:" + pr.Name)
 		return
 	}
@@ -214,7 +241,7 @@ func (a *AdminAPI) postChangePrincipal(w http.ResponseWriter, r *http.Request) {
 	}
 	tx.Commit()
 
-	// reget from db
+	// get stored data from db
 	pr, err = principal.PrincipalByNameDB(db, pr.Name)
 	if err != nil {
 		w.WriteHeader(http.StatusNotFound)
@@ -230,12 +257,15 @@ func (a *AdminAPI) postChangePrincipal(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// respond with principal and metadata
-	je := json.NewEncoder(w)
-	err = je.Encode(&pr)
+	// create response
+	resp := PrincipalAdminAPIResponse{}
+	resp.Info = "principal " + pr.Name + " changed"
+	resp.Status = StatusSuccess
+	resp.Response = pr
+	err = resp.Write(w)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
-		log.Error("json encode failed.", log15.Ctx{"err": err})
+		log.Error("write error", log15.Ctx{"err": err})
 		return
 	}
 }

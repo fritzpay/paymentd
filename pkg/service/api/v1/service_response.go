@@ -25,7 +25,7 @@ type ServiceResponse struct {
 // default service responses
 var (
 	ErrReadJson = ServiceResponse{
-		http.StatusInternalServerError,
+		http.StatusBadRequest,
 		StatusImplementationError,
 		"could not read request",
 		nil,
@@ -73,13 +73,13 @@ func (sr *ServiceResponse) Write(w http.ResponseWriter) error {
 	// set default http states
 	if sr.HttpStatus == 0 && sr.Status == StatusSuccess && sr.Error == nil {
 		sr.HttpStatus = http.StatusOK
-	} else {
+	} else if sr.HttpStatus == 0 {
 		sr.HttpStatus = http.StatusInternalServerError
 	}
 
 	w.WriteHeader(sr.HttpStatus)
 
-	// json decode response struct
+	// json encode response struct
 	je := json.NewEncoder(w)
 	err := je.Encode(sr)
 	if err != nil {
