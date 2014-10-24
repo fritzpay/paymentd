@@ -9,6 +9,9 @@ import (
 
 func TestProviderSQL(t *testing.T) {
 	Convey("Given a payment DB connection", t, testutil.WithPaymentDB(t, func(db *sql.DB) {
+		Reset(func() {
+			db.Close()
+		})
 		Convey("When selecting the test provider", func() {
 			pr, err := ProviderByIDDB(db, 1)
 

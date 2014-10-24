@@ -12,8 +12,13 @@ import (
 
 func TestPaymentMethodSQL(t *testing.T) {
 	Convey("Given a payment DB connection", t, testutil.WithPaymentDB(t, func(db *sql.DB) {
+		Reset(func() {
+			db.Close()
+		})
 		Convey("Given a principal DB connection", testutil.WithPrincipalDB(t, func(prDB *sql.DB) {
-
+			Reset(func() {
+				prDB.Close()
+			})
 			Convey("Given a test principal", func() {
 				princ := principal.Principal{}
 				princ.Name = "payment_method_testprincipal"
