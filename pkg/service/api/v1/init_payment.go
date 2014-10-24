@@ -430,8 +430,7 @@ func (h *initPaymentHandler) validateRequest() bool {
 	return true
 }
 
-// validates whether request fields are acceptable
-func (h *initPaymentHandler) validateRequestPaymentFields() bool {
+func (h *initPaymentHandler) readRequestCurrency() bool {
 	var err error
 	// currency
 	h.requestCurrency, err = currency.CurrencyByCodeISO4217DB(h.ctx.PaymentDB(service.ReadOnly), h.req.Currency)
@@ -556,7 +555,7 @@ func (a *PaymentAPI) InitPayment() http.Handler {
 			// TODO include nonce handling
 		}
 		// validate payment fields
-		if !handler.validateRequestPaymentFields() {
+		if !handler.readRequestCurrency() {
 			return
 		}
 		if handler.requestCurrency.IsEmpty() {
