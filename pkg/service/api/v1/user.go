@@ -5,17 +5,27 @@ import (
 	"net/http"
 )
 
+type UserAdminAPIResponse struct {
+	AdminAPIResponse
+}
+
 // GetUserID returns a utility handler. This endpoint displays the user ID, which is stored
 // in the authorization container
 func (a *AdminAPI) GetUserID() http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "text/plain")
+		w.Header().Set("Content-Type", "application/json")
 		if r.Method != "GET" {
-			w.WriteHeader(http.StatusMethodNotAllowed)
+			ErrMethod.Write(w)
 			return
 		}
 		ctx := service.RequestContext(r)
 		auth := ctx.Value(service.ContextVarAuthKey).(map[string]interface{})
-		w.Write([]byte(auth[AuthUserIDKey].(string)))
+
+		resp := UserAdminAPIResponse{}
+		resp.Info = "user id"
+		resp.Status = StatusSuccess
+		resp.Response = auth[AuthUserIDKey].(string)
+		resp.Write(w)
+
 	})
 }
