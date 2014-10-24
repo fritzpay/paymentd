@@ -391,6 +391,10 @@ func (h *initPaymentHandler) finish() {
 	}
 }
 
+// utility function. used when a request had to be present in the handling flow
+//
+// if the request was somehow not read, it will log a critical error and set the
+// internal error response
 func (h *initPaymentHandler) requiredRequest() *InitPaymentRequest {
 	if h.req == nil {
 		h.log.Crit("internal error. missing required request")
@@ -690,6 +694,34 @@ func (a *PaymentAPI) InitPayment() http.Handler {
 				return
 			}
 		}
+		// payment token
+		token, err := payment.CreatePaymentToken(p.PaymentID())
+		if err != nil {
+			log.Error("error creating payment token", log15.Ctx{"err": err})
+			handler.httpStatus = http.StatusInternalServerError
+			handler.resp = ErrSystem
+			return
+		}
+		err = payment.InsertPaymentTokenTx(tx, token)
+		if err != nil {
+			if mysqlErr, ok := err.(*mysql.MySQLError); ok {
+				// lock error
+				if mysqlErr.Number == 1213 {
+					retries++
+					time.Sleep(time.Second)
+					goto beginTx
+				}
+			}
+			log.Error("error saving payment token", log15.Ctx{"err": err})
+			handler.httpStatus = http.StatusInternalServerError
+			handler.resp = ErrDatabase
+			return
+		}
+
+		resp := &InitPaymentResponse{}
+		resp.ConfirmationFromRequest(req)
+		resp.ConfirmationFromPayment(*p)
+
 		err = tx.Commit()
 		if err != nil {
 			if mysqlErr, ok := err.(*mysql.MySQLError); ok {
