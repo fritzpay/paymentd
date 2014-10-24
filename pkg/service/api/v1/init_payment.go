@@ -702,7 +702,7 @@ func (a *PaymentAPI) InitPayment() http.Handler {
 			handler.resp = ErrSystem
 			return
 		}
-		err = payment.InsertPaymentTokenTx(tx, token)
+		err = payment.InsertPaymentTokenTx(tx, &token)
 		if err != nil {
 			if mysqlErr, ok := err.(*mysql.MySQLError); ok {
 				// lock error

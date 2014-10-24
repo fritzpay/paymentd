@@ -5,7 +5,7 @@ import (
 	"github.com/go-sql-driver/mysql"
 )
 
-func InsertPaymentTokenTx(tx *sql.Tx, t PaymentToken) error {
+func InsertPaymentTokenTx(tx *sql.Tx, t *PaymentToken) error {
 	const insert = `
 INSERT INTO payment_token
 (token, created, project_id, payment_id)
@@ -24,8 +24,8 @@ VALUES
 	stmt.Close()
 	if err != nil {
 		if mysqlErr, ok := err.(*mysql.MySQLError); ok {
-			// MySQL Error 1068 SQLSTATE: 42000 (ER_MULTIPLE_PRI_KEY)
-			if mysqlErr.Number == 1068 {
+			// MySQL Error 1062 duplicate key
+			if mysqlErr.Number == 1062 {
 				err = t.GenerateToken()
 				if err != nil {
 					return err

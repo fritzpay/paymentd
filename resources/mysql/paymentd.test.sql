@@ -370,15 +370,6 @@ CREATE TABLE IF NOT EXISTS `fritzpay_principal_test`.`project_key` (
     ON UPDATE CASCADE)
 ENGINE = InnoDB;
 
-SET SQL_MODE = '';
-GRANT USAGE ON *.* TO paymentd;
- DROP USER paymentd;
-SET SQL_MODE='TRADITIONAL,ALLOW_INVALID_DATES';
-CREATE USER 'paymentd';
-
-GRANT SELECT, INSERT ON TABLE fritzpay_payment_test.* TO 'paymentd';
-GRANT SELECT, INSERT ON TABLE fritzpay_principal_test.* TO 'paymentd';
-
 SET SQL_MODE=@OLD_SQL_MODE;
 SET FOREIGN_KEY_CHECKS=@OLD_FOREIGN_KEY_CHECKS;
 SET UNIQUE_CHECKS=@OLD_UNIQUE_CHECKS;
@@ -389,6 +380,8 @@ SET UNIQUE_CHECKS=@OLD_UNIQUE_CHECKS;
 START TRANSACTION;
 USE `fritzpay_payment_test`;
 INSERT INTO `fritzpay_payment_test`.`provider` (`id`, `name`) VALUES (1, 'fritzpay');
+INSERT INTO `fritzpay_payment_test`.`currency` (`code_iso_4217`) VALUES ('EUR'), ('USD');
 
 COMMIT;
+
 
