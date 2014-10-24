@@ -6,6 +6,7 @@ import (
 	"github.com/fritzpay/paymentd/pkg/paymentd/principal"
 	"github.com/fritzpay/paymentd/pkg/paymentd/project"
 	. "github.com/smartystreets/goconvey/convey"
+	"testing"
 	"time"
 )
 
@@ -54,4 +55,20 @@ func WithTestPayment(tx *sql.Tx, pr project.Project, f func(p Payment)) func() {
 
 		f(*p)
 	}
+}
+
+func TestPaymentAmountDecimal(t *testing.T) {
+	Convey("Given a payment", t, func() {
+		p := &Payment{}
+		p.Amount = 1234
+		p.Subunits = 2
+
+		Convey("When retrieving the decimal amount representation", func() {
+			dec := p.Decimal()
+
+			Convey("It should be correctly represented", func() {
+				So(dec.String(), ShouldEqual, "12.34")
+			})
+		})
+	})
 }
