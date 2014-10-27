@@ -1,9 +1,11 @@
+// +build ignore
+
 package project_test
 
 import (
 	"database/sql"
 	"github.com/fritzpay/paymentd/pkg/paymentd/principal"
-	. "github.com/fritzpay/paymentd/pkg/paymentd/project"
+	"github.com/fritzpay/paymentd/pkg/paymentd/project"
 	. "github.com/smartystreets/goconvey/convey"
 )
 
