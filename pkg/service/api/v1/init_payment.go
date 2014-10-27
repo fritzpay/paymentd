@@ -233,7 +233,7 @@ type InitPaymentResponse struct {
 		// RFC3339 date/time string
 		Created     string
 		Token       string
-		RedirectURL string
+		RedirectURL string `json:",omitempty"`
 	}
 	Timestamp int64 `json:",string"`
 	Nonce     string
@@ -242,27 +242,29 @@ type InitPaymentResponse struct {
 
 // ConfirmationFromPayment populates the response "Confirmation" object with
 // the fields from the given payment
-func (r *InitPaymentResponse) ConfirmationFromPayment(p payment.Payment) {
+func (r *InitPaymentResponse) ConfirmationFromPayment(p *payment.Payment) {
 	r.Confirmation.Ident = p.Ident
 	r.Confirmation.Amount = p.Amount
 	r.Confirmation.Subunits = p.Subunits
 	r.Confirmation.Currency = p.Currency
-}
 
-// ConfirmationFromRequest populates the response "Confirmation" object with
-// the fields from the given request
-func (r *InitPaymentResponse) ConfirmationFromRequest(req *InitPaymentRequest) {
-	if req.Locale != "" {
-		r.Confirmation.Locale = req.Locale
+	if p.Config.Locale.Valid {
+		r.Confirmation.Locale = p.Config.Locale.String
 	}
-	if req.CallbackURL != "" {
-		r.Confirmation.CallbackURL = req.CallbackURL
+	if p.Config.Country.Valid {
+		r.Confirmation.Country = p.Config.Country.String
 	}
-	if req.ReturnURL != "" {
-		r.Confirmation.ReturnURL = req.ReturnURL
+	if p.Config.PaymentMethodID.Valid {
+		r.Confirmation.PaymentMethodID = p.Config.PaymentMethodID.Int64
 	}
-	if req.Metadata != nil {
-		r.Confirmation.Metadata = req.Metadata
+	if p.CallbackURL.Valid {
+		r.Confirmation.CallbackURL = p.CallbackURL.String
+	}
+	if p.ReturnURL.Valid {
+		r.Confirmation.ReturnURL = p.ReturnURL.String
+	}
+	if p.Metadata != nil {
+		r.Confirmation.Metadata = p.Metadata
 	}
 }
 
@@ -364,7 +366,10 @@ func (r *InitPaymentResponse) SignatureBaseString() (string, error) {
 	return s, nil
 }
 
-func (a *PaymentAPI) authenticateMessage(projectKey project.Projectkey, msg service.Signed) (bool, error) {
+func (a *PaymentAPI) authenticateMessage(projectKey *project.Projectkey, msg service.Signed) (bool, error) {
+	if projectKey == nil || !projectKey.IsValid() {
+		return false, fmt.Errorf("invalid project key: %+v", projectKey)
+	}
 	secret, err := projectKey.SecretBytes()
 	if err != nil {
 		return false, err
@@ -478,7 +483,7 @@ func (a *PaymentAPI) InitPayment() http.Handler {
 			Subunits: req.Subunits.Int8,
 			Currency: curr.CodeISO4217,
 		}
-		err = p.SetProject(projectKey.Project)
+		err = p.SetProject(&projectKey.Project)
 		if err != nil {
 			log.Error("error setting payment project", log15.Ctx{"err": err})
 			resp = ErrSystem
@@ -560,17 +565,16 @@ func (a *PaymentAPI) InitPayment() http.Handler {
 			return
 		}
 		// payment config fields
-		paymentCfg := payment.PaymentConfig{Payment: *p}
 		if req.PaymentMethodID != 0 {
-			paymentCfg.PaymentMethodID.Int64, paymentCfg.PaymentMethodID.Valid = req.PaymentMethodID, true
+			p.Config.PaymentMethodID.Int64, p.Config.PaymentMethodID.Valid = req.PaymentMethodID, true
 		}
 		if req.Country != "" {
-			paymentCfg.Country.String, paymentCfg.Country.Valid = req.Country, true
+			p.Config.Country.String, p.Config.Country.Valid = req.Country, true
 		}
 		if req.Locale != "" {
-			paymentCfg.Locale.String, paymentCfg.Locale.Valid = req.Locale, true
+			p.Config.Locale.String, p.Config.Locale.Valid = req.Locale, true
 		}
-		err = payment.InsertPaymentConfigTx(tx, paymentCfg)
+		err = payment.InsertPaymentConfigTx(tx, p)
 		if err != nil {
 			log.Error("error on insert payment config", log15.Ctx{"err": err})
 			resp = ErrDatabase
@@ -578,7 +582,7 @@ func (a *PaymentAPI) InitPayment() http.Handler {
 		}
 		// payment metadata
 		if req.Metadata != nil {
-			err = payment.InsertPaymentMetadataTx(tx, p.PaymentID(), req.Metadata)
+			err = payment.InsertPaymentMetadataTx(tx, p)
 			if err != nil {
 				log.Error("error on insert payment metadata", log15.Ctx{"err": err})
 				resp = ErrDatabase
@@ -586,13 +590,13 @@ func (a *PaymentAPI) InitPayment() http.Handler {
 			}
 		}
 		// payment token
-		token, err := payment.CreatePaymentToken(p.PaymentID())
+		token, err := payment.NewPaymentToken(p.PaymentID())
 		if err != nil {
 			log.Error("error creating payment token", log15.Ctx{"err": err})
 			resp = ErrSystem
 			return
 		}
-		err = payment.InsertPaymentTokenTx(tx, &token)
+		err = payment.InsertPaymentTokenTx(tx, token)
 		if err != nil {
 			if mysqlErr, ok := err.(*mysql.MySQLError); ok {
 				// lock error
@@ -608,8 +612,57 @@ func (a *PaymentAPI) InitPayment() http.Handler {
 		}
 
 		paymentResp := &InitPaymentResponse{}
-		paymentResp.ConfirmationFromRequest(req)
-		paymentResp.ConfirmationFromPayment(*p)
+		paymentResp.ConfirmationFromPayment(p)
+		if encoder, ok := a.ctx.Value(serviceContextPaymentIDEncoder).(*payment.IDEncoder); !ok {
+			log.Error("error retrieving payment id encoder from context")
+			resp = ErrSystem
+			return
+		} else {
+			paymentResp.Payment.PaymentId = p.PaymentID().Encoded(encoder)
+		}
+		paymentResp.Payment.Created = p.Created.UTC().Format(time.RFC3339)
+		paymentResp.Payment.Token = token.Token
+
+		if projectKey.Project.Config.WebURL.Valid {
+			redirect, err := url.ParseRequestURI(projectKey.Project.Config.WebURL.String)
+			if err != nil {
+				log.Error("could not parse project URL", log15.Ctx{
+					"err":    err,
+					"rawURL": projectKey.Project.Config.WebURL.String,
+				})
+				resp = ErrSystem
+				return
+			}
+			redirectQ := redirect.Query()
+			// TODO replace token with constant which will be also used by web service
+			redirectQ.Set("token", token.Token)
+			redirect.RawQuery = redirectQ.Encode()
+			paymentResp.Payment.RedirectURL = redirect.String()
+		}
+
+		n, err := nonce.New()
+		if err != nil {
+			log.Error("error generating nonce", log15.Ctx{"err": err})
+			resp = ErrSystem
+			return
+		}
+		// TODO save nonce
+		paymentResp.Nonce = n.Nonce
+		paymentResp.Timestamp = time.Now().Unix()
+
+		secret, err := projectKey.SecretBytes()
+		if err != nil {
+			log.Error("error retrieving project secret", log15.Ctx{"err": err})
+			resp = ErrSystem
+			return
+		}
+		sig, err := service.Sign(paymentResp, secret)
+		if err != nil {
+			log.Error("error signing response", log15.Ctx{"err": err})
+			resp = ErrSystem
+			return
+		}
+		paymentResp.Signature = hex.EncodeToString(sig)
 
 		err = tx.Commit()
 		if err != nil {
@@ -627,5 +680,10 @@ func (a *PaymentAPI) InitPayment() http.Handler {
 			return
 		}
 		commit = true
+
+		const info = "payment initiated"
+		resp.Status = StatusSuccess
+		resp.Info = info
+		resp.Response = paymentResp
 	})
 }

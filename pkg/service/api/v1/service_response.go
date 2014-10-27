@@ -112,6 +112,9 @@ var (
 )
 
 func (sr *ServiceResponse) Write(w http.ResponseWriter) error {
+	if sr.Version == "" {
+		sr.Version = APIVersion
+	}
 	if sr.Error != nil {
 		Log.Warn("use of deprecated Error field", log15.Ctx{"ServiceResponse": sr})
 	}

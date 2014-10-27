@@ -42,7 +42,7 @@ func WithTestProject(db, prDB *sql.DB, f func(pr project.Project)) func() {
 func WithTestPayment(tx *sql.Tx, pr project.Project, f func(p Payment)) func() {
 	return func() {
 		p := &Payment{}
-		err := p.SetProject(pr)
+		err := p.SetProject(&pr)
 		So(err, ShouldBeNil)
 
 		p.Amount = 1234

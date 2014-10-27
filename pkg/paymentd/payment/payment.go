@@ -26,26 +26,30 @@ type Payment struct {
 
 	CallbackURL sql.NullString
 	ReturnURL   sql.NullString
+
+	Config Config
+
+	Metadata map[string]string
 }
 
-func (p Payment) Valid() bool {
+func (p *Payment) Valid() bool {
 	return p.projectID != 0 && p.id != 0 && p.Ident != "" && p.Currency != ""
 }
 
-// PaymentID returns the indentifier for the payment
-func (p Payment) PaymentID() PaymentID {
+// PaymentID returns the identifier for the payment
+func (p *Payment) PaymentID() PaymentID {
 	return PaymentID{p.ProjectID(), p.ID()}
 }
 
-func (p Payment) ID() int64 {
+func (p *Payment) ID() int64 {
 	return p.id
 }
 
-func (p Payment) ProjectID() int64 {
+func (p *Payment) ProjectID() int64 {
 	return p.projectID
 }
 
-func (p *Payment) SetProject(pr project.Project) error {
+func (p *Payment) SetProject(pr *project.Project) error {
 	if pr.Empty() {
 		return fmt.Errorf("cannot assign empty project")
 	}
@@ -54,22 +58,20 @@ func (p *Payment) SetProject(pr project.Project) error {
 }
 
 // Decimal returns the decimal representation of the Amount and Subunits values
-func (p Payment) Decimal() decimal.Decimal {
+func (p *Payment) Decimal() decimal.Decimal {
 	d := dec.NewDecInt64(p.Amount)
 	sc := dec.Scale(int32(p.Subunits))
 	d.SetScale(sc)
 	return decimal.Decimal{Dec: d}
 }
 
-type PaymentConfig struct {
-	Payment Payment
-
+type Config struct {
 	Timestamp       time.Time
 	PaymentMethodID sql.NullInt64
 	Country         sql.NullString
 	Locale          sql.NullString
 }
 
-func (cfg PaymentConfig) IsConfigured() bool {
+func (cfg *Config) IsConfigured() bool {
 	return cfg.PaymentMethodID.Valid && cfg.Country.Valid && cfg.Locale.Valid
 }
