@@ -233,7 +233,7 @@ type InitPaymentResponse struct {
 		// RFC3339 date/time string
 		Created     string
 		Token       string
-		RedirectURL string
+		RedirectURL string `json:",omitempty"`
 	}
 	Timestamp int64 `json:",string"`
 	Nonce     string
@@ -620,6 +620,47 @@ func (a *PaymentAPI) InitPayment() http.Handler {
 		paymentResp.Payment.Created = p.Created.UTC().Format(time.RFC3339)
 		paymentResp.Payment.Token = token.Token
 
+		if projectKey.Project.Config.WebURL.Valid {
+			redirect, err := url.ParseRequestURI(projectKey.Project.Config.WebURL.String)
+			if err != nil {
+				log.Error("could not parse project URL", log15.Ctx{
+					"err":    err,
+					"rawURL": projectKey.Project.Config.WebURL.String,
+				})
+				resp = ErrSystem
+				return
+			}
+			redirectQ := redirect.Query()
+			// TODO replace token with constant which will be also used by web service
+			redirectQ.Set("token", token.Token)
+			redirect.RawQuery = redirectQ.Encode()
+			paymentResp.Payment.RedirectURL = redirect.String()
+		}
+
+		n, err := nonce.New()
+		if err != nil {
+			log.Error("error generating nonce", log15.Ctx{"err": err})
+			resp = ErrSystem
+			return
+		}
+		// TODO save nonce
+		paymentResp.Nonce = n.Nonce
+		paymentResp.Timestamp = time.Now().Unix()
+
+		secret, err := projectKey.SecretBytes()
+		if err != nil {
+			log.Error("error retrieving project secret", log15.Ctx{"err": err})
+			resp = ErrSystem
+			return
+		}
+		sig, err := service.Sign(paymentResp, secret)
+		if err != nil {
+			log.Error("error signing response", log15.Ctx{"err": err})
+			resp = ErrSystem
+			return
+		}
+		paymentResp.Signature = hex.EncodeToString(sig)
+
 		err = tx.Commit()
 		if err != nil {
 			if mysqlErr, ok := err.(*mysql.MySQLError); ok {
@@ -636,5 +677,10 @@ func (a *PaymentAPI) InitPayment() http.Handler {
 			return
 		}
 		commit = true
+
+		const info = "payment initiated"
+		resp.Status = StatusSuccess
+		resp.Info = info
+		resp.Response = paymentResp
 	})
 }
