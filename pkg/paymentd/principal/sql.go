@@ -15,11 +15,11 @@ const insertPrincipal = `
 INSERT INTO principal
 (created, created_by, name)
 VALUES
-(NOW(), ?, ?)
+(?, ?, ?)
 `
 
 func execInsertPrincipal(insert *sql.Stmt, p *Principal) error {
-	res, err := insert.Exec(p.CreatedBy, p.Name)
+	res, err := insert.Exec(p.Created, p.CreatedBy, p.Name)
 	if err != nil {
 		insert.Close()
 		return err
