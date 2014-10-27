@@ -610,7 +610,13 @@ func (a *PaymentAPI) InitPayment() http.Handler {
 
 		paymentResp := &InitPaymentResponse{}
 		paymentResp.ConfirmationFromPayment(p)
-		paymentResp.Payment.PaymentId = p.PaymentID()
+		if encoder, ok := a.ctx.Value(serviceContextPaymentIDEncoder).(*payment.IDEncoder); !ok {
+			log.Error("error retrieving payment id encoder from context")
+			resp = ErrSystem
+			return
+		} else {
+			paymentResp.Payment.PaymentId = p.PaymentID().Encoded(encoder)
+		}
 		paymentResp.Payment.Created = p.Created.UTC().Format(time.RFC3339)
 		paymentResp.Payment.Token = token.Token
 
