@@ -37,6 +37,8 @@ func NewService(ctx *service.Context, mux *http.ServeMux) *Service {
 
 		mux.Handle(ServicePath+"/principal", admin.AuthRequiredHandler(admin.PrincipalRequest()))
 		mux.Handle(ServicePath+"/principal/", admin.AuthRequiredHandler(admin.PrincipalGetRequest()))
+		mux.Handle(ServicePath+"/provider", admin.AuthRequiredHandler(admin.ProviderGetAllRequest()))
+		mux.Handle(ServicePath+"/provider/", admin.AuthRequiredHandler(admin.ProviderGetRequest()))
 		mux.Handle(ServicePath+"/project", admin.AuthRequiredHandler(admin.ProjectRequest()))
 		mux.Handle(ServicePath+"/project/", admin.AuthRequiredHandler(admin.ProjectGetRequest()))
 		mux.Handle(ServicePath+"/currency", admin.AuthRequiredHandler(admin.CurrencyGetAllRequest()))
