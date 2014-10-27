@@ -3,6 +3,7 @@ package api
 import (
 	"github.com/fritzpay/paymentd/pkg/service"
 	"github.com/fritzpay/paymentd/pkg/service/api/v1"
+	"github.com/gorilla/mux"
 	"gopkg.in/inconshreveable/log15.v2"
 	"net/http"
 )
@@ -23,7 +24,7 @@ func NewHandler(ctx *service.Context) (*Handler, error) {
 			"pkg": "github.com/fritzpay/paymentd/pkg/service/api",
 		}),
 
-		mux: http.NewServeMux(),
+		mux: mux.NewRouter(),
 	}
 
 	h.log.Info("registering API service v1...")

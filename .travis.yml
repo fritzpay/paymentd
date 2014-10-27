@@ -13,6 +13,8 @@ go:
 install:
   - go get code.google.com/p/go.tools/cmd/vet
   - go get github.com/tools/godep
+  - go get github.com/gorilla/mux
+
   - $HOME/gopath/bin/godep restore ./...
 
 script: go vet ./... && go test ./... -v
