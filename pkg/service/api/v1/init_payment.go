@@ -579,7 +579,7 @@ func (a *PaymentAPI) InitPayment() http.Handler {
 		}
 		// payment metadata
 		if req.Metadata != nil {
-			err = payment.InsertPaymentMetadataTx(tx, p.PaymentID(), req.Metadata)
+			err = payment.InsertPaymentMetadataTx(tx, p)
 			if err != nil {
 				log.Error("error on insert payment metadata", log15.Ctx{"err": err})
 				resp = ErrDatabase

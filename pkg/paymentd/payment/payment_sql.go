@@ -120,16 +120,19 @@ VALUES
 (?, ?, ?, ?, ?)
 `
 
-func InsertPaymentMetadataTx(db *sql.Tx, id PaymentID, metadata map[string]string) error {
+func InsertPaymentMetadataTx(db *sql.Tx, p *Payment) error {
+	if p.Metadata == nil {
+		return nil
+	}
 	stmt, err := db.Prepare(insertPaymentMetadata)
 	if err != nil {
 		return err
 	}
 	ts := time.Now().UnixNano()
-	for n, v := range metadata {
+	for n, v := range p.Metadata {
 		_, err = stmt.Exec(
-			id.ProjectID,
-			id.PaymentID,
+			p.ProjectID(),
+			p.ID(),
 			n,
 			ts,
 			v,
