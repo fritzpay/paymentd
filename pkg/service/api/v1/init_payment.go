@@ -366,7 +366,10 @@ func (r *InitPaymentResponse) SignatureBaseString() (string, error) {
 	return s, nil
 }
 
-func (a *PaymentAPI) authenticateMessage(projectKey project.Projectkey, msg service.Signed) (bool, error) {
+func (a *PaymentAPI) authenticateMessage(projectKey *project.Projectkey, msg service.Signed) (bool, error) {
+	if projectKey == nil || !projectKey.IsValid() {
+		return false, fmt.Errorf("invalid project key: %+v", projectKey)
+	}
 	secret, err := projectKey.SecretBytes()
 	if err != nil {
 		return false, err

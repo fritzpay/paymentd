@@ -81,8 +81,8 @@ WHERE
 	name = ?
 `
 
-func scanProject(row *sql.Row) (Project, error) {
-	p := Project{}
+func scanProject(row *sql.Row) (*Project, error) {
+	p := &Project{}
 	err := row.Scan(&p.ID, &p.PrincipalID, &p.Name, &p.Created, &p.CreatedBy)
 	if err != nil {
 		if err == sql.ErrNoRows {
@@ -96,7 +96,7 @@ func scanProject(row *sql.Row) (Project, error) {
 // ProjectByIdDB selects a project by the given project id
 //
 // If no such project exists, it will return an empty project
-func ProjectByIdDB(db *sql.DB, projectId int64) (Project, error) {
+func ProjectByIdDB(db *sql.DB, projectId int64) (*Project, error) {
 	row := db.QueryRow(selectProjectById, projectId)
 	return scanProject(row)
 }
@@ -104,7 +104,7 @@ func ProjectByIdDB(db *sql.DB, projectId int64) (Project, error) {
 // ProjectByIdTx selects a project by the given project id
 //
 // If no such project exists, it will return an empty project
-func ProjectByIdTx(db *sql.Tx, projectId int64) (Project, error) {
+func ProjectByIdTx(db *sql.Tx, projectId int64) (*Project, error) {
 	row := db.QueryRow(selectProjectById, projectId)
 	return scanProject(row)
 }
@@ -112,7 +112,7 @@ func ProjectByIdTx(db *sql.Tx, projectId int64) (Project, error) {
 // ProjectByName selects a project by the given project name
 //
 // If no such project exists, it will return an empty project
-func ProjectByNameDB(db *sql.DB, projectName string) (Project, error) {
+func ProjectByNameDB(db *sql.DB, projectName string) (*Project, error) {
 	row := db.QueryRow(selectProjectByName, projectName)
 	return scanProject(row)
 }
@@ -120,7 +120,7 @@ func ProjectByNameDB(db *sql.DB, projectName string) (Project, error) {
 // ProjectByNameTx selects a project by the given project name
 //
 // If no such project exists, it will return an empty project
-func ProjectByNameTx(db *sql.Tx, projectName string) (Project, error) {
+func ProjectByNameTx(db *sql.Tx, projectName string) (*Project, error) {
 	row := db.QueryRow(selectProjectByName, projectName)
 	return scanProject(row)
 }
@@ -153,8 +153,8 @@ WHERE
 	)
 `
 
-func scanProjectKey(row *sql.Row) (Projectkey, error) {
-	pk := Projectkey{}
+func scanProjectKey(row *sql.Row) (*Projectkey, error) {
+	pk := &Projectkey{}
 	err := row.Scan(
 		&pk.Key,
 		&pk.Timestamp,
@@ -177,7 +177,7 @@ func scanProjectKey(row *sql.Row) (Projectkey, error) {
 }
 
 // ProjectKeyByKeyDB selects a project key by the given key
-func ProjectKeyByKeyDB(db *sql.DB, key string) (Projectkey, error) {
+func ProjectKeyByKeyDB(db *sql.DB, key string) (*Projectkey, error) {
 	row := db.QueryRow(selectProjectKeyByKey, key)
 	return scanProjectKey(row)
 }

@@ -160,8 +160,8 @@ func (a *AdminAPI) postChangeProject(w http.ResponseWriter, r *http.Request) {
 
 	// get Metadata from post variables
 	jd := json.NewDecoder(r.Body)
-	pr := project.Project{}
-	err := jd.Decode(&pr)
+	pr := &project.Project{}
+	err := jd.Decode(pr)
 	r.Body.Close()
 	if err != nil {
 		ErrReadJson.Write(w)
@@ -184,7 +184,7 @@ func (a *AdminAPI) postChangeProject(w http.ResponseWriter, r *http.Request) {
 		log.Error("start transaction DB failed: "+pr.Name, log15.Ctx{"err": err})
 		return
 	}
-	var prdb project.Project
+	var prdb *project.Project
 	prdb, err = project.ProjectByNameDB(db, pr.Name)
 	if err != nil {
 		ErrDatabase.Write(w)

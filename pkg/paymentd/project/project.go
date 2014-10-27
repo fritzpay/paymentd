@@ -28,7 +28,7 @@ type Project struct {
 }
 
 // Empty returns true if the project is considered empty/uninitialized
-func (p Project) Empty() bool {
+func (p *Project) Empty() bool {
 	return p.ID == 0 && p.Name == ""
 }
 
