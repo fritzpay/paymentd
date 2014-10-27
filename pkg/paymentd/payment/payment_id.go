@@ -41,11 +41,25 @@ func ParsePaymentIDStr(str string) (PaymentID, error) {
 	return id, nil
 }
 
+func ParseEncodedPaymentIDStr(str string, enc *IDEncoder) (PaymentID, error) {
+	id, err := ParsePaymentIDStr(str)
+	if err != nil {
+		return id, err
+	}
+	id.PaymentID = enc.Show(id.PaymentID)
+	return id, nil
+}
+
 // String returns the string representation of a payment ID
 //
 // It is the inverse of the ParsePaymentIDStr
 func (p PaymentID) String() string {
 	return strconv.FormatInt(p.ProjectID, 10) + "-" + strconv.FormatInt(p.PaymentID, 10)
+}
+
+func (p PaymentID) Encoded(enc *IDEncoder) PaymentID {
+	p.PaymentID = enc.Hide(p.PaymentID)
+	return p
 }
 
 // MarshalJSON so it can be marshalled to JSON
