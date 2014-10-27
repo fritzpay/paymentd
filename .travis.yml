@@ -1,5 +1,9 @@
 language: go
 
+services:
+  - mysql
+  - redis
+
 go:
   - 1.2
   - 1.3
@@ -12,3 +16,9 @@ install:
   - $HOME/gopath/bin/godep restore ./...
 
 script: go vet ./... && go test ./... -v
+
+before_script:
+  - mysql -u root < ./resources/mysql/paymentd.test.sql
+  - export PAYMENTD_MYSQLTEST=true
+  - export PAYMENTD_MYSQLTEST_PAYMENTDSN="root@tcp(localhost:3306)/fritzpay_payment_test?charset=utf8mb4&parseTime=true&loc=UTC&timeout=1m&wait_timeout=30&interactive_timeout=30"
+  - export PAYMENTD_MYSQLTEST_PRINCIPALDSN="root@tcp(localhost:3306)/fritzpay_principal_test?charset=utf8mb4&parseTime=true&loc=UTC&timeout=1m&wait_timeout=30&interactive_timeout=30"

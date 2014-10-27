@@ -28,12 +28,8 @@ WHERE
 	)
 `
 
-func MetadataByPrimaryDB(db *sql.DB, m MetadataModeler, primary int64) (Metadata, error) {
-	query := fmt.Sprintf(metadataByPrimary, m.Table(), m.PrimaryField())
-	rows, err := db.Query(query, primary)
-	if err != nil {
-		return nil, err
-	}
+func metadataFromRows(rows *sql.Rows) (Metadata, error) {
+	var err error
 	metadata := Metadata(make(map[string]MetadataEntry))
 	var t int64
 	var e MetadataEntry
@@ -49,6 +45,24 @@ func MetadataByPrimaryDB(db *sql.DB, m MetadataModeler, primary int64) (Metadata
 	err = rows.Err()
 	rows.Close()
 	return metadata, err
+}
+
+func MetadataByPrimaryDB(db *sql.DB, m MetadataModeler, primary int64) (Metadata, error) {
+	query := fmt.Sprintf(metadataByPrimary, m.Table(), m.PrimaryField())
+	rows, err := db.Query(query, primary)
+	if err != nil {
+		return nil, err
+	}
+	return metadataFromRows(rows)
+}
+
+func MetadataByPrimaryTx(db *sql.Tx, m MetadataModeler, primary int64) (Metadata, error) {
+	query := fmt.Sprintf(metadataByPrimary, m.Table(), m.PrimaryField())
+	rows, err := db.Query(query, primary)
+	if err != nil {
+		return nil, err
+	}
+	return metadataFromRows(rows)
 }
 
 const metadataByPrimaryAndName = metadataFields + `

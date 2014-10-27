@@ -94,7 +94,7 @@ func (a *AdminAPI) respondWithAuthorization(w http.ResponseWriter) {
 			Value:    resp.Authorization,
 			Path:     ServicePath,
 			Expires:  auth.Expiry(),
-			HttpOnly: a.ctx.Config().API.Cookie.HttpOnly,
+			HttpOnly: a.ctx.Config().API.Cookie.HTTPOnly,
 			Secure:   a.ctx.Config().API.Cookie.Secure,
 		}
 		http.SetCookie(w, c)
