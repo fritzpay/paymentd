@@ -19,7 +19,8 @@ func WithService(ctx *service.Context, logChan <-chan *log15.Record, f func(s *S
 		So(logMsg.Msg, ShouldEqual, testMsg)
 
 		mux := http.NewServeMux()
-		service := NewService(ctx, mux)
+		service, err := NewService(ctx, mux)
+		So(err, ShouldBeNil)
 
 		f(service, mux)
 	}

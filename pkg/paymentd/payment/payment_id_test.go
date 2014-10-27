@@ -2,6 +2,7 @@ package payment
 
 import (
 	. "github.com/smartystreets/goconvey/convey"
+	"math/rand"
 	"testing"
 )
 
@@ -28,4 +29,29 @@ func TestPaymentID(t *testing.T) {
 			})
 		})
 	})
+}
+
+func TestIDEncoderModInv(t *testing.T) {
+	Convey("Given a prime int64", t, func() {
+		prime := int64(982450871)
+		Convey("When calculating the modinv", func() {
+			m, err := NewIDEncoder(prime, rand.Int63())
+			So(err, ShouldBeNil)
+			t.Logf("prime %d inv %d", prime, m.inv.Int64())
+			Convey("Given a random int64", func() {
+				r := rand.Int63()
+				Convey("When encoding with the prime", func() {
+					rn := m.Hide(r)
+					t.Logf("%d encoded: %d", r, rn)
+					Convey("When decoding given the inverse", func() {
+						dec := m.Show(rn)
+						Convey("It should match the original random int64", func() {
+							So(dec, ShouldEqual, r)
+						})
+					})
+				})
+			})
+		})
+	})
+
 }

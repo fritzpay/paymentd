@@ -2,7 +2,10 @@ package payment
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
+	"math"
+	"math/big"
 	"strconv"
 	"strings"
 )
@@ -59,4 +62,42 @@ func (p *PaymentID) UnmarshalJSON(data []byte) error {
 	}
 	*p, err = ParsePaymentIDStr(str)
 	return err
+}
+
+type IDEncoder struct {
+	max   *big.Int
+	prime *big.Int
+	inv   *big.Int
+	xor   *big.Int
+}
+
+func NewIDEncoder(p, xor int64) (*IDEncoder, error) {
+	m := &IDEncoder{}
+	m.max = big.NewInt(math.MaxInt64)
+	m.prime = big.NewInt(p)
+	m.inv = new(big.Int)
+	m.xor = big.NewInt(xor)
+	g := new(big.Int)
+	g.GCD(m.inv, nil, m.prime, new(big.Int).Add(m.max, big.NewInt(1)))
+	if g.Int64() != 1 {
+		return nil, errors.New("invalid p")
+	}
+	m.inv.Mod(m.inv, new(big.Int).Add(m.max, big.NewInt(1)))
+	return m, nil
+}
+
+func (m *IDEncoder) Hide(i int64) int64 {
+	hidden := big.NewInt(i)
+	hidden.Mul(hidden, m.prime)
+	hidden.And(hidden, m.max)
+	hidden.Xor(hidden, m.xor)
+	return hidden.Int64()
+}
+
+func (m *IDEncoder) Show(i int64) int64 {
+	shown := big.NewInt(i)
+	shown.Xor(shown, m.xor)
+	shown.Mul(shown, m.inv)
+	shown.And(shown, m.max)
+	return shown.Int64()
 }

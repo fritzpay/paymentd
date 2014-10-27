@@ -86,6 +86,13 @@ type Config struct {
 			ReadOnly DatabaseConfig
 		}
 	}
+	// Payment config
+	Payment struct {
+		// Prime for obfuscating payment IDs
+		PaymentIDEncPrime int64
+		// XOR value to be applied to obfuscated primes
+		PaymentIDEncXOR int64
+	}
 }
 
 // DefaultConfig returns a default configuration
@@ -109,6 +116,9 @@ func DefaultConfig() Config {
 	cfg.Database.Payment.Write["mysql"] = "paymentd@tcp(localhost:3306)/fritzpay_payment?charset=utf8mb4&parseTime=true&loc=UTC&timeout=1m&wait_timeout=30&interactive_timeout=30"
 
 	cfg.Database.Principal.ReadOnly = nil
+
+	cfg.Payment.PaymentIDEncPrime = 982450871
+	cfg.Payment.PaymentIDEncXOR = 123456789
 
 	return cfg
 }

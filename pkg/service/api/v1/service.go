@@ -1,6 +1,7 @@
 package v1
 
 import (
+	"github.com/fritzpay/paymentd/pkg/paymentd/payment"
 	"github.com/fritzpay/paymentd/pkg/service"
 	"gopkg.in/inconshreveable/log15.v2"
 	"net/http"
@@ -10,6 +11,11 @@ const (
 	serviceVersion = "v1"
 	// ServicePath is the (sub-)path under which the API service v1.x resides in
 	ServicePath = "/" + serviceVersion
+)
+
+// context keys
+const (
+	serviceContextPaymentIDEncoder = "PaymentIDEncoder"
 )
 
 // Log is the default logger for the API service v1
@@ -31,7 +37,7 @@ type Service struct {
 // NewService creates a new API service
 // It requires a valid service context and takes a router to which
 // the service routes will be attached
-func NewService(ctx *service.Context, mux *http.ServeMux) *Service {
+func NewService(ctx *service.Context, mux *http.ServeMux) (*Service, error) {
 	s := &Service{
 		log: ctx.Log().New(log15.Ctx{"pkg": "github.com/fritzpay/paymentd/pkg/service/api/v1"}),
 	}
@@ -56,9 +62,17 @@ func NewService(ctx *service.Context, mux *http.ServeMux) *Service {
 		mux.Handle(ServicePath+"/currency/", admin.AuthRequiredHandler(admin.CurrencyGetRequest()))
 	}
 
+	s.log.Info("initializing payment ID encoder...")
+	idCoder, err := payment.NewIDEncoder(cfg.Payment.PaymentIDEncPrime, cfg.Payment.PaymentIDEncXOR)
+	if err != nil {
+		s.log.Error("error initializing payment ID encoder", log15.Ctx{"err": err})
+		return nil, err
+	}
+	ctx = ctx.WithValue(serviceContextPaymentIDEncoder, idCoder)
+
 	s.log.Info("registering payment API...")
 	payment := NewPaymentAPI(ctx)
 	mux.Handle(ServicePath+"/payment", payment.InitPayment())
 
-	return s
+	return s, nil
 }
