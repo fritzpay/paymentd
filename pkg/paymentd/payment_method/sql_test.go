@@ -60,7 +60,7 @@ func TestPaymentMethodSQL(t *testing.T) {
 								pm := PaymentMethod{}
 								pm.ProjectID = proj.ID
 								pm.Provider.ID = pr.ID
-								pm.MethodKey = "test"
+								pm.MethodName = "test"
 								pm.CreatedBy = "test"
 
 								pm.ID, err = InsertPaymentMethodTx(tx, pm)
@@ -86,7 +86,7 @@ func TestPaymentMethodSQL(t *testing.T) {
 
 								Convey("When setting metadata", func() {
 									pm.Metadata = map[string]string{
-										"key":  "value",
+										"name": "value",
 										"test": "check",
 									}
 									err = InsertPaymentMethodMetadataTx(tx, pm, "metatest")
@@ -98,7 +98,7 @@ func TestPaymentMethodSQL(t *testing.T) {
 
 										Convey("It should match", func() {
 											So(metadata, ShouldNotBeNil)
-											So(metadata["key"], ShouldEqual, "value")
+											So(metadata["name"], ShouldEqual, "value")
 											So(metadata["test"], ShouldEqual, "check")
 										})
 									})

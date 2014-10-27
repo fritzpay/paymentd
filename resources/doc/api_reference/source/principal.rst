@@ -19,15 +19,16 @@ Create a new principal
 
 	.. sourcecode:: http
 
-
 		{
-        	"Name": "acme_corporation",
-			"CreatedBy": "Jane Doe"
+	        	"Name": "acme_corporation",
+				"CreatedBy": "Jane Doe"
 		}
 
 	:reqheader Authorization: HTTP Basic Auth
 
 	**Example response**:
+
+	.. sourcecode:: http
 
 		Accept: application/json
 		Authorization: Basic cm9vdDpyb290
@@ -38,17 +39,18 @@ Create a new principal
 		HTTP/1.1 200 OK
 		Content-Type: application/json
 
-	.. sourcecode:: http
-		    "Status": "success",
-		    "Info": "principal acme_corporation found",
-		    "Response": {
+		{
+			"Status": "success",
+			"Info": "principal acme_corporation created",
+			"Response": {
 					"ID":1,
 					"Created":"2014-10-17T14:12:11Z",
 					"CreatedBy":"Jane Doe",
 					"Name":"acme_corporation",
 					"Metadata":null
 				},
-		    "Error": null
+			"Error": null
+		}
 
 	
 	:statuscode 200: No error, principal data served.
@@ -57,9 +59,9 @@ Create a new principal
 	:statuscode 409: principal with given id already exists
 
 Change an existing principal
---------------------------
+----------------------------
 
-.. http:put:: /v1/principal
+.. http:post:: /v1/principal
 
 	Change an existing principal
 
@@ -84,20 +86,23 @@ Change an existing principal
 
 	.. sourcecode:: http
 
+		HTTP/1.1 200 OK
 		Accept: application/json
 		Authorization: Basic cm9vdDpyb290
-		HTTP/1.1 200 OK
 		Content-Type: application/json
 
-	.. sourcecode:: http
-
 		{
-			"ID":1,
-			"PrincipalID":"1",
-			"Name":"DifferentName",
-			"CreatedBy":"John Doe",
-			"Created":"2014-10-17T14:12:11Z",
-			"Metadata":null
+			"Status": "success",
+			"Info": "principal acme_corporation changed",
+			"Response": {
+				"ID":1,
+				"PrincipalID":"1",
+				"Name":"DifferentName",
+				"CreatedBy":"John Doe",
+				"Created":"2014-10-17T14:12:11Z",
+				"Metadata":null
+			},
+			"Error": null
 		}
 
 	:reqheader Authorization: HTTP Basic Auth
@@ -129,19 +134,24 @@ Informational
 	**Example response**:
 
 	.. sourcecode:: http
-
+		
 		HTTP/1.1 200 OK
+		Authorization: Basic cm9vdDpyb290
 		Content-Type: application/json
 
 		{
-			"ID":1,
-			"Created":"2014-10-17T14:12:11Z",
-			"CreatedBy":"Jane Doe",
-			"Name":"acme_corporation",
-			"Metadata":null
+			"Status": "success",
+			"Info": "principal acme_corporation found",
+			"Response": {
+				"ID":1,
+				"Created":"2014-10-17T14:12:11Z",
+				"CreatedBy":"Jane Doe",
+				"Name":"acme_corporation",
+				"Metadata":null
+			},
+			"Error": null
 		}
 
-	
 	
 	:statuscode 200: No error, principal data served.
 	:statuscode 400: The request was malformed; the given princial name could not be understood.

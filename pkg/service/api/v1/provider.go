@@ -67,6 +67,7 @@ func (a *AdminAPI) ProviderGetRequest() http.Handler {
 // return a handler brokering get a provider
 func (a *AdminAPI) ProviderGetAllRequest() http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+
 		w.Header().Set("Content-Type", "application/json")
 		// get all
 		log := a.log.New(log15.Ctx{"method": "Provider Request"})

@@ -25,7 +25,7 @@ Authentication and Authorization
 		Authorization: Basic cm9vdDpyb290
 		Content-Type: application/json
 
-	**Example response**:
+	**Example response**: 
 
 	.. sourcecode:: http
 
@@ -67,8 +67,13 @@ Informational
 
 		HTTP/1.1 200 OK
 		Content-Type: text/plain
-
-		root
+	
+		{
+			"Status": "success",
+			"Info": "user id",
+			"Response": "root",
+			"Error": null
+		}
 
 	:reqheader Authorization: A valid authorization token.
 

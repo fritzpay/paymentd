@@ -25,16 +25,16 @@ Available currencies
 		Content-Type: application/json
 
 		{
-		    "Status": "success",
-		    "Info": "currencies found",
-		    "Response": [
+			"Status": "success",
+			"Info": "currencies found",
+			"Response": [
 		
 				"EUR",
 				"RUB",
 				"JPY",
 				"USD"
 			],
- 	   		"Error": null
+			"Error": null
 		}
 
 	:statuscode 200: No error, currency data served.
@@ -42,9 +42,10 @@ Available currencies
 	
 	:reqheader Authorization: A valid authorization token.
 
-   .. note:: 
-    
-      This response is just an example, usually it is much longer!
+
+	.. note:: 
+
+		This response is just an example, usually it is much longer!
 
 Check currency
 --------------
@@ -73,16 +74,15 @@ Check currency
 		Content-Type: application/json
 
 		{
-		    "Status": "success",
-		    "Info": "currencies found",
-		    "Response": [
-		
+			"Status": "success",
+			"Info": "currencies found",
+			"Response": [
 				"EUR",
 				"RUB",
 				"JPY",
 				"USD"
 			],
- 	   		"Error": null
+			"Error": null
 		}
 
 	:statuscode 200: No error, currency data served.
