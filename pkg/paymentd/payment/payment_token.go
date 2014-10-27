@@ -17,19 +17,20 @@ type PaymentToken struct {
 	id      PaymentID
 }
 
-func CreatePaymentToken(id PaymentID) (PaymentToken, error) {
-	t := PaymentToken{}
+func NewPaymentToken(id PaymentID) (*PaymentToken, error) {
 	if id.ProjectID == 0 {
-		return t, errors.New("payment id without project id")
+		return nil, errors.New("payment id without project id")
 	}
 	if id.PaymentID == 0 {
-		return t, errors.New("payment id missing")
+		return nil, errors.New("payment id missing")
 	}
-	t.id = id
-	t.Created = time.Now()
-	err := (&t).GenerateToken()
+	t := &PaymentToken{
+		id:      id,
+		Created: time.Now(),
+	}
+	err := t.GenerateToken()
 	if err != nil {
-		return t, err
+		return nil, err
 	}
 	return t, nil
 }

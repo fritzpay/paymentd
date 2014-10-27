@@ -587,13 +587,13 @@ func (a *PaymentAPI) InitPayment() http.Handler {
 			}
 		}
 		// payment token
-		token, err := payment.CreatePaymentToken(p.PaymentID())
+		token, err := payment.NewPaymentToken(p.PaymentID())
 		if err != nil {
 			log.Error("error creating payment token", log15.Ctx{"err": err})
 			resp = ErrSystem
 			return
 		}
-		err = payment.InsertPaymentTokenTx(tx, &token)
+		err = payment.InsertPaymentTokenTx(tx, token)
 		if err != nil {
 			if mysqlErr, ok := err.(*mysql.MySQLError); ok {
 				// lock error
@@ -610,6 +610,9 @@ func (a *PaymentAPI) InitPayment() http.Handler {
 
 		paymentResp := &InitPaymentResponse{}
 		paymentResp.ConfirmationFromPayment(p)
+		paymentResp.Payment.PaymentId = p.PaymentID()
+		paymentResp.Payment.Created = p.Created.UTC().Format(time.RFC3339)
+		paymentResp.Payment.Token = token.Token
 
 		err = tx.Commit()
 		if err != nil {

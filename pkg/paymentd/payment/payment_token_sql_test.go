@@ -31,18 +31,18 @@ func TestPaymentTokenGenerationSQL(t *testing.T) {
 
 					Convey("Given a test payment", WithTestPayment(tx, proj, func(p Payment) {
 						Convey("When generating a token for the payment", func() {
-							t, err := CreatePaymentToken(p.PaymentID())
+							t, err := NewPaymentToken(p.PaymentID())
 							So(err, ShouldBeNil)
 							So(t.Valid(time.Minute), ShouldBeTrue)
 
 							Convey("When inserting the token", func() {
-								err = InsertPaymentTokenTx(tx, &t)
+								err = InsertPaymentTokenTx(tx, t)
 
 								Convey("It should succeed", func() {
 									So(err, ShouldBeNil)
 
 									Convey("Given a duplicate token", func() {
-										t2 := t
+										t2 := *t
 										So(t.Token, ShouldEqual, t2.Token)
 										Convey("When inserting a duplicate token", func() {
 											err = InsertPaymentTokenTx(tx, &t2)
