@@ -9,6 +9,9 @@ import (
 
 func TestPrincipalSQL(t *testing.T) {
 	Convey("Given a principal DB connection", t, testutil.WithPrincipalDB(t, func(db *sql.DB) {
+		Reset(func() {
+			db.Close()
+		})
 		Convey("When requesting a nonexistent principal", func() {
 			principal, err := PrincipalByNameDB(db, "nonexistent")
 
