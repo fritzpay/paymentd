@@ -49,7 +49,7 @@ func (p *Payment) ProjectID() int64 {
 	return p.projectID
 }
 
-func (p *Payment) SetProject(pr project.Project) error {
+func (p *Payment) SetProject(pr *project.Project) error {
 	if pr.Empty() {
 		return fmt.Errorf("cannot assign empty project")
 	}

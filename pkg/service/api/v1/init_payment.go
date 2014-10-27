@@ -483,7 +483,7 @@ func (a *PaymentAPI) InitPayment() http.Handler {
 			Subunits: req.Subunits.Int8,
 			Currency: curr.CodeISO4217,
 		}
-		err = p.SetProject(projectKey.Project)
+		err = p.SetProject(&projectKey.Project)
 		if err != nil {
 			log.Error("error setting payment project", log15.Ctx{"err": err})
 			resp = ErrSystem
