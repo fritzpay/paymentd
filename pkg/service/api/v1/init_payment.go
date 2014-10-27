@@ -208,7 +208,7 @@ func (r *InitPaymentRequest) SignatureBaseString() (string, error) {
 	return s, nil
 }
 
-func (r *InitPaymentRequest) ReadFrom(rd io.Reader) error {
+func (r *InitPaymentRequest) ReadJSON(rd io.Reader) error {
 	dec := json.NewDecoder(rd)
 	err := dec.Decode(r)
 	return err
@@ -390,7 +390,7 @@ func (a *PaymentAPI) InitPayment() http.Handler {
 			}
 		}()
 		req := &InitPaymentRequest{}
-		err := req.ReadFrom(r.Body)
+		err := req.ReadJSON(r.Body)
 		if err != nil {
 			resp = ErrReadJson
 			if Debug {
