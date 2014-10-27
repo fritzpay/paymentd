@@ -11,4 +11,5 @@ Contents:
    user
    principal
    project
+   provider
    currency

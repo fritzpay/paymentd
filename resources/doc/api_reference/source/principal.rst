@@ -50,7 +50,6 @@ Create a new principal
 				},
 		    "Error": null
 
- 
 	
 	:statuscode 200: No error, principal data served.
 	:statuscode 400: The request was malformed; the princial data could not be understood.

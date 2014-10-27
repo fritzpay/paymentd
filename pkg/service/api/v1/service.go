@@ -37,6 +37,8 @@ func NewService(ctx *service.Context, mux *mux.Router) *Service {
 
 		mux.Handle(ServicePath+"/principal", admin.AuthRequiredHandler(admin.PrincipalRequest()))
 		mux.Handle(ServicePath+"/principal/{name}", admin.AuthRequiredHandler(admin.PrincipalGetRequest()))
+		mux.Handle(ServicePath+"/provider", admin.AuthRequiredHandler(admin.ProviderGetAllRequest()))
+		mux.Handle(ServicePath+"/provider/{id}", admin.AuthRequiredHandler(admin.ProviderGetRequest()))
 		mux.Handle(ServicePath+"/project", admin.AuthRequiredHandler(admin.ProjectRequest()))
 		mux.Handle(ServicePath+"/project/{id}", admin.AuthRequiredHandler(admin.ProjectGetRequest()))
 		mux.Handle(ServicePath+"/project/{id}/method", admin.AuthRequiredHandler(admin.PaymentMethodsGetRequest()))

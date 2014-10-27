@@ -33,6 +33,23 @@ func scanSingleRow(row *sql.Row) (Provider, error) {
 	return p, nil
 }
 
+func ProviderAllDB(db *sql.DB) ([]Provider, error) {
+	rows, err := db.Query(selectProvider)
+
+	d := make([]Provider, 0, 200)
+
+	for rows.Next() {
+		pr := Provider{}
+		err := rows.Scan(&pr.ID, &pr.Name)
+		if err != nil {
+			return d, err
+		}
+		d = append(d, pr)
+	}
+
+	return d, err
+}
+
 func ProviderByIDDB(db *sql.DB, id int64) (Provider, error) {
 	row := db.QueryRow(selectProviderByID, id)
 	return scanSingleRow(row)

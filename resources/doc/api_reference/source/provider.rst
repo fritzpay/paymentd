@@ -1,18 +1,18 @@
-Currency API
+Provider API
 ============
 
-Available currencies
--------------------- 
+Available providers
+------------------- 
 
-.. http:get:: /v1/currency
+.. http:get:: /v1/provider
 
-	Retrieve a list all available currencies.
+	Retrieve a list all available providers.
 
 	**Example request**:
 
 	.. sourcecode:: http
 
-		GET /v1/currency HTTP/1.1
+		GET /v1/provider HTTP/1.1
 		Host: example.com
 		Authorization: dEFFEFeddedeGGEGMceokr353521234
 		Accept: application/json
@@ -25,44 +25,43 @@ Available currencies
 		Content-Type: application/json
 
 		{
-		    "Status": "success",
-		    "Info": "currencies found",
-		    "Response": [
-		
-				"EUR",
-				"RUB",
-				"JPY",
-				"USD"
+			"Status": "success",
+			"Info": "providers found",
+			"Response": [
+				{
+			    	"ID": 1,
+			    	"Name": "fritzpay"
+				}
 			],
- 	   		"Error": null
+    		"Error": null
 		}
 
-	:statuscode 200: No error, currency data served.
+	:statuscode 200: No error, provider datadata served.
 	:statuscode 401: Unauthorized, either the username does not exist or the credentials
-	
+
 	:reqheader Authorization: A valid authorization token.
 
    .. note:: 
     
       This response is just an example, usually it is much longer!
 
-Check currency
+Check provider
 --------------
 
-.. http:get:: /v1/currency/(currency)
+.. http:get:: /v1/provider/(providerID)
 
-	Check if a specivic currency is available in the system.
+	Check if a specivic providerID is available in the system.
 
 	**Example request**:
 
 	.. sourcecode:: http
 
-		GET /v1/currency/EUR HTTP/1.1
+		GET /v1/provider/1 HTTP/1.1
 		Host: example.com
 		Authorization: dEFFEFeddedeGGEGMceokr353521234
 		Accept: application/json
 
-	:param currency: string [A-Z]{3}
+	:param providerID: string [0-9]
 
 
 	**Example response**:
@@ -73,21 +72,20 @@ Check currency
 		Content-Type: application/json
 
 		{
-		    "Status": "success",
-		    "Info": "currencies found",
-		    "Response": [
-		
-				"EUR",
-				"RUB",
-				"JPY",
-				"USD"
+			"Status": "success",
+			"Info": "provider fritzpay found",
+			"Response": [
+				{
+			    	"ID": 1,
+			    	"Name": "fritzpay"
+				}
 			],
- 	   		"Error": null
+    		"Error": null
 		}
 
-	:statuscode 200: No error, currency data served.
-	:statuscode 400: The request was malformed; the given currency could not be understood.
+	:statuscode 200: No error, provider datadata served.
+	:statuscode 400: The request was malformed; the given providerID could not be understood.
 	:statuscode 401: Unauthorized, either the username does not exist or the credentials
-	:statuscode 404: currency not available
+	:statuscode 404: provider not available
 
 	:reqheader Authorization: A valid authorization token.
