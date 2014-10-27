@@ -7,7 +7,6 @@ import (
 	"database/sql"
 	"encoding/hex"
 	"encoding/json"
-	"errors"
 	"fmt"
 	jsonutil "github.com/fritzpay/paymentd/pkg/json"
 	"github.com/fritzpay/paymentd/pkg/maputil"
@@ -19,6 +18,7 @@ import (
 	"github.com/go-sql-driver/mysql"
 	"gopkg.in/inconshreveable/log15.v2"
 	"hash"
+	"io"
 	"net/http"
 	"net/url"
 	"strconv"
@@ -208,6 +208,12 @@ func (r *InitPaymentRequest) SignatureBaseString() (string, error) {
 	return s, nil
 }
 
+func (r *InitPaymentRequest) ReadFrom(rd io.Reader) error {
+	dec := json.NewDecoder(rd)
+	err := dec.Decode(r)
+	return err
+}
+
 // InitPaymentResponse is the JSON response struct for POST /payment
 type InitPaymentResponse struct {
 	Confirmation struct {
@@ -358,150 +364,6 @@ func (r *InitPaymentResponse) SignatureBaseString() (string, error) {
 	return s, nil
 }
 
-// will handle request/response mapping inside the HTTP handler
-type initPaymentHandler struct {
-	ctx *service.Context
-	log log15.Logger
-
-	w http.ResponseWriter
-	r *http.Request
-
-	req             *InitPaymentRequest
-	requestCurrency currency.Currency
-
-	httpStatus int
-	resp       ServiceResponse
-}
-
-// deferred function
-//
-// will send the response
-func (h *initPaymentHandler) finish() {
-	if !Debug {
-		if h.httpStatus == http.StatusUnauthorized {
-			time.Sleep(badAuthWaitTime)
-		}
-	}
-	h.w.WriteHeader(h.httpStatus)
-	enc := json.NewEncoder(h.w)
-	err := enc.Encode(h.resp)
-	if err != nil {
-		h.log.Error("error writing JSON response", log15.Ctx{"err": err})
-		return
-	}
-}
-
-// utility function. used when a request had to be present in the handling flow
-//
-// if the request was somehow not read, it will log a critical error and set the
-// internal error response
-func (h *initPaymentHandler) requiredRequest() *InitPaymentRequest {
-	if h.req == nil {
-		h.log.Crit("internal error. missing required request")
-		h.httpStatus = http.StatusInternalServerError
-		h.resp = ErrSystem
-		return nil
-	}
-	return h.req
-}
-
-func (h *initPaymentHandler) readRequest() bool {
-	h.req = &InitPaymentRequest{}
-	dec := json.NewDecoder(h.r.Body)
-	err := dec.Decode(&h.req)
-	if err != nil {
-		h.httpStatus = http.StatusBadRequest
-		h.resp = ErrReadJson
-		if Debug {
-			h.resp.Error = err.Error()
-		}
-		return false
-	}
-	return true
-}
-
-// validates request format
-func (h *initPaymentHandler) validateRequest() bool {
-	if h.requiredRequest() == nil {
-		return false
-	}
-	err := h.req.Validate()
-	if err != nil {
-		h.httpStatus = http.StatusBadRequest
-		h.resp = ErrInval
-		h.resp.Error = err.Error()
-		return false
-	}
-	return true
-}
-
-func (h *initPaymentHandler) readRequestCurrency() bool {
-	var err error
-	// currency
-	h.requestCurrency, err = currency.CurrencyByCodeISO4217DB(h.ctx.PaymentDB(service.ReadOnly), h.req.Currency)
-	if err != nil {
-		if err == currency.ErrCurrencyNotFound {
-			h.httpStatus = http.StatusBadRequest
-			h.resp = ErrInval
-			h.resp.Error = "invalid Currency"
-			return false
-		}
-		h.log.Error("error retrieving currency", log15.Ctx{"err": err})
-		h.httpStatus = http.StatusInternalServerError
-		h.resp = ErrDatabase
-		if Debug {
-			h.resp.Error = err.Error()
-		}
-		return false
-	}
-	return true
-}
-
-func (h *initPaymentHandler) setUnauthorized(detailedErrorMsg string) {
-	h.httpStatus = http.StatusUnauthorized
-	h.resp = ErrUnauthorized
-	if Debug {
-		h.resp.Error = detailedErrorMsg
-	}
-}
-
-func (h *initPaymentHandler) setSystemError(err error) {
-	h.httpStatus = http.StatusInternalServerError
-	h.resp = ErrSystem
-	if Debug {
-		h.resp.Error = err.Error()
-	}
-}
-
-func (h *initPaymentHandler) getProjectKey() (pk project.Projectkey, err error) {
-	if h.requiredRequest() == nil {
-		return pk, errors.New("no request")
-	}
-	pk, err = project.ProjectKeyByKeyDB(h.ctx.PrincipalDB(service.ReadOnly), h.req.ProjectKey)
-	if err != nil {
-		if err == project.ErrProjectKeyNotFound {
-			h.setUnauthorized(fmt.Sprintf("project key %s not found", h.req.ProjectKey))
-			return
-		}
-		h.log.Error("error on retrieving project key", log15.Ctx{"err": err})
-		h.httpStatus = http.StatusInternalServerError
-		h.resp = ErrDatabase
-		if Debug {
-			h.resp.Error = fmt.Sprintf("database error: %v", err)
-		}
-		return
-	}
-	if !pk.IsValid() {
-		h.log.Warn("invalid project key on request", log15.Ctx{
-			"ProjectKey": pk.Key,
-		})
-		err = fmt.Errorf("project key %s is not valid (inactive project key?)", pk.Key)
-		h.setUnauthorized(err.Error())
-		return
-	}
-	return
-}
-
 func (a *PaymentAPI) authenticateMessage(projectKey project.Projectkey, msg service.Signed) (bool, error) {
 	secret, err := projectKey.SecretBytes()
 	if err != nil {
@@ -520,25 +382,52 @@ func (a *PaymentAPI) InitPayment() http.Handler {
 		log := a.log.New(log15.Ctx{
 			"method": "InitPayment",
 		})
-		handler := &initPaymentHandler{
-			ctx: a.ctx,
-			log: log,
-			w:   w,
-			r:   r,
-		}
-		defer handler.finish()
-		if !handler.readRequest() {
-			return
-		}
-		if !handler.validateRequest() {
-			return
-		}
-		var req *InitPaymentRequest
-		if req = handler.requiredRequest(); req == nil {
-			return
-		}
-		projectKey, err := handler.getProjectKey()
+		var resp ServiceResponse
+		defer func() {
+			err := resp.Write(w)
+			if err != nil {
+				log.Error("error writing response", log15.Ctx{"err": err})
+			}
+		}()
+		req := &InitPaymentRequest{}
+		err := req.ReadFrom(r.Body)
 		if err != nil {
+			resp = ErrReadJson
+			if Debug {
+				resp.Info = err.Error()
+			}
+			return
+		}
+		err = req.Validate()
+		if err != nil {
+			resp = ErrInval
+			resp.Info = err.Error()
+			return
+		}
+		projectKey, err := project.ProjectKeyByKeyDB(a.ctx.PrincipalDB(service.ReadOnly), req.ProjectKey)
+		if err != nil {
+			if err == project.ErrProjectKeyNotFound {
+				resp = ErrUnauthorized
+				if Debug {
+					resp.Info = fmt.Sprintf("project key %s not found", req.ProjectKey)
+				}
+				return
+			}
+			log.Error("error on retrieving project key", log15.Ctx{"err": err})
+			resp = ErrDatabase
+			if Debug {
+				resp.Info = fmt.Sprintf("database error: %v", err)
+			}
+			return
+		}
+		if !projectKey.IsValid() {
+			log.Warn("invalid project key on request", log15.Ctx{
+				"ProjectKey": projectKey.Key,
+			})
+			resp = ErrUnauthorized
+			if Debug {
+				resp.Info = fmt.Sprintf("project key %s is not valid (inactive project key?)", projectKey.Key)
+			}
 			return
 		}
 		// authenticate
@@ -546,45 +435,55 @@ func (a *PaymentAPI) InitPayment() http.Handler {
 		if !Debug {
 			if auth, err := a.authenticateMessage(projectKey, req); err != nil {
 				log.Error("error on authenticate message", log15.Ctx{"err": err})
-				handler.httpStatus = http.StatusInternalServerError
-				handler.resp = ErrSystem
+				resp = ErrSystem
 				return
 			} else if !auth {
-				handler.setUnauthorized("could not authorize message")
+				resp = ErrUnauthorized
 				return
 			}
 			if time.Since(time.Unix(req.Timestamp, 0)) > initPaymentTimestampMaxAge {
-				handler.setUnauthorized("timestamp too old")
+				resp = ErrUnauthorized
 				return
 			}
 			// TODO include nonce handling
 		}
 		// extend log info
 		log = log.New(log15.Ctx{"projectId": projectKey.Project.ID})
-		// validate payment fields
-		if !handler.readRequestCurrency() {
+
+		curr, err := currency.CurrencyByCodeISO4217DB(a.ctx.PaymentDB(service.ReadOnly), req.Currency)
+		if err != nil {
+			if err == currency.ErrCurrencyNotFound {
+				resp = ErrInval
+				resp.Info = "invalid Currency"
+				return
+			}
+			log.Error("error retrieving currency", log15.Ctx{"err": err})
+			resp = ErrDatabase
+			if Debug {
+				resp.Info = fmt.Sprintf("error retrieving currency: %v", err)
+			}
 			return
 		}
-		if handler.requestCurrency.IsEmpty() {
+		if curr.IsEmpty() {
 			log.Crit("internal error. request currency is empty")
-			handler.setSystemError(nil)
+			resp = ErrSystem
 			return
 		}
+
 		// create payment
 		p := &payment.Payment{
 			Created:  time.Now(),
 			Ident:    req.Ident,
 			Amount:   req.Amount.Int64,
 			Subunits: req.Subunits.Int8,
-			Currency: handler.requestCurrency.CodeISO4217,
+			Currency: curr.CodeISO4217,
 		}
 		err = p.SetProject(projectKey.Project)
 		if err != nil {
 			log.Error("error setting payment project", log15.Ctx{"err": err})
-			handler.httpStatus = http.StatusInternalServerError
-			handler.resp = ErrSystem
+			resp = ErrSystem
 			if Debug {
-				handler.resp.Error = fmt.Sprintf("error setting payment project: %v", err)
+				resp.Info = fmt.Sprintf("error setting payment project: %v", err)
 			}
 			return
 		}
@@ -604,10 +503,9 @@ func (a *PaymentAPI) InitPayment() http.Handler {
 				txErr := tx.Rollback()
 				if txErr != nil {
 					log.Crit("error on rollback", log15.Ctx{"err": txErr})
-					handler.httpStatus = http.StatusInternalServerError
-					handler.resp = ErrDatabase
+					resp = ErrDatabase
 					if Debug {
-						handler.resp.Error = fmt.Sprintf("error on rollback: %v", err)
+						resp.Info = fmt.Sprintf("error on rollback: %v", err)
 					}
 				}
 			}
@@ -619,15 +517,14 @@ func (a *PaymentAPI) InitPayment() http.Handler {
 			// no need to roll back
 			commit = true
 			log.Crit("too many retries on tx. aborting...", log15.Ctx{"maxRetries": maxRetries})
-			handler.resp = ErrDatabase
+			resp = ErrDatabase
 			return
 		}
 		tx, err = a.ctx.PaymentDB().Begin()
 		if err != nil {
 			commit = true
 			log.Crit("error on begin", log15.Ctx{"err": err})
-			handler.httpStatus = http.StatusInternalServerError
-			handler.resp = ErrDatabase
+			resp = ErrDatabase
 			return
 		}
 		err = payment.InsertPaymentTx(tx, p)
@@ -643,26 +540,22 @@ func (a *PaymentAPI) InitPayment() http.Handler {
 			_, existErr := payment.PaymentByProjectIDAndIdentTx(tx, p.ProjectID(), p.Ident)
 			if existErr != nil && existErr != payment.ErrPaymentNotFound {
 				log.Error("error on checking duplicate ident", log15.Ctx{"err": err})
-				handler.httpStatus = http.StatusInternalServerError
-				handler.resp = ErrDatabase
+				resp = ErrDatabase
 				if Debug {
-					handler.resp.Info = fmt.Sprintf("error on checking duplicate ident: %v", existErr)
+					resp.Info = fmt.Sprintf("error on checking duplicate ident: %v", existErr)
 				}
 				return
 			}
 			// payment found => duplicate error
 			if existErr == nil {
-				handler.httpStatus = http.StatusConflict
-				handler.resp.Status = StatusError
-				handler.resp.Info = "your ident was already used"
-				handler.resp.Response = nil
+				resp = ErrConflict
+				resp.Info = "your ident was already used"
 				return
 			}
 			log.Error("error on insert payment", log15.Ctx{"err": err})
-			handler.httpStatus = http.StatusInternalServerError
-			handler.resp = ErrDatabase
+			resp = ErrDatabase
 			if Debug {
-				handler.resp.Info = fmt.Sprintf("error on insert payment: %v", err)
+				resp.Info = fmt.Sprintf("error on insert payment: %v", err)
 			}
 			return
 		}
@@ -680,8 +573,7 @@ func (a *PaymentAPI) InitPayment() http.Handler {
 		err = payment.InsertPaymentConfigTx(tx, paymentCfg)
 		if err != nil {
 			log.Error("error on insert payment config", log15.Ctx{"err": err})
-			handler.httpStatus = http.StatusInternalServerError
-			handler.resp = ErrDatabase
+			resp = ErrDatabase
 			return
 		}
 		// payment metadata
@@ -689,8 +581,7 @@ func (a *PaymentAPI) InitPayment() http.Handler {
 			err = payment.InsertPaymentMetadataTx(tx, p.PaymentID(), req.Metadata)
 			if err != nil {
 				log.Error("error on insert payment metadata", log15.Ctx{"err": err})
-				handler.httpStatus = http.StatusInternalServerError
-				handler.resp = ErrDatabase
+				resp = ErrDatabase
 				return
 			}
 		}
@@ -698,8 +589,7 @@ func (a *PaymentAPI) InitPayment() http.Handler {
 		token, err := payment.CreatePaymentToken(p.PaymentID())
 		if err != nil {
 			log.Error("error creating payment token", log15.Ctx{"err": err})
-			handler.httpStatus = http.StatusInternalServerError
-			handler.resp = ErrSystem
+			resp = ErrSystem
 			return
 		}
 		err = payment.InsertPaymentTokenTx(tx, &token)
@@ -713,14 +603,13 @@ func (a *PaymentAPI) InitPayment() http.Handler {
 				}
 			}
 			log.Error("error saving payment token", log15.Ctx{"err": err})
-			handler.httpStatus = http.StatusInternalServerError
-			handler.resp = ErrDatabase
+			resp = ErrDatabase
 			return
 		}
 
-		resp := &InitPaymentResponse{}
-		resp.ConfirmationFromRequest(req)
-		resp.ConfirmationFromPayment(*p)
+		paymentResp := &InitPaymentResponse{}
+		paymentResp.ConfirmationFromRequest(req)
+		paymentResp.ConfirmationFromPayment(*p)
 
 		err = tx.Commit()
 		if err != nil {
@@ -734,8 +623,7 @@ func (a *PaymentAPI) InitPayment() http.Handler {
 			}
 			commit = true
 			log.Crit("error on commit tx", log15.Ctx{"err": err})
-			handler.httpStatus = http.StatusInternalServerError
-			handler.resp = ErrDatabase
+			resp = ErrDatabase
 			return
 		}
 		commit = true
