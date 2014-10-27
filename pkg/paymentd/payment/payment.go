@@ -26,6 +26,10 @@ type Payment struct {
 
 	CallbackURL sql.NullString
 	ReturnURL   sql.NullString
+
+	Config PaymentConfig
+
+	Metadata map[string]string
 }
 
 func (p Payment) Valid() bool {
@@ -62,8 +66,6 @@ func (p Payment) Decimal() decimal.Decimal {
 }
 
 type PaymentConfig struct {
-	Payment Payment
-
 	Timestamp       time.Time
 	PaymentMethodID sql.NullInt64
 	Country         sql.NullString

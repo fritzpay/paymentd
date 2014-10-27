@@ -61,8 +61,8 @@ WHERE
 	ident = ?
 `
 
-func scanSingleRow(row *sql.Row) (Payment, error) {
-	p := Payment{}
+func scanSingleRow(row *sql.Row) (*Payment, error) {
+	p := &Payment{}
 	err := row.Scan(
 		&p.id,
 		&p.projectID,
@@ -83,7 +83,7 @@ func scanSingleRow(row *sql.Row) (Payment, error) {
 	return p, nil
 }
 
-func PaymentByProjectIDAndIdentTx(db *sql.Tx, projectID int64, ident string) (Payment, error) {
+func PaymentByProjectIDAndIdentTx(db *sql.Tx, projectID int64, ident string) (*Payment, error) {
 	row := db.QueryRow(selectPaymentByProjectIDAndIdent, projectID, ident)
 	return scanSingleRow(row)
 }
@@ -95,19 +95,19 @@ VALUES
 (?, ?, ?, ?, ?, ?)
 `
 
-func InsertPaymentConfigTx(db *sql.Tx, cfg PaymentConfig) error {
+func InsertPaymentConfigTx(db *sql.Tx, p *Payment) error {
 	stmt, err := db.Prepare(insertPaymentConfig)
 	if err != nil {
 		return err
 	}
 	ts := time.Now().UnixNano()
 	_, err = stmt.Exec(
-		cfg.Payment.ProjectID(),
-		cfg.Payment.ID(),
+		p.ProjectID(),
+		p.ID(),
 		ts,
-		cfg.PaymentMethodID,
-		cfg.Country,
-		cfg.Locale,
+		p.Config.PaymentMethodID,
+		p.Config.Country,
+		p.Config.Locale,
 	)
 	stmt.Close()
 	return err

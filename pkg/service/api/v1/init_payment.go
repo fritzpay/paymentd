@@ -242,27 +242,29 @@ type InitPaymentResponse struct {
 
 // ConfirmationFromPayment populates the response "Confirmation" object with
 // the fields from the given payment
-func (r *InitPaymentResponse) ConfirmationFromPayment(p payment.Payment) {
+func (r *InitPaymentResponse) ConfirmationFromPayment(p *payment.Payment) {
 	r.Confirmation.Ident = p.Ident
 	r.Confirmation.Amount = p.Amount
 	r.Confirmation.Subunits = p.Subunits
 	r.Confirmation.Currency = p.Currency
-}
 
-// ConfirmationFromRequest populates the response "Confirmation" object with
-// the fields from the given request
-func (r *InitPaymentResponse) ConfirmationFromRequest(req *InitPaymentRequest) {
-	if req.Locale != "" {
-		r.Confirmation.Locale = req.Locale
+	if p.Config.Locale.Valid {
+		r.Confirmation.Locale = p.Config.Locale.String
 	}
-	if req.CallbackURL != "" {
-		r.Confirmation.CallbackURL = req.CallbackURL
+	if p.Config.Country.Valid {
+		r.Confirmation.Country = p.Config.Country.String
 	}
-	if req.ReturnURL != "" {
-		r.Confirmation.ReturnURL = req.ReturnURL
+	if p.Config.PaymentMethodID.Valid {
+		r.Confirmation.PaymentMethodID = p.Config.PaymentMethodID.Int64
 	}
-	if req.Metadata != nil {
-		r.Confirmation.Metadata = req.Metadata
+	if p.CallbackURL.Valid {
+		r.Confirmation.CallbackURL = p.CallbackURL.String
+	}
+	if p.ReturnURL.Valid {
+		r.Confirmation.ReturnURL = p.ReturnURL.String
+	}
+	if p.Metadata != nil {
+		r.Confirmation.Metadata = p.Metadata
 	}
 }
 
@@ -560,17 +562,16 @@ func (a *PaymentAPI) InitPayment() http.Handler {
 			return
 		}
 		// payment config fields
-		paymentCfg := payment.PaymentConfig{Payment: *p}
 		if req.PaymentMethodID != 0 {
-			paymentCfg.PaymentMethodID.Int64, paymentCfg.PaymentMethodID.Valid = req.PaymentMethodID, true
+			p.Config.PaymentMethodID.Int64, p.Config.PaymentMethodID.Valid = req.PaymentMethodID, true
 		}
 		if req.Country != "" {
-			paymentCfg.Country.String, paymentCfg.Country.Valid = req.Country, true
+			p.Config.Country.String, p.Config.Country.Valid = req.Country, true
 		}
 		if req.Locale != "" {
-			paymentCfg.Locale.String, paymentCfg.Locale.Valid = req.Locale, true
+			p.Config.Locale.String, p.Config.Locale.Valid = req.Locale, true
 		}
-		err = payment.InsertPaymentConfigTx(tx, paymentCfg)
+		err = payment.InsertPaymentConfigTx(tx, p)
 		if err != nil {
 			log.Error("error on insert payment config", log15.Ctx{"err": err})
 			resp = ErrDatabase
@@ -608,8 +609,7 @@ func (a *PaymentAPI) InitPayment() http.Handler {
 		}
 
 		paymentResp := &InitPaymentResponse{}
-		paymentResp.ConfirmationFromRequest(req)
-		paymentResp.ConfirmationFromPayment(*p)
+		paymentResp.ConfirmationFromPayment(p)
 
 		err = tx.Commit()
 		if err != nil {
