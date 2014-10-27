@@ -32,7 +32,7 @@ func (p Payment) Valid() bool {
 	return p.projectID != 0 && p.id != 0 && p.Ident != "" && p.Currency != ""
 }
 
-// PaymentID returns the indentifier for the payment
+// PaymentID returns the identifier for the payment
 func (p Payment) PaymentID() PaymentID {
 	return PaymentID{p.ProjectID(), p.ID()}
 }
