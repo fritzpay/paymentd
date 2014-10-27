@@ -5,6 +5,7 @@ import (
 	"github.com/fritzpay/paymentd/pkg/metadata"
 	"github.com/fritzpay/paymentd/pkg/paymentd/project"
 	"github.com/fritzpay/paymentd/pkg/service"
+	"github.com/gorilla/mux"
 	"gopkg.in/inconshreveable/log15.v2"
 	"net/http"
 	"path"
@@ -179,11 +180,6 @@ func (a *AdminAPI) postChangeProject(w http.ResponseWriter, r *http.Request) {
 
 	// does project exist
 	db := a.ctx.PrincipalDB(service.ReadOnly)
-	if err != nil {
-		ErrDatabase.Write(w)
-		log.Error("start transaction DB failed: "+pr.Name, log15.Ctx{"err": err})
-		return
-	}
 	var prdb project.Project
 	prdb, err = project.ProjectByNameDB(db, pr.Name)
 	if err != nil {
@@ -237,4 +233,43 @@ func (a *AdminAPI) postChangeProject(w http.ResponseWriter, r *http.Request) {
 		log.Error("write error", log15.Ctx{"err": err})
 		return
 	}
+}
+
+func (a *AdminAPI) PaymentMethodsGetRequest() http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+
+		log := a.log.New(log15.Ctx{"method": "Project payment methods GET"})
+
+		vars := mux.Vars(r)
+		projectIdParam := vars["projectID"]
+		projectId, err := strconv.ParseInt(projectIdParam, 10, 64)
+		if err != nil {
+			ErrReadParam.Write(w)
+			log.Error("param conversion error", log15.Ctx{"err": err})
+			return
+		}
+
+		// does project exist
+		db := a.ctx.PrincipalDB(service.ReadOnly)
+		var prdb project.Project
+		prdb, err = project.ProjectByIdDB(db, projectId)
+		if err != nil {
+			ErrDatabase.Write(w)
+			log.Error("database request failed", log15.Ctx{"err": err})
+			return
+		}
+
+		// return methods
+		resp := ProjectAdminAPIResponse{}
+		resp.HttpStatus = http.StatusOK
+		resp.Info = "project found"
+		resp.Response = prdb
+
+	})
+}
+func (a *AdminAPI) PaymentMethodsRequest() http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// @todo
+	})
 }

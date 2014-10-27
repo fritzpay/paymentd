@@ -13,7 +13,7 @@ type Handler struct {
 	ctx *service.Context
 	log log15.Logger
 
-	mux *http.ServeMux
+	mux *mux.Router
 }
 
 // NewHandler creates a new API Handler

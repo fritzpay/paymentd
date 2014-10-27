@@ -5,9 +5,9 @@ import (
 	"github.com/fritzpay/paymentd/pkg/metadata"
 	"github.com/fritzpay/paymentd/pkg/paymentd/principal"
 	"github.com/fritzpay/paymentd/pkg/service"
+	"github.com/gorilla/mux"
 	"gopkg.in/inconshreveable/log15.v2"
 	"net/http"
-	"path"
 	"time"
 )
 
@@ -43,10 +43,10 @@ func (a *AdminAPI) PrincipalGetRequest() http.Handler {
 		log := a.log.New(log15.Ctx{"method": "principal GET request"})
 		log.Info("Method:" + r.Method)
 		// get principal by name
-		urlpath, principalName := path.Split(path.Clean(r.URL.Path))
+		vars := mux.Vars(r)
+		principalName := vars["name"]
 
 		log.Info("principalName: " + principalName)
-		log.Info("url path: " + urlpath)
 
 		db := a.ctx.PrincipalDB(service.ReadOnly)
 		pr, err := principal.PrincipalByNameDB(db, principalName)

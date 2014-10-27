@@ -2,8 +2,8 @@ package v1
 
 import (
 	"github.com/fritzpay/paymentd/pkg/service"
+	"github.com/gorilla/mux"
 	"gopkg.in/inconshreveable/log15.v2"
-	"net/http"
 )
 
 const (
@@ -20,7 +20,7 @@ type Service struct {
 // NewService creates a new API service
 // It requires a valid service context and takes a router to which
 // the service routes will be attached
-func NewService(ctx *service.Context, mux *http.ServeMux) *Service {
+func NewService(ctx *service.Context, mux *mux.Router) *Service {
 	s := &Service{
 		log: ctx.Log().New(log15.Ctx{"pkg": "github.com/fritzpay/paymentd/pkg/service/api/v1"}),
 	}
@@ -32,15 +32,17 @@ func NewService(ctx *service.Context, mux *http.ServeMux) *Service {
 
 		admin := NewAdminAPI(ctx)
 		mux.Handle(ServicePath+"/authorization", admin.AuthorizationHandler())
-		mux.Handle(ServicePath+"/authorization/", admin.AuthorizeHandler())
-		mux.Handle(ServicePath+"/user/", admin.AuthRequiredHandler(admin.GetUserID()))
+		mux.Handle(ServicePath+"/authorization/{method}", admin.AuthorizeHandler())
+		mux.Handle(ServicePath+"/user", admin.AuthRequiredHandler(admin.GetUserID()))
 
 		mux.Handle(ServicePath+"/principal", admin.AuthRequiredHandler(admin.PrincipalRequest()))
-		mux.Handle(ServicePath+"/principal/", admin.AuthRequiredHandler(admin.PrincipalGetRequest()))
+		mux.Handle(ServicePath+"/principal/{name}", admin.AuthRequiredHandler(admin.PrincipalGetRequest()))
 		mux.Handle(ServicePath+"/project", admin.AuthRequiredHandler(admin.ProjectRequest()))
-		mux.Handle(ServicePath+"/project/", admin.AuthRequiredHandler(admin.ProjectGetRequest()))
+		mux.Handle(ServicePath+"/project/{id}", admin.AuthRequiredHandler(admin.ProjectGetRequest()))
+		mux.Handle(ServicePath+"/project/{id}/method", admin.AuthRequiredHandler(admin.PaymentMethodsGetRequest()))
+		mux.Handle(ServicePath+"/project/{projectid}/method/{methodid}", admin.AuthRequiredHandler(admin.PaymentMethodsRequest()))
 		mux.Handle(ServicePath+"/currency", admin.AuthRequiredHandler(admin.CurrencyGetAllRequest()))
-		mux.Handle(ServicePath+"/currency/", admin.AuthRequiredHandler(admin.CurrencyGetRequest()))
+		mux.Handle(ServicePath+"/currency/{currencycode}", admin.AuthRequiredHandler(admin.CurrencyGetRequest()))
 	}
 
 	s.log.Info("registering payment API...")
