@@ -27,7 +27,7 @@ type Payment struct {
 	CallbackURL sql.NullString
 	ReturnURL   sql.NullString
 
-	Config PaymentConfig
+	Config Config
 
 	Metadata map[string]string
 }
@@ -65,13 +65,13 @@ func (p *Payment) Decimal() decimal.Decimal {
 	return decimal.Decimal{Dec: d}
 }
 
-type PaymentConfig struct {
+type Config struct {
 	Timestamp       time.Time
 	PaymentMethodID sql.NullInt64
 	Country         sql.NullString
 	Locale          sql.NullString
 }
 
-func (cfg *PaymentConfig) IsConfigured() bool {
+func (cfg *Config) IsConfigured() bool {
 	return cfg.PaymentMethodID.Valid && cfg.Country.Valid && cfg.Locale.Valid
 }
