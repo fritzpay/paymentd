@@ -104,6 +104,7 @@ func (a *AdminAPI) respondWithAuthorization(w http.ResponseWriter) {
 	if err != nil {
 		log.Error("error writing HTTP response", log15.Ctx{"err": err})
 	}
+	w.WriteHeader(http.StatusOK)
 }
 
 // AuthorizationHandler implements /authorization requests
@@ -155,6 +156,9 @@ func getAuthorizationMethod(p string) string {
 
 func getBasicAuthPassword(authHeader string) (string, error) {
 	parts := strings.SplitN(authHeader, " ", 2)
+	if len(parts) != 2 {
+		return "", errors.New("authorization expect two parts")
+	}
 	if parts[0] != "Basic" {
 		return "", errors.New("not basic auth")
 	}
@@ -164,7 +168,7 @@ func getBasicAuthPassword(authHeader string) (string, error) {
 	}
 	parts = strings.Split(string(auth), ":")
 	if len(parts) != 2 {
-		return "", errors.New("expect two parts")
+		return "", errors.New("password expect two parts")
 	}
 	return parts[1], nil
 }

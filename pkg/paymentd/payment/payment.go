@@ -24,9 +24,6 @@ type Payment struct {
 	Subunits  int8
 	Currency  string
 
-	CallbackURL sql.NullString
-	ReturnURL   sql.NullString
-
 	Config Config
 
 	Metadata map[string]string
@@ -70,6 +67,8 @@ type Config struct {
 	PaymentMethodID sql.NullInt64
 	Country         sql.NullString
 	Locale          sql.NullString
+	CallbackURL     sql.NullString
+	ReturnURL       sql.NullString
 }
 
 func (cfg *Config) IsConfigured() bool {
