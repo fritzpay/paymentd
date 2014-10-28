@@ -17,19 +17,19 @@ var bufferPool = &sync.Pool{
 // DaemonFormat returns a log15.Format, which produces records which can be forwarded to
 // syslog by the init system
 func DaemonFormat() log15.Format {
-	return log15.FormatFunc(func(r *log15.Record) (b []byte) {
+	return log15.FormatFunc(func(r *log15.Record) []byte {
 		common := []interface{}{r.KeyNames.Time, r.Time, r.KeyNames.Lvl, r.Lvl, r.KeyNames.Msg, r.Msg}
 		buf := bufferPool.Get().(*bytes.Buffer)
 		buf.Reset()
 		logLevel(buf, r.Lvl)
 		logRecord(buf, append(common, r.Ctx...))
-		b = buf.Bytes()
+		b := buf.Bytes()
 		bufferPool.Put(buf)
-		return
+		return b
 	})
 }
 
-func escapeString(s string) (eStr string) {
+func escapeString(s string) string {
 	needQuotes := false
 	e := bufferPool.Get().(*bytes.Buffer)
 	e.Reset()
@@ -61,7 +61,7 @@ func escapeString(s string) (eStr string) {
 	if !needQuotes {
 		start, stop = 1, stop-1
 	}
-	eStr = string(e.Bytes()[start:stop])
+	eStr := string(e.Bytes()[start:stop])
 	bufferPool.Put(e)
-	return
+	return eStr
 }
