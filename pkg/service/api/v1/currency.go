@@ -68,7 +68,8 @@ func (a *AdminAPI) CurrencyGetAllRequest() http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		// get all
-		log := a.log.New(log15.Ctx{"method": "Currency Request"})
+		log := a.log.New(log15.Ctx{"method": "CurrencyGetAllRequest"})
+
 		db := a.ctx.PaymentDB(service.ReadOnly)
 		cl, err := currency.CurrencyAllDB(db)
 		if err != nil {
