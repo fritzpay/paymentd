@@ -21,19 +21,23 @@ func (a *AdminAPI) ProjectRequest() http.Handler {
 	h := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 
-		log := a.log.New(log15.Ctx{"method": "Project Request"})
-		log.Info("Method:" + r.Method)
-
-		// @todo restrict by projectid
-		if r.Method == "PUT" {
-			a.putNewProject(w, r)
-		} else if r.Method == "POST" {
-			a.postChangeProject(w, r)
-		} else {
-			log.Info("request method not supported: " + r.Method)
-			w.WriteHeader(http.StatusMethodNotAllowed)
+		log := a.log.New(log15.Ctx{"method": "ProjectRequest"})
+		if Debug {
+			log.Debug("Method:" + r.Method)
 		}
 
+		// @todo restrict by projectid
+		switch r.Method {
+		case "PUT":
+			a.putNewProject(w, r)
+		case "POST":
+			a.postChangeProject(w, r)
+		default:
+			if Debug {
+				log.Debug("request method not supported", log15.Ctx{"requestMethod": r.Method})
+			}
+			w.WriteHeader(http.StatusMethodNotAllowed)
+		}
 	})
 
 	return h
