@@ -99,6 +99,8 @@ func (a *AdminAPI) putNewPrincipal(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	log = log.New(log15.Ctx{"principalName": pr.Name})
+
 	auth, err := getAuthContainer(r)
 	if err != nil {
 		log.Crit("context auth error", log15.Ctx{"err": err})
@@ -112,66 +114,68 @@ func (a *AdminAPI) putNewPrincipal(w http.ResponseWriter, r *http.Request) {
 	// check if principal exists
 	db := a.ctx.PrincipalDB()
 	_, err = principal.PrincipalByNameDB(db, pr.Name)
-	if err == principal.ErrPrincipalNotFound {
-		// insert pr if not exists
-		// start dbtx to save metadata and pr together
-		tx, err := db.Begin()
-		if err != nil {
-			ErrDatabase.Write(w)
-			log.Error("Tx begin failed.", log15.Ctx{"err": err})
-		}
-
-		// insert pr
-		err = principal.InsertPrincipalTx(tx, &pr)
-		if err != nil {
-			tx.Rollback()
-			ErrSystem.Write(w)
-			log.Error("TX insert failed.", log15.Ctx{"err": err})
-			return
-		}
-
-		// insert metadata
-		md := metadata.MetadataFromValues(pr.Metadata, pr.CreatedBy)
-		err = metadata.InsertMetadataTx(tx, principal.MetadataModel, pr.ID, md)
-		if err != nil {
-			tx.Rollback()
-			ErrDatabase.Write(w)
-			log.Error("TX metadata insert failed.", log15.Ctx{"err": err})
-			return
-		}
-		//commit tx
-		err = tx.Commit()
-		if err != nil {
-			tx.Rollback()
-			ErrSystem.Write(w)
-			log.Error("TX commit failed.", log15.Ctx{"err": err})
-			return
-		}
-	} else if err != nil {
+	if err != nil && err != principal.ErrPrincipalNotFound {
 		// other db error
+		log.Error("DB get by name failed", log15.Ctx{"err": err})
 		ErrSystem.Write(w)
-		log.Error("DB get by name failed.", log15.Ctx{"err": err})
 		return
-	} else {
+	} else if err == nil {
 		// already exists
+		log.Warn("principal already exists")
 		ErrConflict.Write(w)
-		log.Warn("principal already exist: " + string(pr.ID) + " " + pr.Name)
+		return
+	}
+
+	// insert pr if not exists
+	// start dbtx to save metadata and pr together
+	tx, err := db.Begin()
+	if err != nil {
+		log.Crit("Tx begin failed", log15.Ctx{"err": err})
+		ErrDatabase.Write(w)
+		return
+	}
+
+	// insert pr
+	err = principal.InsertPrincipalTx(tx, &pr)
+	if err != nil {
+		tx.Rollback()
+		ErrDatabase.Write(w)
+		log.Error("TX insert failed.", log15.Ctx{"err": err})
+		return
+	}
+
+	// insert metadata
+	md := metadata.MetadataFromValues(pr.Metadata, pr.CreatedBy)
+	err = metadata.InsertMetadataTx(tx, principal.MetadataModel, pr.ID, md)
+	if err != nil {
+		tx.Rollback()
+		log.Error("TX metadata insert failed.", log15.Ctx{"err": err})
+		ErrDatabase.Write(w)
+		return
+	}
+
+	//commit tx
+	err = tx.Commit()
+	if err != nil {
+		ErrDatabase.Write(w)
+		log.Crit("TX commit failed.", log15.Ctx{"err": err})
 		return
 	}
 
 	// get data explicit from DB
 	pr, err = principal.PrincipalByNameDB(db, pr.Name)
 	if err != nil {
-		ErrSystem.Write(w)
 		log.Error("DB get by name failed.", log15.Ctx{"err": err})
+		ErrDatabase.Write(w)
 		return
 	}
-	md, err := metadata.MetadataByPrimaryDB(db, principal.MetadataModel, pr.ID)
+	md, err = metadata.MetadataByPrimaryDB(db, principal.MetadataModel, pr.ID)
 	if len(md) > 0 {
 		pr.Metadata = md.Values()
 	}
 	if err != nil {
 		log.Error("get metadata failed.", log15.Ctx{"err": err})
+		ErrDatabase.Write(w)
 		return
 	}
 
@@ -182,8 +186,8 @@ func (a *AdminAPI) putNewPrincipal(w http.ResponseWriter, r *http.Request) {
 	resp.Info = "principal " + pr.Name + " created"
 	err = resp.Write(w)
 	if err != nil {
-		ErrSystem.Write(w)
 		log.Error("write error", log15.Ctx{"err": err})
+		ErrSystem.Write(w)
 		return
 	}
 }
