@@ -104,7 +104,6 @@ func (a *AdminAPI) respondWithAuthorization(w http.ResponseWriter) {
 	if err != nil {
 		log.Error("error writing HTTP response", log15.Ctx{"err": err})
 	}
-	w.WriteHeader(http.StatusOK)
 }
 
 // AuthorizationHandler implements /authorization requests
