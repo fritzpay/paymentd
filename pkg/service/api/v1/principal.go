@@ -42,30 +42,30 @@ func (a *AdminAPI) PrincipalGetRequest() http.Handler {
 
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
-		log := a.log.New(log15.Ctx{"method": "principal GET request"})
-		log.Info("Method:" + r.Method)
+		log := a.log.New(log15.Ctx{"method": "PrincipalGetRequest"})
+
 		// get principal by name
 		vars := mux.Vars(r)
 		principalName := vars["name"]
 
-		log.Info("principalName: " + principalName)
+		log = log.New(log15.Ctx{"principalName": principalName})
 
 		db := a.ctx.PrincipalDB(service.ReadOnly)
 		pr, err := principal.PrincipalByNameDB(db, principalName)
 		if err == principal.ErrPrincipalNotFound {
 			ErrNotFound.Write(w)
-			log.Info("not found.", log15.Ctx{"err": err})
+			log.Info("principal not found")
 			return
 		}
 		if err != nil {
 			ErrDatabase.Write(w)
-			log.Error("DB get by name failed.", log15.Ctx{"err": err})
+			log.Error("DB get by name failed", log15.Ctx{"err": err})
 			return
 		}
 		md, err := metadata.MetadataByPrimaryDB(db, principal.MetadataModel, pr.ID)
 		if err != nil {
-			ErrNotFound.Write(w)
-			log.Error("get metadata failed.", log15.Ctx{"err": err})
+			ErrDatabase.Write(w)
+			log.Error("get metadata failed", log15.Ctx{"err": err})
 			return
 		}
 		if len(md) > 0 {
@@ -80,7 +80,6 @@ func (a *AdminAPI) PrincipalGetRequest() http.Handler {
 		err = resp.Write(w)
 		if err != nil {
 			log.Error("write error", log15.Ctx{"err": err})
-
 			return
 		}
 	})
