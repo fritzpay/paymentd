@@ -86,8 +86,7 @@ func (a *AdminAPI) PrincipalGetRequest() http.Handler {
 }
 
 func (a *AdminAPI) putNewPrincipal(w http.ResponseWriter, r *http.Request) {
-	log := a.log.New(log15.Ctx{"method": "Principal Request"})
-	log.Info("Method:" + r.Method)
+	log := a.log.New(log15.Ctx{"method": "putNewPrincipal"})
 
 	// create new principal
 	jd := json.NewDecoder(r.Body)
@@ -100,12 +99,13 @@ func (a *AdminAPI) putNewPrincipal(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// validation createdBy has to be set
-	if len(pr.CreatedBy) < 1 {
-		ErrInval.Write(w)
-		log.Info("CreatedBy has to be set:" + pr.Name)
+	auth, err := getAuthContainer(r)
+	if err != nil {
+		log.Crit("context auth error", log15.Ctx{"err": err})
+		ErrSystem.Write(w)
 		return
 	}
+	pr.CreatedBy = auth[AuthUserIDKey].(string)
 	// set created time
 	pr.Created = time.Now()
 
