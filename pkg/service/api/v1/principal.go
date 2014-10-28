@@ -111,9 +111,17 @@ func (a *AdminAPI) putNewPrincipal(w http.ResponseWriter, r *http.Request) {
 	// set created time
 	pr.Created = time.Now()
 
+	// insert pr if not exists
+	// start dbtx to save metadata and pr together
+	tx, err := a.ctx.PrincipalDB().Begin()
+	if err != nil {
+		log.Crit("Tx begin failed", log15.Ctx{"err": err})
+		ErrDatabase.Write(w)
+		return
+	}
+
 	// check if principal exists
-	db := a.ctx.PrincipalDB()
-	_, err = principal.PrincipalByNameDB(db, pr.Name)
+	_, err = principal.PrincipalByNameTx(tx, pr.Name)
 	if err != nil && err != principal.ErrPrincipalNotFound {
 		// other db error
 		log.Error("DB get by name failed", log15.Ctx{"err": err})
@@ -123,15 +131,6 @@ func (a *AdminAPI) putNewPrincipal(w http.ResponseWriter, r *http.Request) {
 		// already exists
 		log.Warn("principal already exists")
 		ErrConflict.Write(w)
-		return
-	}
-
-	// insert pr if not exists
-	// start dbtx to save metadata and pr together
-	tx, err := db.Begin()
-	if err != nil {
-		log.Crit("Tx begin failed", log15.Ctx{"err": err})
-		ErrDatabase.Write(w)
 		return
 	}
 
@@ -163,6 +162,7 @@ func (a *AdminAPI) putNewPrincipal(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// get data explicit from DB
+	db := a.ctx.PrincipalDB(service.ReadOnly)
 	pr, err = principal.PrincipalByNameDB(db, pr.Name)
 	if err != nil {
 		log.Error("DB get by name failed.", log15.Ctx{"err": err})
