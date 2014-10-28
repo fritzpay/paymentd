@@ -64,7 +64,7 @@ func (a *AdminAPI) ProjectGetRequest() http.Handler {
 
 func (a *AdminAPI) getProject(w http.ResponseWriter, r *http.Request) {
 
-	log := a.log.New(log15.Ctx{"method": "Project request GET"})
+	log := a.log.New(log15.Ctx{"method": "getProject"})
 
 	// parse request paramter
 	// project_id
