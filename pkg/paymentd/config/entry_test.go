@@ -12,6 +12,10 @@ import (
 
 func TestConfigEntry(t *testing.T) {
 	Convey("Given a DB connection", t, testutil.WithPaymentDB(t, func(db *sql.DB) {
+		Reset(func() {
+			db.Close()
+		})
+
 		Convey("Given a random entry name", func() {
 			name := "test" + strconv.FormatInt(rand.Int63(), 10)
 
@@ -63,6 +67,10 @@ func TestConfigEntry(t *testing.T) {
 
 func TestConfigSetPassword(t *testing.T) {
 	Convey("Given a payment DB connection", t, testutil.WithPaymentDB(t, func(db *sql.DB) {
+		Reset(func() {
+			db.Close()
+		})
+
 		Convey("Given a password setter", func() {
 			pw := SetPassword([]byte("password"))
 

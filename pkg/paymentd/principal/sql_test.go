@@ -24,5 +24,4 @@ func TestPrincipalSQL(t *testing.T) {
 		})
 
 	}))
-
 }
