@@ -104,7 +104,6 @@ func (a *AdminAPI) respondWithAuthorization(w http.ResponseWriter) {
 	if err != nil {
 		log.Error("error writing HTTP response", log15.Ctx{"err": err})
 	}
-	w.WriteHeader(http.StatusOK)
 }
 
 // AuthorizationHandler implements /authorization requests
@@ -303,4 +302,16 @@ func (a *AdminAPI) AuthHandler(success, failed http.Handler) http.Handler {
 
 		success.ServeHTTP(w, r)
 	})
+}
+
+func getAuthContainer(r *http.Request) (map[string]interface{}, error) {
+	ctx := service.RequestContext(r)
+	if ctx == nil {
+		return nil, errors.New("request context not present")
+	}
+	auth, ok := ctx.Value(service.ContextVarAuthKey).(map[string]interface{})
+	if !ok {
+		return nil, errors.New("auth container type error")
+	}
+	return auth, nil
 }

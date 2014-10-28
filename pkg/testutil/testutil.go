@@ -60,6 +60,12 @@ func (r *ResponseWriter) Header() http.Header {
 
 // Write implementing the http.ResponseWriter, io.Writer
 func (r *ResponseWriter) Write(p []byte) (int, error) {
+	if !r.HeaderWritten {
+		r.HeaderWritten = true
+	}
+	if r.StatusCode == 0 {
+		r.StatusCode = http.StatusOK
+	}
 	return (&(r.Buf)).Write(p)
 }
 
