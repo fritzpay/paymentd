@@ -13,3 +13,9 @@ Contents:
    project
    provider
    currency
+
+
+.. glossary:: 
+
+	paymentd
+		The fritzpay service deamon

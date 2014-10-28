@@ -7,6 +7,7 @@ import (
 	"github.com/fritzpay/paymentd/pkg/paymentd/config"
 	"github.com/fritzpay/paymentd/pkg/service"
 	"github.com/fritzpay/paymentd/pkg/testutil"
+	"github.com/gorilla/mux"
 	. "github.com/smartystreets/goconvey/convey"
 	"gopkg.in/inconshreveable/log15.v2"
 	"net/http"
@@ -36,7 +37,7 @@ func TestGetCredentialsWithBasicAuth(t *testing.T) {
 		ctx.Config().API.ServeAdmin = true
 		So(ctx.Config().API.ServeAdmin, ShouldBeTrue)
 
-		Convey("Given a new API service", WithService(ctx, logChan, func(s *Service, mux *http.ServeMux) {
+		Convey("Given a new API service", WithService(ctx, logChan, func(s *Service, mx *mux.Router) {
 
 			Convey("Given a new get credentials request", func() {
 				r, err := http.NewRequest("GET", ServicePath+"/authorization", nil)
@@ -47,7 +48,7 @@ func TestGetCredentialsWithBasicAuth(t *testing.T) {
 
 					Convey("When the handler is called", func() {
 						w := testutil.NewResponseWriter()
-						mux.ServeHTTP(w, r)
+						mx.ServeHTTP(w, r)
 						Convey("The handler should respond with method not allowed", func() {
 							So(w.HeaderWritten, ShouldBeTrue)
 							So(w.StatusCode, ShouldEqual, http.StatusMethodNotAllowed)
@@ -60,7 +61,7 @@ func TestGetCredentialsWithBasicAuth(t *testing.T) {
 
 					Convey("When the handler is called", func() {
 						w := testutil.NewResponseWriter()
-						mux.ServeHTTP(w, r)
+						mx.ServeHTTP(w, r)
 						Convey("The handler should respond with method not allowed", func() {
 							So(w.HeaderWritten, ShouldBeTrue)
 							So(w.StatusCode, ShouldEqual, http.StatusMethodNotAllowed)
@@ -73,7 +74,7 @@ func TestGetCredentialsWithBasicAuth(t *testing.T) {
 
 					Convey("When the handler is called", func() {
 						w := testutil.NewResponseWriter()
-						mux.ServeHTTP(w, r)
+						mx.ServeHTTP(w, r)
 						Convey("The handler should respond with a 404 (not found)", func() {
 							So(w.HeaderWritten, ShouldBeTrue)
 							So(w.StatusCode, ShouldEqual, http.StatusNotFound)
@@ -98,7 +99,7 @@ func TestGetCredentialsWithBasicAuth(t *testing.T) {
 
 								Convey("When the handler is called", func() {
 									w := testutil.NewResponseWriter()
-									mux.ServeHTTP(w, r)
+									mx.ServeHTTP(w, r)
 									Convey("The handler should respond with OK", func() {
 										So(w.HeaderWritten, ShouldBeTrue)
 										So(w.StatusCode, ShouldEqual, http.StatusOK)
@@ -128,7 +129,7 @@ func TestGetCredentialsWithBasicAuth(t *testing.T) {
 
 												Convey("When the handler is called", func() {
 													w := testutil.NewResponseWriter()
-													mux.ServeHTTP(w, r)
+													mx.ServeHTTP(w, r)
 													Convey("The handler should respond with OK", func() {
 														So(w.HeaderWritten, ShouldBeTrue)
 														So(w.StatusCode, ShouldEqual, http.StatusOK)
@@ -145,7 +146,7 @@ func TestGetCredentialsWithBasicAuth(t *testing.T) {
 
 								Convey("When the handler is called", func() {
 									w := testutil.NewResponseWriter()
-									mux.ServeHTTP(w, r)
+									mx.ServeHTTP(w, r)
 									Convey("The handler should respond with Unauthorized", func() {
 										So(w.HeaderWritten, ShouldBeTrue)
 										So(w.StatusCode, ShouldEqual, http.StatusUnauthorized)
@@ -158,7 +159,7 @@ func TestGetCredentialsWithBasicAuth(t *testing.T) {
 
 								Convey("When the handler is called", func() {
 									w := testutil.NewResponseWriter()
-									mux.ServeHTTP(w, r)
+									mx.ServeHTTP(w, r)
 									Convey("The handler should request an authorization", func() {
 										So(w.HeaderWritten, ShouldBeTrue)
 										So(w.StatusCode, ShouldEqual, http.StatusUnauthorized)

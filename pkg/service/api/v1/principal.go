@@ -5,9 +5,9 @@ import (
 	"github.com/fritzpay/paymentd/pkg/metadata"
 	"github.com/fritzpay/paymentd/pkg/paymentd/principal"
 	"github.com/fritzpay/paymentd/pkg/service"
+	"github.com/gorilla/mux"
 	"gopkg.in/inconshreveable/log15.v2"
 	"net/http"
-	"path"
 	"time"
 )
 
@@ -29,8 +29,8 @@ func (a *AdminAPI) PrincipalRequest() http.Handler {
 		} else if r.Method == "POST" {
 			a.postChangePrincipal(w, r)
 		} else {
-			log.Info("http method not supported: " + r.Method)
 			ErrMethod.Write(w)
+			log.Info("http method not supported: " + r.Method)
 		}
 	})
 }
@@ -43,10 +43,10 @@ func (a *AdminAPI) PrincipalGetRequest() http.Handler {
 		log := a.log.New(log15.Ctx{"method": "principal GET request"})
 		log.Info("Method:" + r.Method)
 		// get principal by name
-		urlpath, principalName := path.Split(path.Clean(r.URL.Path))
+		vars := mux.Vars(r)
+		principalName := vars["name"]
 
 		log.Info("principalName: " + principalName)
-		log.Info("url path: " + urlpath)
 
 		db := a.ctx.PrincipalDB(service.ReadOnly)
 		pr, err := principal.PrincipalByNameDB(db, principalName)
@@ -101,7 +101,7 @@ func (a *AdminAPI) putNewPrincipal(w http.ResponseWriter, r *http.Request) {
 
 	// validation createdBy has to be set
 	if len(pr.CreatedBy) < 1 {
-		ErrInval.Info = "CreatedBy has to be set"
+		ErrInval.Write(w)
 		log.Info("CreatedBy has to be set:" + pr.Name)
 		return
 	}
@@ -181,7 +181,7 @@ func (a *AdminAPI) putNewPrincipal(w http.ResponseWriter, r *http.Request) {
 	resp.Info = "principal " + pr.Name + " created"
 	err = resp.Write(w)
 	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
+		ErrSystem.Write(w)
 		log.Error("write error", log15.Ctx{"err": err})
 		return
 	}
@@ -215,7 +215,7 @@ func (a *AdminAPI) postChangePrincipal(w http.ResponseWriter, r *http.Request) {
 	db := a.ctx.PrincipalDB(service.ReadOnly)
 	prdb, err := principal.PrincipalByNameDB(db, pr.Name)
 	if err != nil {
-		w.WriteHeader(http.StatusBadRequest)
+		ErrConflict.Write(w)
 		log.Error("get principal from DB failed:"+pr.Name, log15.Ctx{"err": err})
 		return
 	}
@@ -224,7 +224,7 @@ func (a *AdminAPI) postChangePrincipal(w http.ResponseWriter, r *http.Request) {
 	// open transaction to add the posted metadata
 	tx, err := db.Begin()
 	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
+		ErrDatabase.Write(w)
 		log.Error("Tx begin failed.", log15.Ctx{"err": err})
 	}
 	md := metadata.MetadataFromValues(postedMetadata, pr.CreatedBy)
@@ -232,7 +232,7 @@ func (a *AdminAPI) postChangePrincipal(w http.ResponseWriter, r *http.Request) {
 	err = metadata.InsertMetadataTx(tx, principal.MetadataModel, pr.ID, md)
 	if err != nil {
 		tx.Rollback()
-		w.WriteHeader(http.StatusInternalServerError)
+		ErrDatabase.Write(w)
 		log.Error("insert metadata failed", log15.Ctx{"err": err})
 		return
 	}
@@ -241,7 +241,7 @@ func (a *AdminAPI) postChangePrincipal(w http.ResponseWriter, r *http.Request) {
 	// get stored data from db
 	pr, err = principal.PrincipalByNameDB(db, pr.Name)
 	if err != nil {
-		w.WriteHeader(http.StatusNotFound)
+		ErrNotFound.Write(w)
 		log.Error("DB get by name failed.", log15.Ctx{"err": err})
 		return
 	}
@@ -250,6 +250,7 @@ func (a *AdminAPI) postChangePrincipal(w http.ResponseWriter, r *http.Request) {
 		pr.Metadata = md.Values()
 	}
 	if err != nil {
+		ErrDatabase.Write(w)
 		log.Error("get metadata failed.", log15.Ctx{"err": err})
 		return
 	}
@@ -261,7 +262,7 @@ func (a *AdminAPI) postChangePrincipal(w http.ResponseWriter, r *http.Request) {
 	resp.Response = pr
 	err = resp.Write(w)
 	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
+		ErrSystem.Write(w)
 		log.Error("write error", log15.Ctx{"err": err})
 		return
 	}

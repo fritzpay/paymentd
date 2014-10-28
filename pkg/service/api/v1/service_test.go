@@ -3,6 +3,7 @@ package v1
 import (
 	"github.com/fritzpay/paymentd/pkg/service"
 	"github.com/fritzpay/paymentd/pkg/testutil"
+	"github.com/gorilla/mux"
 	. "github.com/smartystreets/goconvey/convey"
 	"gopkg.in/inconshreveable/log15.v2"
 	"net/http"
@@ -10,7 +11,7 @@ import (
 	"testing"
 )
 
-func WithService(ctx *service.Context, logChan <-chan *log15.Record, f func(s *Service, mux *http.ServeMux)) func() {
+func WithService(ctx *service.Context, logChan <-chan *log15.Record, f func(s *Service, mux *mux.Router)) func() {
 	return func() {
 		testMsg := "testmsg"
 		ctx.Log().Info(testMsg)
@@ -18,7 +19,7 @@ func WithService(ctx *service.Context, logChan <-chan *log15.Record, f func(s *S
 
 		So(logMsg.Msg, ShouldEqual, testMsg)
 
-		mux := http.NewServeMux()
+		mux := mux.NewRouter()
 		service, err := NewService(ctx, mux)
 		So(err, ShouldBeNil)
 
@@ -32,15 +33,16 @@ func TestServiceSetup(t *testing.T) {
 		Convey("When the admin API is active", func() {
 			ctx.Config().API.ServeAdmin = true
 
-			Convey("Given a new service", WithService(ctx, logChan, func(s *Service, mux *http.ServeMux) {
+			Convey("Given a new service", WithService(ctx, logChan, func(s *Service, mx *mux.Router) {
 
 				Convey("The admin API routes should be registered", func() {
 					r, err := http.NewRequest("GET", ServicePath+"/authorization", nil)
 					So(err, ShouldBeNil)
 
-					_, path := mux.Handler(r)
+					rm := mux.RouteMatch{}
+					match := mx.Match(r, &rm)
 
-					So(path, ShouldNotBeEmpty)
+					So(match, ShouldBeTrue)
 				})
 			}))
 		})
@@ -50,7 +52,7 @@ func TestServiceSetup(t *testing.T) {
 
 			So(ctx.Config().API.ServeAdmin, ShouldBeFalse)
 
-			Convey("Given a new service", WithService(ctx, logChan, func(s *Service, mux *http.ServeMux) {
+			Convey("Given a new service", WithService(ctx, logChan, func(s *Service, mx *mux.Router) {
 
 				Convey("The admin registered log message should not be present", func() {
 					var logMessagePresent bool
@@ -72,9 +74,10 @@ func TestServiceSetup(t *testing.T) {
 					r, err := http.NewRequest("GET", ServicePath+"/authorization", nil)
 					So(err, ShouldBeNil)
 
-					_, path := mux.Handler(r)
+					rm := mux.RouteMatch{}
+					match := mx.Match(r, &rm)
 
-					So(path, ShouldEqual, "")
+					So(match, ShouldBeFalse)
 				})
 			}))
 		})

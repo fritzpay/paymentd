@@ -2,12 +2,24 @@ package payment_method
 
 import (
 	"database/sql/driver"
+	"errors"
 	"fmt"
 	"github.com/fritzpay/paymentd/pkg/paymentd/provider"
 	"time"
 )
 
 type paymentMethodStatus string
+
+// returns a valid paymentMethodStatus or error
+func ParsePaymentMethodStatus(s string) (paymentMethodStatus, error) {
+	if s == PaymentMethodStatusActive.String() {
+		return PaymentMethodStatusActive, nil
+	} else if s == PaymentMethodStatusInactive.String() {
+		return PaymentMethodStatusInactive, nil
+	} else {
+		return paymentMethodStatus(""), errors.New("invalid")
+	}
+}
 
 func (s paymentMethodStatus) String() string {
 	if s == "" {

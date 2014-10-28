@@ -5,6 +5,7 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"errors"
+	"github.com/gorilla/mux"
 	"hash"
 	"io/ioutil"
 	"net/http"
@@ -131,7 +132,9 @@ func (a *AdminAPI) AuthorizeHandler() http.Handler {
 		w.Header().Set("Content-Type", "application/json")
 		switch r.Method {
 		case "GET":
-			switch getAuthorizationMethod(r.URL.Path) {
+			vars := mux.Vars(r)
+			authMethod := vars["method"]
+			switch authMethod {
 			case "basic":
 				a.authenticateBasicAuth(w, r)
 				return

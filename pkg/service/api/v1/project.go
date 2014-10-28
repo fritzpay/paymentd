@@ -91,10 +91,21 @@ func (a *AdminAPI) getProject(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	md, err := metadata.MetadataByPrimaryDB(db, project.MetadataModel, pr.ID)
+	if len(md) > 0 {
+		pr.Metadata = md.Values()
+	}
+	if err != nil {
+		log.Error("metadata problem data not found", log15.Ctx{"err": err})
+		ErrDatabase.Write(w)
+		return
+	}
+	pr.Metadata = md.Values()
+
 	// response
 	resp := ProjectAdminAPIResponse{}
 	resp.Status = StatusSuccess
-	resp.Info = "project " + string(projectId) + " found"
+	resp.Info = "project " + pr.Name + " found"
 	resp.Response = pr
 	resp.Write(w)
 	if err != nil {
@@ -107,7 +118,7 @@ func (a *AdminAPI) getProject(w http.ResponseWriter, r *http.Request) {
 func (a *AdminAPI) putNewProject(w http.ResponseWriter, r *http.Request) {
 
 	log := a.log.New(log15.Ctx{"method": "Project request PUT"})
-
+	auth := service.RequestContextAuth(r)
 	// parse put paramter
 	jd := json.NewDecoder(r.Body)
 	pr := project.Project{}
@@ -118,6 +129,7 @@ func (a *AdminAPI) putNewProject(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	r.Body.Close()
+	pr.CreatedBy = auth[AuthUserIDKey].(string)
 
 	// validate fields
 	if !pr.IsValid() {
@@ -136,7 +148,6 @@ func (a *AdminAPI) putNewProject(w http.ResponseWriter, r *http.Request) {
 	if err == project.ErrProjectNotFound {
 		// insert project from database
 		err = project.InsertProjectDB(db, &pr)
-
 		if err != nil {
 			log.Error("project creation failed", log15.Ctx{"err": err})
 			w.WriteHeader(http.StatusInternalServerError)
@@ -162,12 +173,14 @@ func (a *AdminAPI) putNewProject(w http.ResponseWriter, r *http.Request) {
 func (a *AdminAPI) postChangeProject(w http.ResponseWriter, r *http.Request) {
 	log := a.log.New(log15.Ctx{"method": "Project request POST"})
 	log.Info("Method:" + r.Method)
+	auth := service.RequestContextAuth(r)
 
 	// get Metadata from post variables
 	jd := json.NewDecoder(r.Body)
 	pr := &project.Project{}
 	err := jd.Decode(pr)
 	r.Body.Close()
+	pr.CreatedBy = auth[AuthUserIDKey].(string)
 	if err != nil {
 		ErrReadJson.Write(w)
 		log.Error("json decode failed: ", log15.Ctx{"err": err})
@@ -175,22 +188,16 @@ func (a *AdminAPI) postChangeProject(w http.ResponseWriter, r *http.Request) {
 	}
 	postedMetadata := pr.Metadata
 
-	// validation createdBy has to be set
-	if len(pr.CreatedBy) < 1 {
-		ErrInval.Write(w)
-		log.Info("CreatedBy has to be set:" + pr.Name)
-		return
-	}
-
 	// does project exist
 	db := a.ctx.PrincipalDB(service.ReadOnly)
-	if err != nil {
-		ErrDatabase.Write(w)
-		log.Error("start transaction DB failed: "+pr.Name, log15.Ctx{"err": err})
+	var prdb *project.Project
+
+	prdb, err = project.ProjectByNameDB(db, pr.Name)
+	if err == project.ErrProjectNotFound {
+		ErrInval.Write(w)
+		log.Info("project does not exist: "+pr.Name, log15.Ctx{"err": err})
 		return
 	}
-	var prdb *project.Project
-	prdb, err = project.ProjectByNameDB(db, pr.Name)
 	if err != nil {
 		ErrDatabase.Write(w)
 		log.Error("get project from DB failed: "+pr.Name, log15.Ctx{"err": err})

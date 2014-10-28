@@ -48,6 +48,14 @@ func RequestContext(r *http.Request) context.Context {
 	return ctx
 }
 
+// RequestAuthUserKey returns a request associated with the given request
+func RequestContextAuth(r *http.Request) map[string]interface{} {
+	mutex.RLock()
+	ctx := requestContexts[r]
+	mutex.RUnlock()
+	return ctx.Value(ContextVarAuthKey).(map[string]interface{})
+}
+
 // SetRequestContextVar associates a var with a request context
 func SetRequestContextVar(r *http.Request, key, value interface{}) {
 	mutex.Lock()

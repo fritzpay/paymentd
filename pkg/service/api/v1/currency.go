@@ -3,9 +3,9 @@ package v1
 import (
 	"github.com/fritzpay/paymentd/pkg/paymentd/currency"
 	"github.com/fritzpay/paymentd/pkg/service"
+	"github.com/gorilla/mux"
 	"gopkg.in/inconshreveable/log15.v2"
 	"net/http"
-	"path"
 )
 
 type CurrencyAdminAPIResponse struct {
@@ -19,13 +19,13 @@ func (a *AdminAPI) CurrencyGetRequest() http.Handler {
 		w.Header().Set("Content-Type", "application/json")
 		log := a.log.New(log15.Ctx{"method": "Currency Request"})
 
+		// get param
+		vars := mux.Vars(r)
+		currencyParam := vars["currencycode"]
 		if r.Method != "GET" {
 			ErrInval.Write(w)
 			log.Info("unsupported method " + r.Method)
 		}
-
-		urlpath, currencyParam := path.Split(r.URL.Path)
-		log.Info("urlpath: " + urlpath)
 		log.Info("param: " + currencyParam)
 
 		// get one Currency

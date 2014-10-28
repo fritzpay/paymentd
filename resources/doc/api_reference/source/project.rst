@@ -19,42 +19,44 @@ Create a new project
 
 	.. sourcecode:: http
 
-
 		{
 			"PrincipalID":"1",
 			"Name":"Roadrunnergame",
-			"CreatedBy":"John Doe"
 		}
 
 	**Example reponse**:
 
 	.. sourcecode:: http
 
+		HTTP/1.1 200 OK
 		Accept: application/json
 		Authorization: Basic cm9vdDpyb290
-		HTTP/1.1 200 OK
 		Content-Type: application/json
 
 		{
-			"ID":1,
-			"PrincipalID":"1",
-			"Name":"Roadrunnergame",
-			"CreatedBy":"John Doe",
-			"Created":"2014-10-17T14:12:11Z",
-			"Metadata":null
+			"Status": "success",
+			"Info": "project Roadrunnergame created",
+			"Response": {		
+				"ID":1,
+				"PrincipalID":"1",
+				"Name":"Roadrunnergame",
+				"CreatedBy":"John Doe",
+				"Created":"2014-10-17T14:12:11Z",
+				"Metadata":null
+			},
+			"Error": null
 		}
 
 	:reqheader Authorization: HTTP Basic Auth
 	
 	:statuscode 200: No error, project created.
 	:statuscode 400: The request was malformed; the provided fields could not be understood.
-	:statuscode 401: Unauthorized, either the username does not exist or the credentials
-	                 were incorrect.
+	:statuscode 401: Unauthorized, either the username does not exist or the credentials were incorrect.
  
 Change an existing project
 --------------------------
 
-.. http:put:: /v1/project
+.. http:post:: /v1/project
 
 	Change an existing project
 
@@ -67,32 +69,34 @@ Change an existing project
 		Accept: application/json
 		Authorization: Basic cm9vdDpyb290
 
-	.. sourcecode:: http
-
+	.. sourcecode:: http		
+	
 		{
 			"PrincipalID":"1",
 			"Name":"DifferentName",
-			"CreatedBy":"Dohn Joe"
 		}
 
 	**Example reponse**:
 
 	.. sourcecode:: http
 
+		HTTP/1.1 200 OK
 		Accept: application/json
 		Authorization: Basic cm9vdDpyb290
-		HTTP/1.1 200 OK
 		Content-Type: application/json
 
-	.. sourcecode:: http
-
 		{
-			"ID":1,
-			"PrincipalID":"1",
-			"Name":"DifferentName",
-			"CreatedBy":"John Doe",
-			"Created":"2014-10-17T14:12:11Z",
-			"Metadata":null
+			"Status": "success",
+			"Info": "project Roadrunnergame created",
+			"Response": {	
+				"ID":1,
+				"PrincipalID":"1",
+				"Name":"DifferentName",
+				"CreatedBy":"John Doe",
+				"Created":"2014-10-17T14:12:11Z",
+				"Metadata":null
+			},
+			"Error": null
 		}
 
 	:reqheader Authorization: HTTP Basic Auth
@@ -123,15 +127,22 @@ Informational
 	.. sourcecode:: http
 
 		HTTP/1.1 200 OK
+		Accept: application/json
+		Authorization: Basic cm9vdDpyb290
 		Content-Type: application/json
 
 		{
-			"ID":1,
-			"PrincipalID":"1",
-			"Name":"Roadrunnergame",
-			"CreatedBy":"John Doe",
-			"Created":"2014-10-17T14:12:11Z",
-			"Metadata":null
+			"Status": "success",
+			"Info": "project Roadrunnergame created",
+			"Response": {	
+				"ID":1,
+				"PrincipalID":"1",
+				"Name":"Roadrunnergame",
+				"CreatedBy":"John Doe",
+				"Created":"2014-10-17T14:12:11Z",
+				"Metadata":null
+			},
+			"Error": null
 		}
 
 	:param name: The project id
@@ -142,3 +153,54 @@ Informational
 	:statuscode 400: The request was malformed; the provided id could not be understood.
 	:statuscode 401: Unauthorized, either the username does not exist or the credentials
 	:statuscode 404: project with given id was not found 
+
+Add a paymentmethod to a project
+--------------------------------
+
+.. http:put:: /v1/project/(projectid)/method/
+
+	Add a paymentmethod to a project
+
+	**Example request**:
+
+	.. sourcecode:: http
+
+		PUT /project/1/method/
+		Host: example.com
+		Accept: application/json
+		Authorization: dEFFEFeddedeGGEGMceokr353521234
+
+		{
+			"MethodKey":"dummyprovider",
+			"ProviderID":"1",
+			"Status":"active",
+			"Metadata": null
+		}
+
+	:param name: The project id
+	:param name: The new payment method name
+	:param name: The provider id that should be used for the new payment method
+
+	**Example response**
+
+	.. sourcecode:: http
+
+		HTTP/1.1 200 OK
+		Accept: application/json
+		Authorization: Basic cm9vdDpyb290
+		Content-Type: application/json
+
+		{
+			"Status": "success",
+			"Info": "method dummyprovider created",
+			"Response": {	
+				"ID":1,
+				"ProjectID":"1",
+				"ProviderID":"1",
+				"MethodKey":"dummyprovider",
+				"CreatedBy":"John Doe",
+				"Created":"2014-10-17T14:12:11Z",
+				"Metadata":null
+			},
+			"Error": null
+		}
