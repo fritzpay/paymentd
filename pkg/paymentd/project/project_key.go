@@ -17,11 +17,11 @@ type Projectkey struct {
 }
 
 // IsValid returns true if the project key is considered valid
-func (p Projectkey) IsValid() bool {
+func (p *Projectkey) IsValid() bool {
 	return p.Key != "" && p.Active
 }
 
 // SecretBytes returns the binary representation of the shared secret
-func (p Projectkey) SecretBytes() ([]byte, error) {
+func (p *Projectkey) SecretBytes() ([]byte, error) {
 	return hex.DecodeString(p.Secret)
 }

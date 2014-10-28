@@ -3,7 +3,6 @@ package v1
 import (
 	"github.com/fritzpay/paymentd/pkg/service"
 	"gopkg.in/inconshreveable/log15.v2"
-	"net/http"
 	"time"
 )
 
@@ -30,30 +29,6 @@ type AdminAPI struct {
 type AdminAPIResponse struct {
 	ServiceResponse
 }
-
-var (
-	ErrConflict = ServiceResponse{
-		http.StatusConflict,
-		StatusError,
-		"resource already exits",
-		nil,
-		"resource already exits",
-	}
-	ErrReadParam = ServiceResponse{
-		http.StatusBadRequest,
-		StatusError,
-		"parameter malformed",
-		nil,
-		"parameter malformed",
-	}
-	ErrMethod = ServiceResponse{
-		http.StatusMethodNotAllowed,
-		StatusError,
-		"method not allowed",
-		nil,
-		"method not allowed",
-	}
-)
 
 // NewAPI creates a new admin API
 func NewAdminAPI(ctx *service.Context) *AdminAPI {

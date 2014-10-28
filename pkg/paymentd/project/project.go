@@ -1,6 +1,7 @@
 package project
 
 import (
+	"database/sql"
 	"time"
 )
 
@@ -21,11 +22,13 @@ type Project struct {
 	Created     time.Time
 	CreatedBy   string
 
+	Config Config
+
 	Metadata map[string]string
 }
 
 // Empty returns true if the project is considered empty/uninitialized
-func (p Project) Empty() bool {
+func (p *Project) Empty() bool {
 	return p.ID == 0 && p.Name == ""
 }
 
@@ -35,6 +38,15 @@ func (p *Project) IsValid() bool {
 		return false
 	}
 	return true
+}
+
+type Config struct {
+	Timestamp          time.Time
+	WebURL             sql.NullString
+	CallbackURL        sql.NullString
+	CallbackAPIVersion sql.NullString
+	ProjectKey         sql.NullString
+	ReturnURL          sql.NullString
 }
 
 // representation of the metadata schema structure
