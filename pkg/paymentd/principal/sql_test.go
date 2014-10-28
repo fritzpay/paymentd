@@ -5,7 +5,28 @@ import (
 	"github.com/fritzpay/paymentd/pkg/testutil"
 	. "github.com/smartystreets/goconvey/convey"
 	"testing"
+	"time"
 )
+
+func WithPrincipal(db *sql.DB, f func(pr *Principal)) func() {
+	return func() {
+		pr := &Principal{
+			Created:   time.Now(),
+			CreatedBy: "test",
+			Name:      "test_principal",
+		}
+		err := InsertPrincipalDB(db, pr)
+		So(err, ShouldBeNil)
+		So(pr.Empty(), ShouldBeFalse)
+
+		Reset(func() {
+			_, err := db.Exec("delete from principal where name = 'test_principal'")
+			So(err, ShouldBeNil)
+		})
+
+		f(pr)
+	}
+}
 
 func TestPrincipalSQL(t *testing.T) {
 	Convey("Given a principal DB connection", t, testutil.WithPrincipalDB(t, func(db *sql.DB) {
@@ -23,5 +44,19 @@ func TestPrincipalSQL(t *testing.T) {
 			})
 		})
 
+		Convey("Given a principal", WithPrincipal(db, func(pr *Principal) {
+
+			Convey("When selecting a principal by name", func() {
+				selPr, err := PrincipalByNameDB(db, pr.Name)
+
+				Convey("It should succeed", func() {
+					So(err, ShouldBeNil)
+					So(selPr.Empty(), ShouldBeFalse)
+					Convey("It should match", func() {
+						So(selPr.ID, ShouldEqual, pr.ID)
+					})
+				})
+			})
+		}))
 	}))
 }
