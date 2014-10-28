@@ -25,11 +25,8 @@ func WithSystemPassword(db *sql.DB, f func()) func() {
 		So(err, ShouldBeNil)
 		err = config.InsertConfigIfNotPresentTx(tx, cfg)
 		So(err, ShouldBeNil)
-
-		Reset(func() {
-			err = tx.Rollback()
-			So(err, ShouldBeNil)
-		})
+		err = tx.Commit()
+		So(err, ShouldBeNil)
 
 		f()
 	}
