@@ -1,10 +1,10 @@
 package v1
 
 import (
-	"code.google.com/p/go.crypto/bcrypt"
 	"database/sql"
 	"encoding/base64"
 	"encoding/json"
+	"fmt"
 	"github.com/fritzpay/paymentd/pkg/paymentd/config"
 	"github.com/fritzpay/paymentd/pkg/service"
 	"github.com/fritzpay/paymentd/pkg/testutil"
@@ -13,6 +13,20 @@ import (
 	"net/http"
 	"testing"
 )
+
+func WithSystemPassword(db *sql.DB, f func()) func() {
+	return func() {
+		err := config.Set(db, config.SetPassword([]byte("password")))
+		So(err, ShouldBeNil)
+
+		Reset(func() {
+			_, err := db.Exec(fmt.Sprintf("delete from config where name = '%s'", config.ConfigNameSystemPassword))
+			So(err, ShouldBeNil)
+		})
+
+		f()
+	}
+}
 
 func TestGetCredentialsWithBasicAuth(t *testing.T) {
 	Convey("Given a new context", t, testutil.WithContext(func(ctx *service.Context, logChan <-chan *log15.Record) {
@@ -71,22 +85,7 @@ func TestGetCredentialsWithBasicAuth(t *testing.T) {
 						db.Close()
 					})
 
-					Convey("Given a set system password", func() {
-						pw, err := config.EntryByNameDB(db, config.ConfigNameSystemPassword)
-						if err == config.ErrEntryNotFound {
-							err := config.Set(db, config.SetPassword([]byte("password")))
-							So(err, ShouldBeNil)
-						} else {
-							So(err, ShouldBeNil)
-							err = bcrypt.CompareHashAndPassword([]byte(pw.Value), []byte("password"))
-							if err == bcrypt.ErrMismatchedHashAndPassword {
-								err := config.Set(db, config.SetPassword([]byte("password")))
-								So(err, ShouldBeNil)
-							} else {
-								So(err, ShouldBeNil)
-							}
-						}
-
+					Convey("Given a set system password", WithSystemPassword(db, func() {
 						Convey("When retrieving a basic authorization", func() {
 							r.Method = "GET"
 							r.URL.Path += "/basic"
@@ -165,7 +164,7 @@ func TestGetCredentialsWithBasicAuth(t *testing.T) {
 								})
 							})
 						})
-					})
+					}))
 				}))
 			})
 		}))
