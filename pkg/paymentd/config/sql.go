@@ -6,7 +6,14 @@ import (
 )
 
 const selectEntryCountByName = `
-SELECT COUNT(*) FROM config WHERE name = ?
+SELECT COUNT(*) FROM config 
+WHERE 
+	name = ?
+	AND
+	last_change = (
+		SELECT MAX(last_change) FROM config AS mc
+		WHERE mc.name = name
+	)
 `
 
 const selectEntryByName = `
@@ -109,7 +116,7 @@ func InsertConfigIfNotPresentTx(db *sql.Tx, cfg Config) error {
 	var numEntries int
 	t := time.Now()
 	for n, v := range cfg {
-		exists = checkExists.QueryRow(&numEntries)
+		exists = checkExists.QueryRow(n)
 		err = exists.Scan(&numEntries)
 		if err != nil {
 			return err
