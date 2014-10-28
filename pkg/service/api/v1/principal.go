@@ -23,14 +23,16 @@ func (a *AdminAPI) PrincipalRequest() http.Handler {
 
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
-		log := a.log.New(log15.Ctx{"method": "Principal Request"})
-		if r.Method == "PUT" {
+		log := a.log.New(log15.Ctx{"method": "PrincipalRequest"})
+
+		switch r.Method {
+		case "PUT":
 			a.putNewPrincipal(w, r)
-		} else if r.Method == "POST" {
+		case "POST":
 			a.postChangePrincipal(w, r)
-		} else {
+		default:
 			ErrMethod.Write(w)
-			log.Info("http method not supported: " + r.Method)
+			log.Info("http method not supported", log15.Ctx{"requestMethod": r.Method})
 		}
 	})
 }
