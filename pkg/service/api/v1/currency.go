@@ -17,33 +17,35 @@ func (a *AdminAPI) CurrencyGetRequest() http.Handler {
 
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
-		log := a.log.New(log15.Ctx{"method": "Currency Request"})
+		log := a.log.New(log15.Ctx{"method": "CurrencyGetRequest"})
 
 		// get param
 		vars := mux.Vars(r)
 		currencyParam := vars["currencycode"]
 		if r.Method != "GET" {
 			ErrInval.Write(w)
-			log.Info("unsupported method " + r.Method)
+			log.Info("unsupported method", log15.Ctx{"requestMethod": r.Method})
+			return
 		}
-		log.Info("param: " + currencyParam)
 
 		// get one Currency
 		if len(currencyParam) != 3 {
 			ErrReadParam.Write(w)
-			log.Info("malformed param: " + currencyParam)
+			log.Info("malformed param", log15.Ctx{"currencyParam": currencyParam})
 			return
 		}
+
+		log = log.New(log15.Ctx{"currencyParam": currencyParam})
 
 		db := a.ctx.PaymentDB(service.ReadOnly)
 		c, err := currency.CurrencyByCodeISO4217DB(db, currencyParam)
 		if err == currency.ErrCurrencyNotFound {
 			ErrNotFound.Write(w)
-			log.Info("currency " + currencyParam + " not found")
+			log.Info("currency not found")
 			return
 		} else if err != nil {
 			ErrDatabase.Write(w)
-			log.Error("database error ", log15.Ctx{"err": err})
+			log.Error("database error", log15.Ctx{"err": err})
 			return
 		}
 
@@ -58,7 +60,6 @@ func (a *AdminAPI) CurrencyGetRequest() http.Handler {
 			w.WriteHeader(http.StatusInternalServerError)
 			return
 		}
-
 	})
 }
 
