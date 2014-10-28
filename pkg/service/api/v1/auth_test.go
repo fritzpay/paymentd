@@ -4,7 +4,6 @@ import (
 	"database/sql"
 	"encoding/base64"
 	"encoding/json"
-	"fmt"
 	"github.com/fritzpay/paymentd/pkg/paymentd/config"
 	"github.com/fritzpay/paymentd/pkg/service"
 	"github.com/fritzpay/paymentd/pkg/testutil"
@@ -16,11 +15,18 @@ import (
 
 func WithSystemPassword(db *sql.DB, f func()) func() {
 	return func() {
-		err := config.Set(db, config.SetPassword([]byte("password")))
+		cfg := config.NewConfig()
+		pw := config.SetPassword([]byte("password"))
+		err := pw(cfg)
+		So(err, ShouldBeNil)
+
+		tx, err := db.Begin()
+		So(err, ShouldBeNil)
+		err = config.InsertConfigIfNotPresentTx(tx, cfg)
 		So(err, ShouldBeNil)
 
 		Reset(func() {
-			_, err := db.Exec(fmt.Sprintf("delete from config where name = '%s'", config.ConfigNameSystemPassword))
+			err = tx.Rollback()
 			So(err, ShouldBeNil)
 		})
 
