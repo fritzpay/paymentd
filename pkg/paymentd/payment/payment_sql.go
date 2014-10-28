@@ -12,9 +12,9 @@ var (
 
 const insertPayment = `
 INSERT INTO payment
-(project_id, created, ident, amount, subunits, currency, callback_url, return_url)
+(project_id, created, ident, amount, subunits, currency)
 VALUES
-(?, ?, ?, ?, ?, ?, ?, ?)
+(?, ?, ?, ?, ?, ?)
 `
 
 func InsertPaymentTx(db *sql.Tx, p *Payment) error {
@@ -29,8 +29,6 @@ func InsertPaymentTx(db *sql.Tx, p *Payment) error {
 		p.Amount,
 		p.Subunits,
 		p.Currency,
-		p.CallbackURL,
-		p.ReturnURL,
 	)
 	stmt.Close()
 	if err != nil {
@@ -48,9 +46,7 @@ SELECT
 	ident,
 	amount,
 	subunits,
-	currency,
-	callback_url,
-	return_url
+	currency
 FROM payment
 `
 
@@ -71,8 +67,6 @@ func scanSingleRow(row *sql.Row) (*Payment, error) {
 		&p.Amount,
 		&p.Subunits,
 		&p.Currency,
-		&p.CallbackURL,
-		&p.ReturnURL,
 	)
 	if err != nil {
 		if err == sql.ErrNoRows {
@@ -90,9 +84,9 @@ func PaymentByProjectIDAndIdentTx(db *sql.Tx, projectID int64, ident string) (*P
 
 const insertPaymentConfig = `
 INSERT INTO payment_config
-(project_id, payment_id, timestamp, payment_method_id, country, locale)
+(project_id, payment_id, timestamp, payment_method_id, country, locale, callback_url, return_url)
 VALUES
-(?, ?, ?, ?, ?, ?)
+(?, ?, ?, ?, ?, ?, ?, ?)
 `
 
 func InsertPaymentConfigTx(db *sql.Tx, p *Payment) error {
@@ -108,6 +102,8 @@ func InsertPaymentConfigTx(db *sql.Tx, p *Payment) error {
 		p.Config.PaymentMethodID,
 		p.Config.Country,
 		p.Config.Locale,
+		p.Config.CallbackURL,
+		p.Config.ReturnURL,
 	)
 	stmt.Close()
 	return err

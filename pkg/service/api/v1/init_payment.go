@@ -257,11 +257,11 @@ func (r *InitPaymentResponse) ConfirmationFromPayment(p *payment.Payment) {
 	if p.Config.PaymentMethodID.Valid {
 		r.Confirmation.PaymentMethodID = p.Config.PaymentMethodID.Int64
 	}
-	if p.CallbackURL.Valid {
-		r.Confirmation.CallbackURL = p.CallbackURL.String
+	if p.Config.CallbackURL.Valid {
+		r.Confirmation.CallbackURL = p.Config.CallbackURL.String
 	}
-	if p.ReturnURL.Valid {
-		r.Confirmation.ReturnURL = p.ReturnURL.String
+	if p.Config.ReturnURL.Valid {
+		r.Confirmation.ReturnURL = p.Config.ReturnURL.String
 	}
 	if p.Metadata != nil {
 		r.Confirmation.Metadata = p.Metadata
@@ -492,11 +492,21 @@ func (a *PaymentAPI) InitPayment() http.Handler {
 			}
 			return
 		}
+		// payment config fields
+		if req.PaymentMethodID != 0 {
+			p.Config.PaymentMethodID.Int64, p.Config.PaymentMethodID.Valid = req.PaymentMethodID, true
+		}
+		if req.Country != "" {
+			p.Config.Country.String, p.Config.Country.Valid = req.Country, true
+		}
+		if req.Locale != "" {
+			p.Config.Locale.String, p.Config.Locale.Valid = req.Locale, true
+		}
 		if req.CallbackURL != "" {
-			p.CallbackURL.String, p.CallbackURL.Valid = req.CallbackURL, true
+			p.Config.CallbackURL.String, p.Config.CallbackURL.Valid = req.CallbackURL, true
 		}
 		if req.ReturnURL != "" {
-			p.ReturnURL.String, p.ReturnURL.Valid = req.ReturnURL, true
+			p.Config.ReturnURL.String, p.Config.ReturnURL.Valid = req.ReturnURL, true
 		}
 
 		// DB
@@ -563,16 +573,6 @@ func (a *PaymentAPI) InitPayment() http.Handler {
 				resp.Info = fmt.Sprintf("error on insert payment: %v", err)
 			}
 			return
-		}
-		// payment config fields
-		if req.PaymentMethodID != 0 {
-			p.Config.PaymentMethodID.Int64, p.Config.PaymentMethodID.Valid = req.PaymentMethodID, true
-		}
-		if req.Country != "" {
-			p.Config.Country.String, p.Config.Country.Valid = req.Country, true
-		}
-		if req.Locale != "" {
-			p.Config.Locale.String, p.Config.Locale.Valid = req.Locale, true
 		}
 		err = payment.InsertPaymentConfigTx(tx, p)
 		if err != nil {
