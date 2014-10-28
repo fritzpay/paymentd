@@ -49,6 +49,11 @@ type Config struct {
 	ReturnURL          sql.NullString
 }
 
+// IsSet returns true if the config was set
+func (c Config) IsSet() bool {
+	return !c.Timestamp.IsZero()
+}
+
 // representation of the metadata schema structure
 const MetadataModel metadataModel = 0
 

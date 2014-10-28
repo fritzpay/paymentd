@@ -3,6 +3,7 @@ package project
 import (
 	"database/sql"
 	"errors"
+	"time"
 )
 
 var (
@@ -54,14 +55,78 @@ func InsertProjectTx(db *sql.Tx, p *Project) error {
 	return execInsertProject(insert, p)
 }
 
+const insertProjectConfig = `
+INSERT INTO project_config
+(project_id, timestamp, web_url, callback_url, callback_api_version, project_key, return_url)
+VALUES
+(?, ?, ?, ?, ?, ?, ?)
+`
+
+func execInsertProjectConfig(insert *sql.Stmt, p *Project) error {
+	p.Config.Timestamp = time.Now()
+	_, err := insert.Exec(
+		p.ID,
+		p.Config.Timestamp,
+		p.Config.WebURL,
+		p.Config.CallbackURL,
+		p.Config.CallbackAPIVersion,
+		p.Config.ProjectKey,
+		p.Config.ReturnURL,
+	)
+	insert.Close()
+	return err
+}
+
+// InsertProjectConfigDB sets a new project config
+//
+// It will update the project config timestamp
+func InsertProjectConfigDB(db *sql.DB, p *Project) error {
+	if p.Empty() || !p.IsValid() {
+		return errors.New("invalid project")
+	}
+	insert, err := db.Prepare(insertProjectConfig)
+	if err != nil {
+		return err
+	}
+	return execInsertProjectConfig(insert, p)
+}
+
+// InsertProjectConfigTx sets a new project config
+//
+// It will update the project config timestamp
+func InsertProjectConfigTx(db *sql.Tx, p *Project) error {
+	if p.Empty() || !p.IsValid() {
+		return errors.New("invalid project")
+	}
+	insert, err := db.Prepare(insertProjectConfig)
+	if err != nil {
+		return err
+	}
+	return execInsertProjectConfig(insert, p)
+}
+
 const selectProject = `
 SELECT
-	id,
-	principal_id,
-	name,
-	created,
-	created_by
-FROM project
+	p.id,
+	p.principal_id,
+	p.name,
+	p.created,
+	p.created_by,
+	UNIX_TIMESTAMP(c.timestamp),
+	c.web_url,
+	c.callback_url,
+	c.callback_api_version,
+	c.project_key,
+	c.return_url
+FROM project AS p
+LEFT JOIN project_config AS c ON
+	c.project_id = p.id
+	AND
+	c.timestamp = (
+		SELECT MAX(timestamp) FROM project_config
+		WHERE
+			project_id = p.id
+	)
 `
 
 const selectProjectById = selectProject + `
@@ -83,12 +148,28 @@ WHERE
 
 func scanProject(row *sql.Row) (*Project, error) {
 	p := &Project{}
-	err := row.Scan(&p.ID, &p.PrincipalID, &p.Name, &p.Created, &p.CreatedBy)
+	var ts sql.NullInt64
+	err := row.Scan(
+		&p.ID,
+		&p.PrincipalID,
+		&p.Name,
+		&p.Created,
+		&p.CreatedBy,
+		&ts,
+		&p.Config.WebURL,
+		&p.Config.CallbackURL,
+		&p.Config.CallbackAPIVersion,
+		&p.Config.ProjectKey,
+		&p.Config.ReturnURL,
+	)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return p, ErrProjectNotFound
 		}
 		return p, err
+	}
+	if ts.Valid {
+		p.Config.Timestamp = time.Unix(ts.Int64, 0)
 	}
 	return p, nil
 }
@@ -136,10 +217,24 @@ SELECT
 	p.principal_id,
 	p.name,
 	p.created,
-	p.created_by
+	p.created_by,
+	UNIX_TIMESTAMP(c.timestamp),
+	c.web_url,
+	c.callback_url,
+	c.callback_api_version,
+	c.project_key,
+	c.return_url
 FROM project_key AS k
 INNER JOIN project AS p ON
 	p.id = k.project_id
+LEFT JOIN project_config AS c ON
+	c.project_id = p.id
+	AND
+	c.timestamp = (
+		SELECT MAX(timestamp) FROM project_config
+		WHERE
+			project_id = p.id
+	)
 `
 
 const selectProjectKeyByKey = selectProjectKey + `
@@ -155,6 +250,7 @@ WHERE
 
 func scanProjectKey(row *sql.Row) (*Projectkey, error) {
 	pk := &Projectkey{}
+	var ts sql.NullInt64
 	err := row.Scan(
 		&pk.Key,
 		&pk.Timestamp,
@@ -166,12 +262,21 @@ func scanProjectKey(row *sql.Row) (*Projectkey, error) {
 		&pk.Project.Name,
 		&pk.Project.Created,
 		&pk.Project.CreatedBy,
+		&ts,
+		&pk.Project.Config.WebURL,
+		&pk.Project.Config.CallbackURL,
+		&pk.Project.Config.CallbackAPIVersion,
+		&pk.Project.Config.ProjectKey,
+		&pk.Project.Config.ReturnURL,
 	)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return pk, ErrProjectKeyNotFound
 		}
 		return pk, err
+	}
+	if ts.Valid {
+		pk.Project.Config.Timestamp = time.Unix(ts.Int64, 0)
 	}
 	return pk, nil
 }
