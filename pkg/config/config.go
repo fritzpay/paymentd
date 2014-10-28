@@ -110,10 +110,10 @@ func DefaultConfig() Config {
 	cfg.Database.TransactionMaxRetries = 5
 
 	cfg.Database.Principal.Write = NewDatabaseConfig()
-	cfg.Database.Principal.Write["mysql"] = "paymentd@tcp(localhost:3306)/fritzpay_principal?charset=utf8mb4&parseTime=true&loc=UTC&timeout=1m&wait_timeout=30&interactive_timeout=30"
+	cfg.Database.Principal.Write["mysql"] = "paymentd@tcp(localhost:3306)/fritzpay_principal?charset=utf8mb4&parseTime=true&loc=UTC&timeout=1m&wait_timeout=30&interactive_timeout=30&time_zone=UTC"
 
 	cfg.Database.Payment.Write = NewDatabaseConfig()
-	cfg.Database.Payment.Write["mysql"] = "paymentd@tcp(localhost:3306)/fritzpay_payment?charset=utf8mb4&parseTime=true&loc=UTC&timeout=1m&wait_timeout=30&interactive_timeout=30"
+	cfg.Database.Payment.Write["mysql"] = "paymentd@tcp(localhost:3306)/fritzpay_payment?charset=utf8mb4&parseTime=true&loc=UTC&timeout=1m&wait_timeout=30&interactive_timeout=30&time_zone=UTC"
 
 	cfg.Database.Principal.ReadOnly = nil
 
