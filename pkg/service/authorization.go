@@ -63,36 +63,38 @@ func NewAuthorization(h func() hash.Hash) *Authorization {
 // ReadFrom reads a serialized authorization container from the given reader
 //
 // After the container is read, it should be decoded using the Decode() method
-func (a *Authorization) ReadFrom(r io.Reader) (n int64, err error) {
+func (a *Authorization) ReadFrom(r io.Reader) (int64, error) {
+	var n int64
+	var err error
 	r = base64.NewDecoder(base64.StdEncoding, r)
 	buf := bufio.NewReader(r)
 	// timestamp
 	timestamp, err := buf.ReadBytes('|')
 	if err != nil {
-		return
+		return n, err
 	}
 	n += int64(len(timestamp))
 	// remove delimiter
 	timestamp = timestamp[:len(timestamp)-1]
 	a.timestamp, err = strconv.ParseInt(string(timestamp), 10, 64)
 	if err != nil {
-		return
+		return n, err
 	}
 	// read buffer parts
 	var read int
 	for _, binBuf := range [][]byte{a.salt, a.signature} {
 		read, err = buf.Read(binBuf)
 		if err != nil {
-			return
+			return n, err
 		}
 		n += int64(read)
 	}
 	a.rawMsg, err = ioutil.ReadAll(buf)
 	if err != nil {
-		return
+		return n, err
 	}
 	n += int64(len(a.rawMsg))
-	return
+	return n, err
 }
 
 // Expiry returns the expiry time
@@ -108,23 +110,25 @@ func (a *Authorization) Expires(t time.Time) {
 // WriteTo writes the serialized authorization container to the given writer
 //
 // Prior to writing the container to a writer, it must be encoded using the Encode() method
-func (a *Authorization) WriteTo(w io.Writer) (n int64, err error) {
+func (a *Authorization) WriteTo(w io.Writer) (int64, error) {
+	var n int64
+	var err error
 	wr := base64.NewEncoder(base64.StdEncoding, w)
 	defer wr.Close()
 	ts := a.timestampBytes()
 	written, err := wr.Write(append(ts, '|'))
 	if err != nil {
-		return
+		return n, err
 	}
 	n += int64(written)
 	for _, binBuf := range [][]byte{a.salt, a.signature, a.rawMsg} {
 		written, err = wr.Write(binBuf)
 		if err != nil {
-			return
+			return n, err
 		}
 		n += int64(written)
 	}
-	return
+	return n, err
 }
 
 func (a *Authorization) Serialized() (string, error) {

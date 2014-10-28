@@ -40,6 +40,7 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	defer func() {
 		if err := recover(); err != nil {
 			h.log.Crit("panic on serving HTTP", log15.Ctx{"panic": err})
+			w.WriteHeader(http.StatusInternalServerError)
 		}
 	}()
 	service.SetRequestContext(r, h.ctx)

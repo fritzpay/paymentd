@@ -32,11 +32,11 @@ func NewKeychain() *Keychain {
 }
 
 // KeyCount returns the number of keys in the keychain
-func (k *Keychain) KeyCount() (c int) {
+func (k *Keychain) KeyCount() int {
 	k.m.RLock()
-	c = len(k.keys)
+	c := len(k.keys)
 	k.m.RUnlock()
-	return
+	return c
 }
 
 func (k *Keychain) pushKey(key []byte) {
