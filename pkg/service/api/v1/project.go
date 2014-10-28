@@ -48,16 +48,17 @@ func (a *AdminAPI) ProjectGetRequest() http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 
-		log := a.log.New(log15.Ctx{"method": "Project Request"})
-		log.Info("Method:" + r.Method)
+		log := a.log.New(log15.Ctx{"method": "ProjectGetRequest"})
 
 		// @todo restrict by projectid
-		if r.Method == "GET" {
-			a.getProject(w, r)
-		} else {
-			log.Info("request method not supported: " + r.Method)
+		if r.Method != "GET" {
+			if Debug {
+				log.Debug("request method not supported", log15.Ctx{"requestMethod": r.Method})
+			}
 			w.WriteHeader(http.StatusMethodNotAllowed)
+			return
 		}
+		a.getProject(w, r)
 	})
 }
 
