@@ -92,3 +92,20 @@ func PrincipalByNameTx(db *sql.Tx, name string) (Principal, error) {
 	row := db.QueryRow(selectPrincipalByName, name)
 	return scanPrincipal(row)
 }
+
+const selectPrincipalIDByName = `
+SELECT id FROM principal WHERE name = ?
+`
+
+func PrincipalIDByNameTx(db *sql.Tx, name string) (int64, error) {
+	row := db.QueryRow(selectPrincipalIDByName, name)
+	var id int64
+	err := row.Scan(&id)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return 0, ErrPrincipalNotFound
+		}
+		return 0, err
+	}
+	return id, nil
+}
