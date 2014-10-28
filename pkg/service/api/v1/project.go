@@ -268,7 +268,7 @@ func (a *AdminAPI) PaymentMethodsGetRequest() http.Handler {
 
 		// does project exist
 		db := a.ctx.PrincipalDB(service.ReadOnly)
-		var prdb project.Project
+		var prdb *project.Project
 		prdb, err = project.ProjectByIdDB(db, projectId)
 		if err != nil {
 			ErrDatabase.Write(w)
