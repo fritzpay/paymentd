@@ -50,7 +50,7 @@ func NewService(ctx *service.Context, mux *http.ServeMux) (*Service, error) {
 		admin := NewAdminAPI(ctx)
 		mux.Handle(ServicePath+"/authorization", admin.AuthorizationHandler())
 		mux.Handle(ServicePath+"/authorization/", admin.AuthorizeHandler())
-		mux.Handle(ServicePath+"/user/", admin.AuthRequiredHandler(admin.GetUserID()))
+		mux.Handle(ServicePath+"/user", admin.AuthRequiredHandler(admin.GetUserID()))
 
 		mux.Handle(ServicePath+"/principal", admin.AuthRequiredHandler(admin.PrincipalRequest()))
 		mux.Handle(ServicePath+"/principal/", admin.AuthRequiredHandler(admin.PrincipalGetRequest()))
