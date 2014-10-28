@@ -2,12 +2,24 @@ package payment_method
 
 import (
 	"database/sql/driver"
+	"errors"
 	"fmt"
 	"github.com/fritzpay/paymentd/pkg/paymentd/provider"
 	"time"
 )
 
 type paymentMethodStatus string
+
+// returns a valid paymentMethodStatus or error
+func ParsePaymentMethodStatus(s string) (paymentMethodStatus, error) {
+	if s == PaymentMethodStatusActive.String() {
+		return PaymentMethodStatusActive, nil
+	} else if s == PaymentMethodStatusInactive.String() {
+		return PaymentMethodStatusInactive, nil
+	} else {
+		return paymentMethodStatus(""), errors.New("invalid")
+	}
+}
 
 func (s paymentMethodStatus) String() string {
 	if s == "" {
@@ -45,12 +57,12 @@ const (
 //
 // It is associated with a Provider and can be configured on a per-project base.
 type PaymentMethod struct {
-	ID         int64 `json:",string"`
-	ProjectID  int64 `json:",string"`
-	Provider   provider.Provider
-	MethodName string
-	Created    time.Time
-	CreatedBy  string
+	ID        int64 `json:",string"`
+	ProjectID int64 `json:",string"`
+	Provider  provider.Provider
+	MethodKey string
+	Created   time.Time
+	CreatedBy string
 
 	Status          paymentMethodStatus
 	StatusChanged   time.Time

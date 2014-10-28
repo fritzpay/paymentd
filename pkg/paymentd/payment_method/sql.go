@@ -18,7 +18,7 @@ SELECT
 	m.project_id,
 	p.id,
 	p.name,
-	m.method_name,
+	m.method_key,
 	m.created,
 	m.created_by,
 	s.status,
@@ -50,7 +50,7 @@ func scanSinglePaymentMethod(row *sql.Row) (PaymentMethod, error) {
 		&pm.ProjectID,
 		&pm.Provider.ID,
 		&pm.Provider.Name,
-		&pm.MethodName,
+		&pm.MethodKey,
 		&pm.Created,
 		&pm.CreatedBy,
 		&pm.Status,
@@ -79,7 +79,7 @@ func PaymentMethodByIDTx(db *sql.Tx, id int64) (PaymentMethod, error) {
 
 const insertPaymentMethod = `
 INSERT INTO payment_method
-(project_id, provider_id, method_name, created, created_by)
+(project_id, provider_id, method_key, created, created_by)
 VALUES
 (?, ?, ?, ?, ?)
 `
@@ -89,7 +89,7 @@ func InsertPaymentMethodTx(db *sql.Tx, pm PaymentMethod) (int64, error) {
 	if err != nil {
 		return 0, err
 	}
-	res, err := stmt.Exec(pm.ProjectID, pm.Provider.ID, pm.MethodName, pm.Created, pm.CreatedBy)
+	res, err := stmt.Exec(pm.ProjectID, pm.Provider.ID, pm.MethodKey, pm.Created, pm.CreatedBy)
 	stmt.Close()
 	if err != nil {
 		return 0, err

@@ -5,7 +5,6 @@ import (
 	"github.com/fritzpay/paymentd/pkg/metadata"
 	"github.com/fritzpay/paymentd/pkg/paymentd/project"
 	"github.com/fritzpay/paymentd/pkg/service"
-	"github.com/gorilla/mux"
 	"gopkg.in/inconshreveable/log15.v2"
 	"net/http"
 	"path"
@@ -114,7 +113,7 @@ func (a *AdminAPI) getProject(w http.ResponseWriter, r *http.Request) {
 func (a *AdminAPI) putNewProject(w http.ResponseWriter, r *http.Request) {
 
 	log := a.log.New(log15.Ctx{"method": "Project request PUT"})
-
+	auth := service.RequestContextAuth(r)
 	// parse put paramter
 	jd := json.NewDecoder(r.Body)
 	pr := project.Project{}
@@ -125,6 +124,7 @@ func (a *AdminAPI) putNewProject(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	r.Body.Close()
+	pr.CreatedBy = auth[AuthUserIDKey].(string)
 
 	// validate fields
 	if !pr.IsValid() {
@@ -168,25 +168,20 @@ func (a *AdminAPI) putNewProject(w http.ResponseWriter, r *http.Request) {
 func (a *AdminAPI) postChangeProject(w http.ResponseWriter, r *http.Request) {
 	log := a.log.New(log15.Ctx{"method": "Project request POST"})
 	log.Info("Method:" + r.Method)
+	auth := service.RequestContextAuth(r)
 
 	// get Metadata from post variables
 	jd := json.NewDecoder(r.Body)
 	pr := &project.Project{}
 	err := jd.Decode(pr)
 	r.Body.Close()
+	pr.CreatedBy = auth[AuthUserIDKey].(string)
 	if err != nil {
 		ErrReadJson.Write(w)
 		log.Error("json decode failed: ", log15.Ctx{"err": err})
 		return
 	}
 	postedMetadata := pr.Metadata
-
-	// validation createdBy has to be set
-	if len(pr.CreatedBy) < 1 {
-		ErrInval.Write(w)
-		log.Info("CreatedBy has to be set:" + pr.Name)
-		return
-	}
 
 	// does project exist
 	db := a.ctx.PrincipalDB(service.ReadOnly)
@@ -249,88 +244,4 @@ func (a *AdminAPI) postChangeProject(w http.ResponseWriter, r *http.Request) {
 		log.Error("write error", log15.Ctx{"err": err})
 		return
 	}
-}
-
-func (a *AdminAPI) PaymentMethodsGetRequest() http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "application/json")
-
-		log := a.log.New(log15.Ctx{"method": "Project payment methods GET"})
-
-		vars := mux.Vars(r)
-		projectIdParam := vars["projectid"]
-		projectId, err := strconv.ParseInt(projectIdParam, 10, 64)
-		if err != nil {
-			ErrReadParam.Write(w)
-			log.Error("param conversion error", log15.Ctx{"err": err})
-			return
-		}
-
-		// does project exist
-		db := a.ctx.PrincipalDB(service.ReadOnly)
-		var prdb *project.Project
-		prdb, err = project.ProjectByIdDB(db, projectId)
-		if err != nil {
-			ErrDatabase.Write(w)
-			log.Error("database request failed", log15.Ctx{"err": err})
-			return
-		}
-
-		// return methods
-		resp := ProjectAdminAPIResponse{}
-		resp.HttpStatus = http.StatusOK
-		resp.Info = "project found"
-		resp.Response = prdb
-		resp.Write(w)
-		if err != nil {
-			w.WriteHeader(http.StatusInternalServerError)
-			log.Error("write error", log15.Ctx{"err": err})
-			return
-		}
-	})
-}
-func (a *AdminAPI) PaymentMethodsRequest() http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-
-		log := a.log.New(log15.Ctx{"method": "Project payment method request"})
-
-		// PUT create new entry
-		// get parameters
-		// projectid and methodname
-		if r.Method == "PUT" {
-
-			// check parameters exits in db
-			// save values and metadata
-			vars := mux.Vars(r)
-			projectIdParam := vars["projectid"]
-
-			projectId, err := strconv.ParseInt(projectIdParam, 10, 64)
-			if err != nil {
-				ErrReadParam.Write(w)
-				log.Info("param not readable" + projectIdParam)
-				return
-			}
-			db := a.ctx.PrincipalDB()
-			pr, err := project.ProjectByIdDB(db, projectId)
-			if err != nil {
-
-			}
-
-			resp := ProjectAdminAPIResponse{}
-			resp.Status = StatusSuccess
-			resp.Info = ""
-			resp.Response = pr
-
-		} else if r.Method == "POST" {
-
-			// POST change
-			// set status
-			// set metadata
-		} else {
-			ErrMethod.Write(w)
-			log.Error("http method not supported")
-			return
-		}
-
-	})
 }

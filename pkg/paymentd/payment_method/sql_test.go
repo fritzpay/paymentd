@@ -65,7 +65,7 @@ func TestPaymentMethodSQL(t *testing.T) {
 								pm := PaymentMethod{}
 								pm.ProjectID = proj.ID
 								pm.Provider.ID = pr.ID
-								pm.MethodName = "test"
+								pm.MethodKey = "test"
 								pm.CreatedBy = "test"
 
 								pm.ID, err = InsertPaymentMethodTx(tx, pm)
