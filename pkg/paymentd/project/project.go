@@ -2,6 +2,7 @@ package project
 
 import (
 	"database/sql"
+	"encoding/json"
 	"time"
 )
 
@@ -32,14 +33,6 @@ func (p *Project) Empty() bool {
 	return p.ID == 0 && p.Name == ""
 }
 
-// Validates if the obligatory fields are set
-func (p *Project) IsValid() bool {
-	if len(p.Name) < 1 || len(p.CreatedBy) < 1 {
-		return false
-	}
-	return true
-}
-
 type Config struct {
 	Timestamp          time.Time
 	WebURL             sql.NullString
@@ -49,9 +42,66 @@ type Config struct {
 	ReturnURL          sql.NullString
 }
 
-// IsSet returns true if the config was set
+type ConfigJSON struct {
+	WebURL             *string
+	CallbackURL        *string
+	CallbackAPIVersion *string
+	ProjectKey         *string
+	ReturnURL          *string
+}
+
+// IsSet returns true if the config was set and stored
 func (c Config) IsSet() bool {
 	return !c.Timestamp.IsZero()
+}
+
+// HasValues returns true if the config has any values set
+func (c Config) HasValues() bool {
+	return c.WebURL.Valid || c.CallbackURL.Valid || c.CallbackAPIVersion.Valid || c.ProjectKey.Valid || c.ReturnURL.Valid
+}
+
+func (c *Config) UnmarshalJSON(p []byte) error {
+	cfg := &ConfigJSON{}
+	err := json.Unmarshal(p, cfg)
+	if err != nil {
+		return err
+	}
+	if cfg.WebURL != nil {
+		c.WebURL.String, c.WebURL.Valid = *cfg.WebURL, true
+	}
+	if cfg.CallbackURL != nil {
+		c.WebURL.String, c.WebURL.Valid = *cfg.WebURL, true
+	}
+	if cfg.CallbackAPIVersion != nil {
+		c.CallbackAPIVersion.String, c.CallbackAPIVersion.Valid = *cfg.CallbackAPIVersion, true
+	}
+	if cfg.ProjectKey != nil {
+		c.ProjectKey.String, c.ProjectKey.Valid = *cfg.ProjectKey, true
+	}
+	if cfg.ReturnURL != nil {
+		c.ReturnURL.String, c.ReturnURL.Valid = *cfg.ReturnURL, true
+	}
+	return nil
+}
+
+func (c *Config) MarshalJSON() ([]byte, error) {
+	cfg := &ConfigJSON{}
+	if c.WebURL.Valid {
+		cfg.WebURL = &c.WebURL.String
+	}
+	if c.CallbackURL.Valid {
+		cfg.CallbackURL = &c.CallbackURL.String
+	}
+	if c.CallbackAPIVersion.Valid {
+		cfg.CallbackAPIVersion = &c.CallbackAPIVersion.String
+	}
+	if c.ProjectKey.Valid {
+		cfg.ProjectKey = &c.ProjectKey.String
+	}
+	if c.ReturnURL.Valid {
+		cfg.ReturnURL = &c.ReturnURL.String
+	}
+	return json.Marshal(cfg)
 }
 
 // representation of the metadata schema structure
