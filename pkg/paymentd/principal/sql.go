@@ -60,9 +60,9 @@ SELECT
 FROM principal
 `
 
-const selectPrincipalByName = selectPrincipal + `
+const selectPrincipalByID = selectPrincipal + `
 WHERE
-	name = ?
+	id = ?
 `
 
 func scanPrincipal(row *sql.Row) (Principal, error) {
@@ -76,6 +76,16 @@ func scanPrincipal(row *sql.Row) (Principal, error) {
 	}
 	return p, nil
 }
+
+func PrincipalByIDTx(db *sql.Tx, id int64) (Principal, error) {
+	row := db.QueryRow(selectPrincipalByID, id)
+	return scanPrincipal(row)
+}
+
+const selectPrincipalByName = selectPrincipal + `
+WHERE
+	name = ?
+`
 
 // PrincipalByNameDB selects a principal by the given name
 //
