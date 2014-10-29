@@ -33,13 +33,15 @@ WHERE
 
 func readSingleEntry(row *sql.Row) (Entry, error) {
 	e := Entry{}
-	err := row.Scan(&e.Name, &e.lastChange, &e.Value)
+	var ts int64
+	err := row.Scan(&e.Name, &ts, &e.Value)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return e, ErrEntryNotFound
 		}
 		return e, err
 	}
+	e.lastChange = time.Unix(0, ts)
 	return e, nil
 }
 
@@ -73,7 +75,7 @@ func InsertEntryDB(db *sql.DB, e Entry) error {
 		return err
 	}
 	t := time.Now()
-	_, err = stmt.Exec(e.Name, t, e.Value)
+	_, err = stmt.Exec(e.Name, t.UnixNano(), e.Value)
 	stmt.Close()
 	return err
 }
@@ -88,7 +90,7 @@ func InsertConfigTx(db *sql.Tx, cfg Config) error {
 	}
 	t := time.Now()
 	for n, v := range cfg {
-		_, err = stmt.Exec(n, t, v)
+		_, err = stmt.Exec(n, t.UnixNano(), v)
 		if err != nil {
 			stmt.Close()
 			return err
@@ -124,7 +126,7 @@ func InsertConfigIfNotPresentTx(db *sql.Tx, cfg Config) error {
 		if numEntries > 0 {
 			continue
 		}
-		_, err = insert.Exec(n, t, v)
+		_, err = insert.Exec(n, t.UnixNano(), v)
 		if err != nil {
 			return err
 		}
