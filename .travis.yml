@@ -10,6 +10,13 @@ go:
   - release
   - tip
 
+env:
+  global:
+    - TT=`date -u +%H%M%`
+    - PAYMENTD_MYSQLTEST=true
+    - PAYMENTD_MYSQLTEST_PRINCIPALDSN="root@tcp(localhost:3306)/paymentd_test_principal_$TT?charset=utf8mb4&parseTime=true&loc=UTC&timeout=1m&wait_timeout=30&interactive_timeout=30&time_zone=%22%2B00%3A00%22"
+    - PAYMENTD_MYSQLTEST_PAYMENTDSN="root@tcp(localhost:3306)/paymentd_test_payment_$TT?charset=utf8mb4&parseTime=true&loc=UTC&timeout=1m&wait_timeout=30&interactive_timeout=30&time_zone=%22%2B00%3A00%22"
+
 install:
   - go get code.google.com/p/go.tools/cmd/vet
   - go get github.com/tools/godep
@@ -18,11 +25,7 @@ install:
 script: go vet ./... && go test ./... -race -v
 
 before_script:
-  - export TT=`date -u +%H%M%S`
   - mysql -u root -e "create database if not exists paymentd_test_principal_$TT;"
   - mysql -u root -e "create database if not exists paymentd_test_payment_$TT;"
   - mysql -u root -D paymentd_test_principal_$TT < ./resources/mysql/paymentd.test.principal.sql
   - mysql -u root -D paymentd_test_payment_$TT < ./resources/mysql/paymentd.test.payment.sql
-  - export PAYMENTD_MYSQLTEST=true
-  - export PAYMENTD_MYSQLTEST_PRINCIPALDSN="root@tcp(localhost:3306)/paymentd_test_principal_$TT?charset=utf8mb4&parseTime=true&loc=UTC&timeout=1m&wait_timeout=30&interactive_timeout=30&time_zone=%22%2B00%3A00%22"
-  - export PAYMENTD_MYSQLTEST_PAYMENTDSN="root@tcp(localhost:3306)/paymentd_test_payment_$TT?charset=utf8mb4&parseTime=true&loc=UTC&timeout=1m&wait_timeout=30&interactive_timeout=30&time_zone=%22%2B00%3A00%22"
