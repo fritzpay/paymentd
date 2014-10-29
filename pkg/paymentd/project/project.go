@@ -3,7 +3,6 @@ package project
 import (
 	"database/sql"
 	"encoding/json"
-	"errors"
 	"time"
 )
 
@@ -34,14 +33,6 @@ func (p *Project) Empty() bool {
 	return p.ID == 0 && p.Name == ""
 }
 
-// Validates if the obligatory fields are set
-func (p *Project) IsValid() bool {
-	if len(p.Name) < 1 || len(p.CreatedBy) < 1 {
-		return false
-	}
-	return true
-}
-
 type Config struct {
 	Timestamp          time.Time
 	WebURL             sql.NullString
@@ -67,13 +58,6 @@ func (c Config) IsSet() bool {
 // HasValues returns true if the config has any values set
 func (c Config) HasValues() bool {
 	return c.WebURL.Valid || c.CallbackURL.Valid || c.CallbackAPIVersion.Valid || c.ProjectKey.Valid || c.ReturnURL.Valid
-}
-
-func (c Config) Validate() error {
-	if c.CallbackURL.Valid != c.CallbackAPIVersion.Valid {
-		return errors.New("callback url and callback api version must be set together")
-	}
-	return nil
 }
 
 func (c *Config) UnmarshalJSON(p []byte) error {

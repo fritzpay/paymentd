@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"github.com/fritzpay/paymentd/pkg/metadata"
+	"github.com/fritzpay/paymentd/pkg/paymentd/principal"
 	"github.com/fritzpay/paymentd/pkg/paymentd/project"
 	"github.com/fritzpay/paymentd/pkg/service"
 	"gopkg.in/inconshreveable/log15.v2"
@@ -61,7 +62,6 @@ func (a *AdminAPI) ProjectGetRequest() http.Handler {
 }
 
 func (a *AdminAPI) getProject(w http.ResponseWriter, r *http.Request) {
-
 	log := a.log.New(log15.Ctx{"method": "getProject"})
 
 	// parse request paramter
@@ -115,7 +115,6 @@ func (a *AdminAPI) getProject(w http.ResponseWriter, r *http.Request) {
 }
 
 func (a *AdminAPI) putNewProject(w http.ResponseWriter, r *http.Request) {
-
 	log := a.log.New(log15.Ctx{"method": "putNewProject"})
 	auth, err := getAuthContainer(r)
 	if err != nil {
@@ -133,26 +132,20 @@ func (a *AdminAPI) putNewProject(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	r.Body.Close()
-	pr.CreatedBy = auth[AuthUserIDKey].(string)
-
-	log = log.New(log15.Ctx{"projectName": pr.Name})
-
 	// validate fields
-	if !pr.IsValid() {
-		log.Warn("project values not valid")
+	if pr.Name == "" {
+		log.Warn("project without name")
 		ErrInval.Write(w)
 		return
 	}
-	if pr.Config.HasValues() {
-		err = pr.Config.Validate()
-		if err != nil {
-			log.Warn("config not acceptable", log15.Ctx{"err": err})
-			resp := ErrInval
-			resp.Info = "config not acceptable"
-			resp.Write(w)
-			return
-		}
+	if pr.PrincipalID == 0 {
+		log.Warn("project without principal ID")
+		ErrInval.Write(w)
+		return
 	}
+	pr.CreatedBy = auth[AuthUserIDKey].(string)
+
+	log = log.New(log15.Ctx{"projectName": pr.Name, "principalID": pr.PrincipalID})
 
 	var tx *sql.Tx
 	var commit bool
@@ -171,8 +164,22 @@ func (a *AdminAPI) putNewProject(w http.ResponseWriter, r *http.Request) {
 		ErrDatabase.Write(w)
 	}
 
+	// principal
+	_, err = principal.PrincipalByIDTx(tx, pr.PrincipalID)
+	if err != nil {
+		if err == principal.ErrPrincipalNotFound {
+			log.Warn("principal not found")
+			resp := ErrNotFound
+			resp.Info = "principal not found"
+			resp.Write(w)
+			return
+		}
+		log.Error("error retrieving principal", log15.Ctx{"err": err})
+		ErrDatabase.Write(w)
+		return
+	}
 	//check if this project already exist
-	_, err = project.ProjectByNameTx(tx, pr.Name)
+	_, err = project.ProjectByNameTx(tx, pr.PrincipalID, pr.Name)
 	if err != nil && err != project.ErrProjectNotFound {
 		log.Error("error retrieving project by name", log15.Ctx{"err": err})
 		ErrDatabase.Write(w)
@@ -199,6 +206,15 @@ func (a *AdminAPI) putNewProject(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
+	if pr.Metadata != nil {
+		meta := metadata.MetadataFromValues(pr.Metadata, pr.CreatedBy)
+		err = metadata.InsertMetadataTx(tx, project.MetadataModel, pr.ID, meta)
+		if err != nil {
+			log.Error("error saving metadata", log15.Ctx{"err": err})
+			ErrDatabase.Write(w)
+			return
+		}
+	}
 
 	err = tx.Commit()
 	if err != nil {
@@ -219,21 +235,25 @@ func (a *AdminAPI) putNewProject(w http.ResponseWriter, r *http.Request) {
 }
 
 func (a *AdminAPI) postChangeProject(w http.ResponseWriter, r *http.Request) {
-	log := a.log.New(log15.Ctx{"method": "Project request POST"})
-	log.Info("Method:" + r.Method)
-	auth := service.RequestContextAuth(r)
+	log := a.log.New(log15.Ctx{"method": "postChangeProject"})
 
+	auth, err := getAuthContainer(r)
+	if err != nil {
+		log.Crit("error on auth container", log15.Ctx{"err": err})
+		ErrSystem.Write(w)
+		return
+	}
 	// get Metadata from post variables
 	jd := json.NewDecoder(r.Body)
 	pr := &project.Project{}
-	err := jd.Decode(pr)
+	err = jd.Decode(pr)
 	r.Body.Close()
-	pr.CreatedBy = auth[AuthUserIDKey].(string)
 	if err != nil {
 		ErrReadJson.Write(w)
 		log.Error("json decode failed: ", log15.Ctx{"err": err})
 		return
 	}
+	pr.CreatedBy = auth[AuthUserIDKey].(string)
 	postedMetadata := pr.Metadata
 
 	// does project exist
