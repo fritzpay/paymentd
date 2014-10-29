@@ -76,23 +76,26 @@ func TestConfigSetPassword(t *testing.T) {
 			_, err := db.Exec(fmt.Sprintf("delete from config where name = '%s'", ConfigNameSystemPassword))
 			So(err, ShouldBeNil)
 
-			Convey("Given a password setter", func() {
+			Convey("When setting the password", func() {
 				pw := SetPassword([]byte("password"))
+				err := Set(db, pw)
 
-				Convey("When setting the password", func() {
-					err := Set(db, pw)
-					Convey("It should succeed", func() {
+				Reset(func() {
+					_, err := db.Exec(fmt.Sprintf("delete from config where name = '%s'", ConfigNameSystemPassword))
+					So(err, ShouldBeNil)
+				})
+
+				Convey("It should succeed", func() {
+					So(err, ShouldBeNil)
+
+					Convey("When retrieving the password entry", func() {
+						val, err := EntryByNameDB(db, ConfigNameSystemPassword)
 						So(err, ShouldBeNil)
+						So(val.Empty(), ShouldBeFalse)
 
-						Convey("When retrieving the password entry", func() {
-							val, err := EntryByNameDB(db, ConfigNameSystemPassword)
+						Convey("It should match the password", func() {
+							err := bcrypt.CompareHashAndPassword([]byte(val.Value), []byte("password"))
 							So(err, ShouldBeNil)
-							So(val.Empty(), ShouldBeFalse)
-
-							Convey("It should match the password", func() {
-								err := bcrypt.CompareHashAndPassword([]byte(val.Value), []byte("password"))
-								So(err, ShouldBeNil)
-							})
 						})
 					})
 				})
