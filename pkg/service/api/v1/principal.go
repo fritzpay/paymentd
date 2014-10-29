@@ -23,14 +23,16 @@ func (a *AdminAPI) PrincipalRequest() http.Handler {
 
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
-		log := a.log.New(log15.Ctx{"method": "Principal Request"})
-		if r.Method == "PUT" {
+		log := a.log.New(log15.Ctx{"method": "PrincipalRequest"})
+
+		switch r.Method {
+		case "PUT":
 			a.putNewPrincipal(w, r)
-		} else if r.Method == "POST" {
+		case "POST":
 			a.postChangePrincipal(w, r)
-		} else {
+		default:
 			ErrMethod.Write(w)
-			log.Info("http method not supported: " + r.Method)
+			log.Info("http method not supported", log15.Ctx{"requestMethod": r.Method})
 		}
 	})
 }
@@ -40,30 +42,30 @@ func (a *AdminAPI) PrincipalGetRequest() http.Handler {
 
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
-		log := a.log.New(log15.Ctx{"method": "principal GET request"})
-		log.Info("Method:" + r.Method)
+		log := a.log.New(log15.Ctx{"method": "PrincipalGetRequest"})
+
 		// get principal by name
 		vars := mux.Vars(r)
 		principalName := vars["name"]
 
-		log.Info("principalName: " + principalName)
+		log = log.New(log15.Ctx{"principalName": principalName})
 
 		db := a.ctx.PrincipalDB(service.ReadOnly)
 		pr, err := principal.PrincipalByNameDB(db, principalName)
 		if err == principal.ErrPrincipalNotFound {
 			ErrNotFound.Write(w)
-			log.Info("not found.", log15.Ctx{"err": err})
+			log.Info("principal not found")
 			return
 		}
 		if err != nil {
 			ErrDatabase.Write(w)
-			log.Error("DB get by name failed.", log15.Ctx{"err": err})
+			log.Error("DB get by name failed", log15.Ctx{"err": err})
 			return
 		}
 		md, err := metadata.MetadataByPrimaryDB(db, principal.MetadataModel, pr.ID)
 		if err != nil {
-			ErrNotFound.Write(w)
-			log.Error("get metadata failed.", log15.Ctx{"err": err})
+			ErrDatabase.Write(w)
+			log.Error("get metadata failed", log15.Ctx{"err": err})
 			return
 		}
 		if len(md) > 0 {
@@ -78,15 +80,13 @@ func (a *AdminAPI) PrincipalGetRequest() http.Handler {
 		err = resp.Write(w)
 		if err != nil {
 			log.Error("write error", log15.Ctx{"err": err})
-
 			return
 		}
 	})
 }
 
 func (a *AdminAPI) putNewPrincipal(w http.ResponseWriter, r *http.Request) {
-	log := a.log.New(log15.Ctx{"method": "Principal Request"})
-	log.Info("Method:" + r.Method)
+	log := a.log.New(log15.Ctx{"method": "putNewPrincipal"})
 
 	// create new principal
 	jd := json.NewDecoder(r.Body)
@@ -99,78 +99,83 @@ func (a *AdminAPI) putNewPrincipal(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// validation createdBy has to be set
-	if len(pr.CreatedBy) < 1 {
-		ErrInval.Write(w)
-		log.Info("CreatedBy has to be set:" + pr.Name)
+	log = log.New(log15.Ctx{"principalName": pr.Name})
+
+	auth, err := getAuthContainer(r)
+	if err != nil {
+		log.Crit("context auth error", log15.Ctx{"err": err})
+		ErrSystem.Write(w)
 		return
 	}
+	pr.CreatedBy = auth[AuthUserIDKey].(string)
 	// set created time
 	pr.Created = time.Now()
 
-	// check if principal exists
-	db := a.ctx.PrincipalDB()
-	_, err = principal.PrincipalByNameDB(db, pr.Name)
-	if err == principal.ErrPrincipalNotFound {
-		// insert pr if not exists
-		// start dbtx to save metadata and pr together
-		tx, err := db.Begin()
-		if err != nil {
-			ErrDatabase.Write(w)
-			log.Error("Tx begin failed.", log15.Ctx{"err": err})
-		}
-
-		// insert pr
-		err = principal.InsertPrincipalTx(tx, &pr)
-		if err != nil {
-			tx.Rollback()
-			ErrSystem.Write(w)
-			log.Error("TX insert failed.", log15.Ctx{"err": err})
-			return
-		}
-
-		// insert metadata
-		md := metadata.MetadataFromValues(pr.Metadata, pr.CreatedBy)
-		err = metadata.InsertMetadataTx(tx, principal.MetadataModel, pr.ID, md)
-		if err != nil {
-			tx.Rollback()
-			ErrDatabase.Write(w)
-			log.Error("TX metadata insert failed.", log15.Ctx{"err": err})
-			return
-		}
-		//commit tx
-		err = tx.Commit()
-		if err != nil {
-			tx.Rollback()
-			ErrSystem.Write(w)
-			log.Error("TX commit failed.", log15.Ctx{"err": err})
-			return
-		}
-	} else if err != nil {
-		// other db error
-		ErrSystem.Write(w)
-		log.Error("DB get by name failed.", log15.Ctx{"err": err})
+	// insert pr if not exists
+	// start dbtx to save metadata and pr together
+	tx, err := a.ctx.PrincipalDB().Begin()
+	if err != nil {
+		log.Crit("Tx begin failed", log15.Ctx{"err": err})
+		ErrDatabase.Write(w)
 		return
-	} else {
+	}
+
+	// check if principal exists
+	_, err = principal.PrincipalByNameTx(tx, pr.Name)
+	if err != nil && err != principal.ErrPrincipalNotFound {
+		// other db error
+		log.Error("DB get by name failed", log15.Ctx{"err": err})
+		ErrSystem.Write(w)
+		return
+	} else if err == nil {
 		// already exists
+		log.Warn("principal already exists")
 		ErrConflict.Write(w)
-		log.Warn("principal already exist: " + string(pr.ID) + " " + pr.Name)
+		return
+	}
+
+	// insert pr
+	err = principal.InsertPrincipalTx(tx, &pr)
+	if err != nil {
+		tx.Rollback()
+		ErrDatabase.Write(w)
+		log.Error("TX insert failed.", log15.Ctx{"err": err})
+		return
+	}
+
+	// insert metadata
+	md := metadata.MetadataFromValues(pr.Metadata, pr.CreatedBy)
+	err = metadata.InsertMetadataTx(tx, principal.MetadataModel, pr.ID, md)
+	if err != nil {
+		tx.Rollback()
+		log.Error("TX metadata insert failed.", log15.Ctx{"err": err})
+		ErrDatabase.Write(w)
+		return
+	}
+
+	//commit tx
+	err = tx.Commit()
+	if err != nil {
+		ErrDatabase.Write(w)
+		log.Crit("TX commit failed.", log15.Ctx{"err": err})
 		return
 	}
 
 	// get data explicit from DB
+	db := a.ctx.PrincipalDB(service.ReadOnly)
 	pr, err = principal.PrincipalByNameDB(db, pr.Name)
 	if err != nil {
-		ErrSystem.Write(w)
 		log.Error("DB get by name failed.", log15.Ctx{"err": err})
+		ErrDatabase.Write(w)
 		return
 	}
-	md, err := metadata.MetadataByPrimaryDB(db, principal.MetadataModel, pr.ID)
+	md, err = metadata.MetadataByPrimaryDB(db, principal.MetadataModel, pr.ID)
 	if len(md) > 0 {
 		pr.Metadata = md.Values()
 	}
 	if err != nil {
 		log.Error("get metadata failed.", log15.Ctx{"err": err})
+		ErrDatabase.Write(w)
 		return
 	}
 
@@ -181,16 +186,15 @@ func (a *AdminAPI) putNewPrincipal(w http.ResponseWriter, r *http.Request) {
 	resp.Info = "principal " + pr.Name + " created"
 	err = resp.Write(w)
 	if err != nil {
-		ErrSystem.Write(w)
 		log.Error("write error", log15.Ctx{"err": err})
+		ErrSystem.Write(w)
 		return
 	}
 }
 
 // post method to add and change the metadata
 func (a *AdminAPI) postChangePrincipal(w http.ResponseWriter, r *http.Request) {
-	log := a.log.New(log15.Ctx{"method": "Principal Request"})
-	log.Info("Method:" + r.Method)
+	log := a.log.New(log15.Ctx{"method": "postChangePrincipal"})
 
 	// get Metadata from post variables
 	jd := json.NewDecoder(r.Body)
@@ -198,61 +202,86 @@ func (a *AdminAPI) postChangePrincipal(w http.ResponseWriter, r *http.Request) {
 	err := jd.Decode(&pr)
 	r.Body.Close()
 	if err != nil {
+		log.Error("json decode failed", log15.Ctx{"err": err})
 		ErrReadJson.Write(w)
-		log.Error("json decode failed: ", log15.Ctx{"err": err})
 		return
 	}
-	postedMetadata := pr.Metadata
 
-	// validation createdBy has to be set
-	if len(pr.CreatedBy) < 1 {
-		ErrInval.Write(w)
-		log.Info("CreatedBy has to be set:" + pr.Name)
+	auth, err := getAuthContainer(r)
+	if err != nil {
+		log.Crit("error getting auth container", log15.Ctx{"err": err})
+		ErrSystem.Write(w)
+		return
+	}
+	pr.CreatedBy = auth[AuthUserIDKey].(string)
+
+	log = log.New(log15.Ctx{"principalName": pr.Name})
+
+	// open transaction to add the posted metadata
+	tx, err := a.ctx.PrincipalDB().Begin()
+	if err != nil {
+		log.Crit("Tx begin failed.", log15.Ctx{"err": err})
+		ErrDatabase.Write(w)
 		return
 	}
 
 	// does principal exist
-	db := a.ctx.PrincipalDB(service.ReadOnly)
-	prdb, err := principal.PrincipalByNameDB(db, pr.Name)
+	pr.ID, err = principal.PrincipalIDByNameTx(tx, pr.Name)
 	if err != nil {
-		ErrConflict.Write(w)
-		log.Error("get principal from DB failed:"+pr.Name, log15.Ctx{"err": err})
+		txErr := tx.Rollback()
+		if txErr != nil {
+			log.Crit("error on rollback", log15.Ctx{"err": err})
+		}
+		if err == principal.ErrPrincipalNotFound {
+			log.Warn("principal not found")
+			ErrNotFound.Write(w)
+			return
+		}
+		log.Error("get principal from DB failed", log15.Ctx{"err": err})
+		ErrDatabase.Write(w)
 		return
 	}
-	pr.ID = prdb.ID
 
-	// open transaction to add the posted metadata
-	tx, err := db.Begin()
-	if err != nil {
-		ErrDatabase.Write(w)
-		log.Error("Tx begin failed.", log15.Ctx{"err": err})
-	}
-	md := metadata.MetadataFromValues(postedMetadata, pr.CreatedBy)
+	md := metadata.MetadataFromValues(pr.Metadata, pr.CreatedBy)
 
 	err = metadata.InsertMetadataTx(tx, principal.MetadataModel, pr.ID, md)
 	if err != nil {
-		tx.Rollback()
-		ErrDatabase.Write(w)
+		txErr := tx.Rollback()
+		if txErr != nil {
+			log.Crit("error on rollback", log15.Ctx{"err": err})
+		}
 		log.Error("insert metadata failed", log15.Ctx{"err": err})
+		ErrDatabase.Write(w)
 		return
 	}
-	tx.Commit()
+	err = tx.Commit()
+	if err != nil {
+		log.Crit("error on commit", log15.Ctx{"err": err})
+		ErrDatabase.Write(w)
+		return
+	}
 
 	// get stored data from db
+	db := a.ctx.PrincipalDB(service.ReadOnly)
 	pr, err = principal.PrincipalByNameDB(db, pr.Name)
 	if err != nil {
-		ErrNotFound.Write(w)
+		if err == principal.ErrPrincipalNotFound {
+			log.Error("principal not found")
+			ErrNotFound.Write(w)
+			return
+		}
 		log.Error("DB get by name failed.", log15.Ctx{"err": err})
+		ErrDatabase.Write(w)
 		return
 	}
 	md, err = metadata.MetadataByPrimaryDB(db, principal.MetadataModel, pr.ID)
+	if err != nil {
+		log.Error("get metadata failed.", log15.Ctx{"err": err})
+		ErrDatabase.Write(w)
+		return
+	}
 	if len(md) > 0 {
 		pr.Metadata = md.Values()
-	}
-	if err != nil {
-		ErrDatabase.Write(w)
-		log.Error("get metadata failed.", log15.Ctx{"err": err})
-		return
 	}
 
 	// create response
