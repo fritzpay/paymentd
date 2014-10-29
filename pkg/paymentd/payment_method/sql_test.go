@@ -68,6 +68,11 @@ func TestPaymentMethodSQL(t *testing.T) {
 								pm.MethodKey = "test"
 								pm.CreatedBy = "test"
 
+								Convey("When trying to get it before adding it should return not found", func() {
+									_, err = PaymentMethodByProjectIDProviderIDMethodKey(db, pm.ProjectID, pm.Provider.ID, pm.MethodKey)
+									So(err, ShouldEqual, ErrPaymentMethodNotFound)
+								})
+
 								pm.ID, err = InsertPaymentMethodTx(tx, pm)
 								So(err, ShouldBeNil)
 								So(pm.ID, ShouldNotEqual, 0)

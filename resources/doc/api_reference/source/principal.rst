@@ -20,8 +20,8 @@ Create a new principal
 	.. sourcecode:: http
 
 		{
-	        	"Name": "acme_corporation",
-				"CreatedBy": "Jane Doe"
+			"Name": "acme_corporation",
+			"CreatedBy": "Jane Doe"
 		}
 
 	:reqheader Authorization: HTTP Basic Auth

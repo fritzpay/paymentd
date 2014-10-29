@@ -41,6 +41,14 @@ const selectPaymentMethodByID = selectPaymentMethod + `
 WHERE
 	m.id = ?
 `
+const selectPaymentMethodByProjectIDProviderIDMethodKey = selectPaymentMethod + `
+WHERE
+	m.project_id = ?
+AND
+	p.id = ?
+AND
+	m.method_key = ?
+`
 
 func scanSinglePaymentMethod(row *sql.Row) (PaymentMethod, error) {
 	pm := PaymentMethod{}
@@ -69,6 +77,11 @@ func scanSinglePaymentMethod(row *sql.Row) (PaymentMethod, error) {
 
 func PaymentMethodByIDDB(db *sql.DB, id int64) (PaymentMethod, error) {
 	row := db.QueryRow(selectPaymentMethodByID, id)
+	return scanSinglePaymentMethod(row)
+}
+
+func PaymentMethodByProjectIDProviderIDMethodKey(db *sql.DB, project_id int64, provider_id int64, method_key string) (PaymentMethod, error) {
+	row := db.QueryRow(selectPaymentMethodByProjectIDProviderIDMethodKey, project_id, provider_id, method_key)
 	return scanSinglePaymentMethod(row)
 }
 

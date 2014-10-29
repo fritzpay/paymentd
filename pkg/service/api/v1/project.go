@@ -260,7 +260,7 @@ func (a *AdminAPI) postChangeProject(w http.ResponseWriter, r *http.Request) {
 	db := a.ctx.PrincipalDB(service.ReadOnly)
 	var prdb *project.Project
 
-	prdb, err = project.ProjectByNameDB(db, pr.Name)
+	prdb, err = project.ProjectByNameDB(db, pr.PrincipalID, pr.Name)
 	if err == project.ErrProjectNotFound {
 		ErrInval.Write(w)
 		log.Info("project does not exist: "+pr.Name, log15.Ctx{"err": err})
@@ -291,7 +291,7 @@ func (a *AdminAPI) postChangeProject(w http.ResponseWriter, r *http.Request) {
 	tx.Commit()
 
 	// get stored data from db
-	pr, err = project.ProjectByNameDB(db, pr.Name)
+	pr, err = project.ProjectByNameDB(db, pr.PrincipalID, pr.Name)
 	if err != nil {
 		w.WriteHeader(http.StatusNotFound)
 		log.Error("DB get by name failed.", log15.Ctx{"err": err})
