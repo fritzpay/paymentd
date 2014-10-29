@@ -26,7 +26,6 @@ func WithTestProject(db, prDB *sql.DB, f func(pr *project.Project)) func() {
 		proj.CreatedBy = "test"
 		err = project.InsertProjectDB(prDB, proj)
 		So(err, ShouldBeNil)
-		So(proj.IsValid(), ShouldBeTrue)
 
 		Reset(func() {
 			_, err = prDB.Exec("delete from project where name = 'project_testproject'")
@@ -45,9 +44,8 @@ func TestProjectSQLMapping(t *testing.T) {
 			Convey("Given a test project", WithTestProject(db, prDB, func(pr *project.Project) {
 
 				Convey("When selecting the project without a present config", func() {
-					selPr, err := project.ProjectByNameDB(prDB, pr.Name)
+					selPr, err := project.ProjectByNameDB(prDB, pr.ID, pr.Name)
 					So(err, ShouldBeNil)
-					So(selPr.IsValid(), ShouldBeTrue)
 					So(selPr.Empty(), ShouldBeFalse)
 					Convey("The project config should not be set", func() {
 						So(selPr.Config.IsSet(), ShouldBeFalse)
@@ -68,7 +66,6 @@ func TestProjectSQLMapping(t *testing.T) {
 					Convey("When selecting the project", func() {
 						selPr, err := project.ProjectByIdDB(prDB, pr.ID)
 						So(err, ShouldBeNil)
-						So(selPr.IsValid(), ShouldBeTrue)
 						So(selPr.Empty(), ShouldBeFalse)
 
 						Convey("The project config should be set", func() {

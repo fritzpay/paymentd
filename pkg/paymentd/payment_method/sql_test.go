@@ -40,7 +40,6 @@ func TestPaymentMethodSQL(t *testing.T) {
 					proj.CreatedBy = "test"
 					err := project.InsertProjectDB(prDB, &proj)
 					So(err, ShouldBeNil)
-					So(proj.IsValid(), ShouldBeTrue)
 
 					Reset(func() {
 						_, err = prDB.Exec("delete from project where name = 'payment_method_testproject'")
