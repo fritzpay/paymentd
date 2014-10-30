@@ -77,6 +77,7 @@ func (s *Service) DecodedPaymentID(id payment.PaymentID) payment.PaymentID {
 	return id
 }
 
+// CreatePayment creates a new payment
 func (s *Service) CreatePayment(tx *sql.Tx, p *payment.Payment) error {
 	log := s.log.New(log15.Ctx{
 		"method": "CreatePayment",
@@ -163,4 +164,23 @@ func (s *Service) CreatePaymentToken(tx *sql.Tx, p *payment.Payment) (*payment.P
 		return nil, ErrDB
 	}
 	return token, nil
+}
+
+// IsProcessablePayment returns true if the given payment is considered processable
+//
+// All required fields are present.
+func (s *Service) IsProcessablePayment(p *payment.Payment) bool {
+	if !p.Config.IsConfigured() {
+		return false
+	}
+	if !p.Config.Country.Valid {
+		return false
+	}
+	if !p.Config.Locale.Valid {
+		return false
+	}
+	if !p.Config.PaymentMethodID.Valid {
+		return false
+	}
+	return true
 }

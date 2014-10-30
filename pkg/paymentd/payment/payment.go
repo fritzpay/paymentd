@@ -62,6 +62,21 @@ func (p *Payment) Decimal() decimal.Decimal {
 	return decimal.Decimal{Dec: d}
 }
 
+// NewTransaction creates a new payment transaction for this payment
+//
+// Its transaction fields will be populated with the copied values from the payment
+func (p *Payment) NewTransaction(s PaymentTransactionStatus) *PaymentTransaction {
+	return &PaymentTransaction{
+		Payment: p,
+
+		Timestamp: time.Now(),
+		Amount:    p.Amount,
+		Subunits:  p.Subunits,
+		Currency:  p.Currency,
+		Status:    s,
+	}
+}
+
 type Config struct {
 	Timestamp       time.Time
 	PaymentMethodID sql.NullInt64
