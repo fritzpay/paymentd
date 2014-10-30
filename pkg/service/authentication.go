@@ -2,6 +2,7 @@ package service
 
 import (
 	"crypto/hmac"
+	"errors"
 	"hash"
 )
 
@@ -21,7 +22,11 @@ type Signed interface {
 // IsAuthentic returns true if the signed message has a correct signature for the given key
 func IsAuthentic(msg Signed, key []byte) (bool, error) {
 	mac := hmac.New(msg.HashFunc(), key)
-	_, err := mac.Write(msg.Message())
+	msgBytes := msg.Message()
+	if msgBytes == nil {
+		return false, errors.New("empty message")
+	}
+	_, err := mac.Write(msgBytes)
 	if err != nil {
 		return false, err
 	}
