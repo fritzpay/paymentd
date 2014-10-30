@@ -106,6 +106,11 @@ func scanSingleRow(row *sql.Row) (*Payment, error) {
 	return p, nil
 }
 
+func PaymentByProjectIDAndIdentDB(db *sql.DB, projectID int64, ident string) (*Payment, error) {
+	row := db.QueryRow(selectPaymentByProjectIDAndIdent, projectID, ident)
+	return scanSingleRow(row)
+}
+
 func PaymentByProjectIDAndIdentTx(db *sql.Tx, projectID int64, ident string) (*Payment, error) {
 	row := db.QueryRow(selectPaymentByProjectIDAndIdent, projectID, ident)
 	return scanSingleRow(row)
