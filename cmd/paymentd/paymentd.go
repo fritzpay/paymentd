@@ -61,6 +61,7 @@ func main() {
 
 	log.Info("initializing server...")
 	srv = server.NewServer(ctx)
+	srv.Cancel = cancel
 
 	// services
 	log.Info("initializing service context...")
