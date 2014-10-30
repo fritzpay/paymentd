@@ -54,11 +54,6 @@ CREATE TABLE IF NOT EXISTS `payment_method` (
   INDEX `fk_payment_method_project_id_idx` (`project_id` ASC),
   INDEX `fk_payment_method_provider_id_idx` (`provider_id` ASC),
   UNIQUE INDEX `method_key` (`project_id` ASC, `provider_id` ASC, `method_key` ASC),
-  CONSTRAINT `fk_payment_method_project_id`
-    FOREIGN KEY (`project_id`)
-    REFERENCES `fritzpay_principal`.`project` (`id`)
-    ON DELETE RESTRICT
-    ON UPDATE CASCADE,
   CONSTRAINT `fk_payment_method_provider_id`
     FOREIGN KEY (`provider_id`)
     REFERENCES `provider` (`id`)
@@ -135,11 +130,6 @@ CREATE TABLE IF NOT EXISTS `payment` (
   UNIQUE INDEX `ident` (`project_id` ASC, `ident` ASC),
   INDEX `fk_payment_currency_idx` (`currency` ASC),
   UNIQUE INDEX `payment_id` (`id` ASC, `project_id` ASC),
-  CONSTRAINT `fk_payment_project_id`
-    FOREIGN KEY (`project_id`)
-    REFERENCES `fritzpay_principal`.`project` (`id`)
-    ON DELETE RESTRICT
-    ON UPDATE CASCADE,
   CONSTRAINT `fk_payment_currency`
     FOREIGN KEY (`currency`)
     REFERENCES `currency` (`code_iso_4217`)
@@ -195,11 +185,6 @@ CREATE TABLE IF NOT EXISTS `payment_metadata` (
     FOREIGN KEY (`payment_id`)
     REFERENCES `payment` (`id`)
     ON DELETE RESTRICT
-    ON UPDATE CASCADE,
-  CONSTRAINT `fk_payment_metadata_project_id`
-    FOREIGN KEY (`project_id`)
-    REFERENCES `fritzpay_principal`.`project` (`id`)
-    ON DELETE RESTRICT
     ON UPDATE CASCADE)
 ENGINE = InnoDB;
 
@@ -221,11 +206,6 @@ CREATE TABLE IF NOT EXISTS `payment_token` (
   CONSTRAINT `fk_payment_token_payment_id`
     FOREIGN KEY (`payment_id`)
     REFERENCES `payment` (`id`)
-    ON DELETE RESTRICT
-    ON UPDATE CASCADE,
-  CONSTRAINT `fk_payment_token_project_id`
-    FOREIGN KEY (`project_id`)
-    REFERENCES `fritzpay_principal`.`project` (`id`)
     ON DELETE RESTRICT
     ON UPDATE CASCADE)
 ENGINE = InnoDB;
@@ -257,11 +237,6 @@ CREATE TABLE IF NOT EXISTS `payment_transaction` (
   CONSTRAINT `fk_payment_transaction_currency`
     FOREIGN KEY (`currency`)
     REFERENCES `currency` (`code_iso_4217`)
-    ON DELETE RESTRICT
-    ON UPDATE CASCADE,
-  CONSTRAINT `fk_payment_transaction_project_id`
-    FOREIGN KEY (`project_id`)
-    REFERENCES `fritzpay_principal`.`project` (`id`)
     ON DELETE RESTRICT
     ON UPDATE CASCADE)
 ENGINE = InnoDB;
