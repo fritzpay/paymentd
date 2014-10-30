@@ -8,6 +8,8 @@ import (
 	"fmt"
 	"github.com/fritzpay/paymentd/pkg/paymentd/payment"
 	"github.com/fritzpay/paymentd/pkg/paymentd/project"
+	"github.com/fritzpay/paymentd/pkg/service"
+	notification "github.com/fritzpay/paymentd/pkg/service/payment/notification/v2"
 	"github.com/gorilla/mux"
 	"gopkg.in/inconshreveable/log15.v2"
 	"hash"
@@ -93,7 +95,7 @@ func (r *GetPaymentRequest) ReadFromRequest(req *http.Request) error {
 	}
 	r.Timestamp, err = strconv.ParseInt(q.Get("Timestamp"), 10, 64)
 	if err != nil {
-		return err
+		return fmt.Errorf("invalid timestamp: %v", err)
 	}
 	r.Nonce = q.Get("Nonce")
 	if r.Nonce == "" {
@@ -120,7 +122,12 @@ func (a *PaymentAPI) GetPayment() http.Handler {
 			return
 		}
 		if req.PaymentId != "" {
-			log = log.New(log15.Ctx{"DisplayPaymentId": req.PaymentId})
+			req.paymentID = a.paymentService.DecodedPaymentID(req.paymentID)
+			log = log.New(log15.Ctx{
+				"ProjectID":        req.paymentID.ProjectID,
+				"PaymentID":        req.paymentID.PaymentID,
+				"DisplayPaymentId": req.PaymentId,
+			})
 		} else if req.Ident != "" {
 			log = log.New(log15.Ctx{"Ident": req.Ident})
 		} else {
@@ -133,5 +140,39 @@ func (a *PaymentAPI) GetPayment() http.Handler {
 		if projectKey = a.authenticateRequest(req, log, w); projectKey == nil {
 			return
 		}
+		var p *payment.Payment
+		if req.Ident != "" {
+			p, err = payment.PaymentByProjectIDAndIdentDB(a.ctx.PaymentDB(service.ReadOnly), projectKey.Project.ID, req.Ident)
+		} else {
+			p, err = payment.PaymentByProjectIDAndIDDB(a.ctx.PaymentDB(service.ReadOnly), projectKey.Project.ID, req.paymentID.PaymentID)
+		}
+		if err != nil {
+			if err == payment.ErrPaymentNotFound {
+				ErrNotFound.Write(w)
+				return
+			}
+			log.Error("error retrieving payment", log15.Ctx{"err": err})
+			ErrDatabase.Write(w)
+			return
+		}
+		if p == nil || !p.Valid() {
+			log.Crit("invalid payment received")
+			ErrSystem.Write(w)
+			return
+		}
+		var not *notification.PaymentNotification
+		not, err = notification.NewPaymentNotification(a.paymentService, p)
+		if err != nil {
+			log.Error("error creating response notification", log15.Ctx{"err": err})
+			ErrSystem.Write(w)
+			return
+		}
+
+		resp := ServiceResponse{}
+		resp.Status = StatusSuccess
+		resp.HttpStatus = http.StatusOK
+		resp.Info = "returning payment"
+		resp.Response = not
+		resp.Write(w)
 	})
 }

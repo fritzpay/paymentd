@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"database/sql/driver"
 	"fmt"
+	"github.com/fritzpay/paymentd/pkg/decimal"
 	"time"
 )
 
@@ -62,3 +63,6 @@ type PaymentTransaction struct {
 	Status    PaymentTransactionStatus
 	Comment   sql.NullString
 }
+
+// Balance represents a balance which totals the ledger by currency
+type Balance map[string]*decimal.Decimal

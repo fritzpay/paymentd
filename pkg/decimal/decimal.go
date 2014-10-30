@@ -6,7 +6,7 @@ import (
 )
 
 type Decimal struct {
-	*dec.Dec
+	dec.Dec
 }
 
 func (d Decimal) Parts() []string {

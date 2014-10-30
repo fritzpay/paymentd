@@ -69,6 +69,13 @@ LEFT JOIN payment_config AS c ON
 	)
 `
 
+const selectPaymentByProjectIDAndID = selectPayment + `
+WHERE
+	p.project_id = ?
+	AND
+	p.id = ?
+`
+
 const selectPaymentByProjectIDAndIdent = selectPayment + `
 WHERE
 	p.project_id = ?
@@ -104,6 +111,11 @@ func scanSingleRow(row *sql.Row) (*Payment, error) {
 		p.Config.Timestamp = time.Unix(0, ts.Int64)
 	}
 	return p, nil
+}
+
+func PaymentByProjectIDAndIDDB(db *sql.DB, projectID int64, id int64) (*Payment, error) {
+	row := db.QueryRow(selectPaymentByProjectIDAndID, projectID, id)
+	return scanSingleRow(row)
 }
 
 func PaymentByProjectIDAndIdentDB(db *sql.DB, projectID int64, ident string) (*Payment, error) {

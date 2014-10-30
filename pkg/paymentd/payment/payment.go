@@ -55,11 +55,11 @@ func (p *Payment) SetProject(pr *project.Project) error {
 }
 
 // Decimal returns the decimal representation of the Amount and Subunits values
-func (p *Payment) Decimal() decimal.Decimal {
+func (p *Payment) Decimal() *decimal.Decimal {
 	d := dec.NewDecInt64(p.Amount)
 	sc := dec.Scale(int32(p.Subunits))
 	d.SetScale(sc)
-	return decimal.Decimal{Dec: d}
+	return &decimal.Decimal{Dec: *d}
 }
 
 // NewTransaction creates a new payment transaction for this payment
