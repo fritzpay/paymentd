@@ -36,6 +36,7 @@ const (
 	ErrInternal
 )
 
+// Service is the payment service
 type Service struct {
 	ctx *service.Context
 	log log15.Logger
@@ -43,6 +44,7 @@ type Service struct {
 	idCoder *payment.IDEncoder
 }
 
+// NewService creates a new payment service
 func NewService(ctx *service.Context) (*Service, error) {
 	s := &Service{
 		ctx: ctx,
@@ -63,8 +65,15 @@ func NewService(ctx *service.Context) (*Service, error) {
 	return s, nil
 }
 
+// EncodedPaymentID returns a payment id with the id part encoded
 func (s *Service) EncodedPaymentID(id payment.PaymentID) payment.PaymentID {
 	id.PaymentID = s.idCoder.Hide(id.PaymentID)
+	return id
+}
+
+// DecodedPaymentID returns a payment id with the id part decoded
+func (s *Service) DecodedPaymentID(id payment.PaymentID) payment.PaymentID {
+	id.PaymentID = s.idCoder.Show(id.PaymentID)
 	return id
 }
 
@@ -106,6 +115,11 @@ func (s *Service) SetPaymentConfig(tx *sql.Tx, p *payment.Payment) error {
 	log := s.log.New(log15.Ctx{"method": "SetPaymentConfig"})
 	err := payment.InsertPaymentConfigTx(tx, p)
 	if err != nil {
+		if mysqlErr, ok := err.(*mysql.MySQLError); ok {
+			if mysqlErr.Number == 1213 {
+				return ErrDBLockTimeout
+			}
+		}
 		log.Error("error on insert payment config", log15.Ctx{"err": err})
 		return ErrDB
 	}
@@ -120,6 +134,11 @@ func (s *Service) SetPaymentMetadata(tx *sql.Tx, p *payment.Payment) error {
 	}
 	err := payment.InsertPaymentMetadataTx(tx, p)
 	if err != nil {
+		if mysqlErr, ok := err.(*mysql.MySQLError); ok {
+			if mysqlErr.Number == 1213 {
+				return ErrDBLockTimeout
+			}
+		}
 		log.Error("error on insert payment metadata", log15.Ctx{"err": err})
 		return ErrDB
 	}
