@@ -27,10 +27,6 @@ import (
 	"unicode/utf8"
 )
 
-const (
-	initPaymentTimestampMaxAge = time.Minute
-)
-
 // InitPaymentRequest is the request JSON struct for POST /payment
 type InitPaymentRequest struct {
 	ProjectKey      string
@@ -198,6 +194,14 @@ func (r *InitPaymentRequest) Message() ([]byte, error) {
 	}
 	s := buf.Bytes()
 	return s, nil
+}
+
+func (r *InitPaymentRequest) RequestProjectKey() string {
+	return r.ProjectKey
+}
+
+func (r *InitPaymentRequest) Time() time.Time {
+	return time.Unix(r.Timestamp, 0)
 }
 
 func (r *InitPaymentRequest) ReadJSON(rd io.Reader) error {
@@ -374,17 +378,6 @@ func (r *InitPaymentResponse) Message() ([]byte, error) {
 	return s, nil
 }
 
-func (a *PaymentAPI) authenticateMessage(projectKey *project.Projectkey, msg service.Signed) (bool, error) {
-	if projectKey == nil || !projectKey.IsValid() {
-		return false, fmt.Errorf("invalid project key: %+v", projectKey)
-	}
-	secret, err := projectKey.SecretBytes()
-	if err != nil {
-		return false, err
-	}
-	return service.IsAuthentic(msg, secret)
-}
-
 func (a *PaymentAPI) InitPayment() http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
@@ -395,11 +388,14 @@ func (a *PaymentAPI) InitPayment() http.Handler {
 		log := a.log.New(log15.Ctx{
 			"method": "InitPayment",
 		})
+		var responseWritten bool
 		var resp ServiceResponse
 		defer func() {
-			err := resp.Write(w)
-			if err != nil {
-				log.Error("error writing response", log15.Ctx{"err": err})
+			if !responseWritten {
+				err := resp.Write(w)
+				if err != nil {
+					log.Error("error writing response", log15.Ctx{"err": err})
+				}
 			}
 		}()
 		req := &InitPaymentRequest{}
@@ -417,49 +413,12 @@ func (a *PaymentAPI) InitPayment() http.Handler {
 			resp.Info = err.Error()
 			return
 		}
-		projectKey, err := project.ProjectKeyByKeyDB(a.ctx.PrincipalDB(service.ReadOnly), req.ProjectKey)
-		if err != nil {
-			if err == project.ErrProjectKeyNotFound {
-				resp = ErrUnauthorized
-				if Debug {
-					resp.Info = fmt.Sprintf("project key %s not found", req.ProjectKey)
-				}
-				return
-			}
-			log.Error("error on retrieving project key", log15.Ctx{"err": err})
-			resp = ErrDatabase
-			if Debug {
-				resp.Info = fmt.Sprintf("database error: %v", err)
-			}
+		var projectKey *project.Projectkey
+		if projectKey = a.authenticateRequest(req, log, w); projectKey == nil {
+			responseWritten = true
 			return
 		}
-		if !projectKey.IsValid() {
-			log.Warn("invalid project key on request", log15.Ctx{
-				"ProjectKey": projectKey.Key,
-			})
-			resp = ErrUnauthorized
-			if Debug {
-				resp.Info = fmt.Sprintf("project key %s is not valid (inactive project key?)", projectKey.Key)
-			}
-			return
-		}
-		// authenticate
-		// skip if dev mode
-		if !Debug {
-			if auth, err := a.authenticateMessage(projectKey, req); err != nil {
-				log.Error("error on authenticate message", log15.Ctx{"err": err})
-				resp = ErrSystem
-				return
-			} else if !auth {
-				resp = ErrUnauthorized
-				return
-			}
-			if time.Since(time.Unix(req.Timestamp, 0)) > initPaymentTimestampMaxAge {
-				resp = ErrUnauthorized
-				return
-			}
-			// TODO include nonce handling
-		}
+
 		// extend log info
 		log = log.New(log15.Ctx{"projectId": projectKey.Project.ID})
 
