@@ -215,6 +215,31 @@ func (r *InitPaymentRequest) ReadJSON(rd io.Reader) error {
 	return err
 }
 
+func (r *InitPaymentRequest) PopulatePaymentFields(p *payment.Payment) {
+	p.Ident = r.Ident
+	p.Amount = r.Amount.Int64
+	p.Subunits = r.Subunits.Int8
+	// payment config fields
+	if r.PaymentMethodID != 0 {
+		p.Config.PaymentMethodID.Int64, p.Config.PaymentMethodID.Valid = r.PaymentMethodID, true
+	}
+	if r.Country != "" {
+		p.Config.Country.String, p.Config.Country.Valid = r.Country, true
+	}
+	if r.Locale != "" {
+		p.Config.Locale.String, p.Config.Locale.Valid = r.Locale, true
+	}
+	if r.CallbackURL != "" {
+		p.Config.CallbackURL.String, p.Config.CallbackURL.Valid = r.CallbackURL, true
+	}
+	if r.ReturnURL != "" {
+		p.Config.ReturnURL.String, p.Config.ReturnURL.Valid = r.ReturnURL, true
+	}
+	if r.Metadata != nil {
+		p.Metadata = r.Metadata
+	}
+}
+
 // InitPaymentResponse is the JSON response struct for POST /payment
 type InitPaymentResponse struct {
 	Confirmation struct {
@@ -479,9 +504,6 @@ func (a *PaymentAPI) InitPayment() http.Handler {
 		// create payment
 		p := &payment.Payment{
 			Created:  time.Now(),
-			Ident:    req.Ident,
-			Amount:   req.Amount.Int64,
-			Subunits: req.Subunits.Int8,
 			Currency: curr.CodeISO4217,
 		}
 		err = p.SetProject(&projectKey.Project)
@@ -493,25 +515,7 @@ func (a *PaymentAPI) InitPayment() http.Handler {
 			}
 			return
 		}
-		// payment config fields
-		if req.PaymentMethodID != 0 {
-			p.Config.PaymentMethodID.Int64, p.Config.PaymentMethodID.Valid = req.PaymentMethodID, true
-		}
-		if req.Country != "" {
-			p.Config.Country.String, p.Config.Country.Valid = req.Country, true
-		}
-		if req.Locale != "" {
-			p.Config.Locale.String, p.Config.Locale.Valid = req.Locale, true
-		}
-		if req.CallbackURL != "" {
-			p.Config.CallbackURL.String, p.Config.CallbackURL.Valid = req.CallbackURL, true
-		}
-		if req.ReturnURL != "" {
-			p.Config.ReturnURL.String, p.Config.ReturnURL.Valid = req.ReturnURL, true
-		}
-		if req.Metadata != nil {
-			p.Metadata = req.Metadata
-		}
+		req.PopulatePaymentFields(p)
 
 		// DB
 		var tx *sql.Tx
