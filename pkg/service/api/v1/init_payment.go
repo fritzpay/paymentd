@@ -221,19 +221,19 @@ func (r *InitPaymentRequest) PopulatePaymentFields(p *payment.Payment) {
 	p.Subunits = r.Subunits.Int8
 	// payment config fields
 	if r.PaymentMethodID != 0 {
-		p.Config.PaymentMethodID.Int64, p.Config.PaymentMethodID.Valid = r.PaymentMethodID, true
+		p.Config.SetPaymentMethodID(r.PaymentMethodID)
 	}
 	if r.Country != "" {
-		p.Config.Country.String, p.Config.Country.Valid = r.Country, true
+		p.Config.SetCountry(r.Country)
 	}
 	if r.Locale != "" {
-		p.Config.Locale.String, p.Config.Locale.Valid = r.Locale, true
+		p.Config.SetLocale(r.Locale)
 	}
 	if r.CallbackURL != "" {
-		p.Config.CallbackURL.String, p.Config.CallbackURL.Valid = r.CallbackURL, true
+		p.Config.SetCallbackURL(r.CallbackURL)
 	}
 	if r.ReturnURL != "" {
-		p.Config.ReturnURL.String, p.Config.ReturnURL.Valid = r.ReturnURL, true
+		p.Config.SetReturnURL(r.ReturnURL)
 	}
 	if r.Metadata != nil {
 		p.Metadata = r.Metadata

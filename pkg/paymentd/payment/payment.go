@@ -89,3 +89,23 @@ type Config struct {
 func (cfg *Config) IsConfigured() bool {
 	return cfg.PaymentMethodID.Valid && cfg.Country.Valid && cfg.Locale.Valid
 }
+
+func (cfg *Config) SetPaymentMethodID(id int64) {
+	cfg.PaymentMethodID.Int64, cfg.PaymentMethodID.Valid = id, true
+}
+
+func (cfg *Config) SetCountry(country string) {
+	cfg.Country.String, cfg.Country.Valid = country, true
+}
+
+func (cfg *Config) SetLocale(locale string) {
+	cfg.Locale.String, cfg.Locale.Valid = locale, true
+}
+
+func (cfg *Config) SetCallbackURL(url string) {
+	cfg.CallbackURL.String, cfg.CallbackURL.Valid = url, true
+}
+
+func (cfg *Config) SetReturnURL(url string) {
+	cfg.ReturnURL.String, cfg.ReturnURL.Valid = url, true
+}
