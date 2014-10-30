@@ -15,6 +15,7 @@ import (
 	"github.com/fritzpay/paymentd/pkg/paymentd/payment"
 	"github.com/fritzpay/paymentd/pkg/paymentd/project"
 	"github.com/fritzpay/paymentd/pkg/service"
+	paymentService "github.com/fritzpay/paymentd/pkg/service/payment"
 	"github.com/go-sql-driver/mysql"
 	"gopkg.in/inconshreveable/log15.v2"
 	"hash"
@@ -508,6 +509,9 @@ func (a *PaymentAPI) InitPayment() http.Handler {
 		if req.ReturnURL != "" {
 			p.Config.ReturnURL.String, p.Config.ReturnURL.Valid = req.ReturnURL, true
 		}
+		if req.Metadata != nil {
+			p.Metadata = req.Metadata
+		}
 
 		// DB
 		var tx *sql.Tx
@@ -542,84 +546,45 @@ func (a *PaymentAPI) InitPayment() http.Handler {
 			resp = ErrDatabase
 			return
 		}
-		err = payment.InsertPaymentTx(tx, p)
-		if err != nil {
-			if mysqlErr, ok := err.(*mysql.MySQLError); ok {
-				// lock error
-				if mysqlErr.Number == 1213 {
-					retries++
-					time.Sleep(time.Second)
-					goto beginTx
-				}
-			}
-			_, existErr := payment.PaymentByProjectIDAndIdentTx(tx, p.ProjectID(), p.Ident)
-			if existErr != nil && existErr != payment.ErrPaymentNotFound {
-				log.Error("error on checking duplicate ident", log15.Ctx{"err": err})
+		// actions on payment service errors
+		handlePaymentServiceErr := func(err error) {
+			switch err {
+			case paymentService.ErrDB:
 				resp = ErrDatabase
-				if Debug {
-					resp.Info = fmt.Sprintf("error on checking duplicate ident: %v", existErr)
-				}
-				return
-			}
-			// payment found => duplicate error
-			if existErr == nil {
+			case paymentService.ErrDuplicateIdent:
 				resp = ErrConflict
 				resp.Info = "your ident was already used"
-				return
+			default:
+				resp = ErrSystem
+				log.Error("unknown error in payment service")
 			}
-			log.Error("error on insert payment", log15.Ctx{"err": err})
-			resp = ErrDatabase
-			if Debug {
-				resp.Info = fmt.Sprintf("error on insert payment: %v", err)
-			}
-			return
 		}
-		err = payment.InsertPaymentConfigTx(tx, p)
+
+		err = a.paymentService.CreatePayment(tx, p)
 		if err != nil {
-			log.Error("error on insert payment config", log15.Ctx{"err": err})
-			resp = ErrDatabase
-			return
-		}
-		// payment metadata
-		if req.Metadata != nil {
-			err = payment.InsertPaymentMetadataTx(tx, p)
-			if err != nil {
-				log.Error("error on insert payment metadata", log15.Ctx{"err": err})
-				resp = ErrDatabase
-				return
+			if err == paymentService.ErrDBLockTimeout {
+				retries++
+				time.Sleep(time.Second)
+				goto beginTx
 			}
+			handlePaymentServiceErr(err)
+			return
 		}
 		// payment token
-		token, err := payment.NewPaymentToken(p.PaymentID())
+		token, err := a.paymentService.CreatePaymentToken(tx, p)
 		if err != nil {
-			log.Error("error creating payment token", log15.Ctx{"err": err})
-			resp = ErrSystem
-			return
-		}
-		err = payment.InsertPaymentTokenTx(tx, token)
-		if err != nil {
-			if mysqlErr, ok := err.(*mysql.MySQLError); ok {
-				// lock error
-				if mysqlErr.Number == 1213 {
-					retries++
-					time.Sleep(time.Second)
-					goto beginTx
-				}
+			if err == paymentService.ErrDBLockTimeout {
+				retries++
+				time.Sleep(time.Second)
+				goto beginTx
 			}
-			log.Error("error saving payment token", log15.Ctx{"err": err})
-			resp = ErrDatabase
+			handlePaymentServiceErr(err)
 			return
 		}
 
 		paymentResp := &InitPaymentResponse{}
 		paymentResp.ConfirmationFromPayment(p)
-		if encoder, ok := a.ctx.Value(serviceContextPaymentIDEncoder).(*payment.IDEncoder); !ok {
-			log.Error("error retrieving payment id encoder from context")
-			resp = ErrSystem
-			return
-		} else {
-			paymentResp.Payment.PaymentId = p.PaymentID().Encoded(encoder)
-		}
+		paymentResp.Payment.PaymentId = a.paymentService.EncodedPaymentID(p.PaymentID())
 		paymentResp.Payment.Created = p.Created.UTC().Format(time.RFC3339)
 		paymentResp.Payment.Token = token.Token
 
