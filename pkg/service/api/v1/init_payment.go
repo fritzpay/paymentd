@@ -121,17 +121,8 @@ func (r *InitPaymentRequest) Validate() error {
 // Return the (binary) signature from the request
 //
 // implementing AuthenticatedRequest
-func (r *InitPaymentRequest) Signature() []byte {
-	return r.binarySignature
-}
-
-// Message returns the signature base string as bytes or nil on error
-func (r *InitPaymentRequest) Message() []byte {
-	str, err := r.SignatureBaseString()
-	if err != nil {
-		return nil
-	}
-	return []byte(str)
+func (r *InitPaymentRequest) Signature() ([]byte, error) {
+	return r.binarySignature, nil
 }
 
 // HashFunc returns the hash function used to generate a signature
@@ -140,72 +131,72 @@ func (r *InitPaymentRequest) HashFunc() func() hash.Hash {
 }
 
 // Return the signature base string (msg)
-func (r *InitPaymentRequest) SignatureBaseString() (string, error) {
+func (r *InitPaymentRequest) Message() ([]byte, error) {
 	var err error
 	buf := bytes.NewBuffer(nil)
 	_, err = buf.WriteString(r.ProjectKey)
 	if err != nil {
-		return "", fmt.Errorf("buffer error: %v", err)
+		return nil, fmt.Errorf("buffer error: %v", err)
 	}
 	_, err = buf.WriteString(r.Ident)
 	if err != nil {
-		return "", fmt.Errorf("buffer error: %v", err)
+		return nil, fmt.Errorf("buffer error: %v", err)
 	}
 	_, err = buf.WriteString(strconv.FormatInt(r.Amount.Int64, 10))
 	if err != nil {
-		return "", fmt.Errorf("buffer error: %v", err)
+		return nil, fmt.Errorf("buffer error: %v", err)
 	}
 	_, err = buf.WriteString(strconv.FormatInt(int64(r.Subunits.Int8), 10))
 	if err != nil {
-		return "", fmt.Errorf("buffer error: %v", err)
+		return nil, fmt.Errorf("buffer error: %v", err)
 	}
 	_, err = buf.WriteString(r.Currency)
 	if err != nil {
-		return "", fmt.Errorf("buffer error: %v", err)
+		return nil, fmt.Errorf("buffer error: %v", err)
 	}
 	_, err = buf.WriteString(r.Country)
 	if err != nil {
-		return "", fmt.Errorf("buffer error: %v", err)
+		return nil, fmt.Errorf("buffer error: %v", err)
 	}
 	if r.PaymentMethodID != 0 {
 		_, err = buf.WriteString(strconv.FormatInt(r.PaymentMethodID, 10))
 		if err != nil {
-			return "", fmt.Errorf("buffer error: %v", err)
+			return nil, fmt.Errorf("buffer error: %v", err)
 		}
 	}
 	if r.Locale != "" {
 		_, err = buf.WriteString(r.Locale)
 		if err != nil {
-			return "", fmt.Errorf("buffer error: %v", err)
+			return nil, fmt.Errorf("buffer error: %v", err)
 		}
 	}
 	if r.CallbackURL != "" {
 		_, err = buf.WriteString(r.CallbackURL)
 		if err != nil {
-			return "", fmt.Errorf("buffer error: %v", err)
+			return nil, fmt.Errorf("buffer error: %v", err)
 		}
 	}
 	if r.ReturnURL != "" {
 		_, err = buf.WriteString(r.ReturnURL)
 		if err != nil {
-			return "", fmt.Errorf("buffer error: %v", err)
+			return nil, fmt.Errorf("buffer error: %v", err)
 		}
 	}
 	if r.Metadata != nil {
 		err = maputil.WriteSortedMap(buf, r.Metadata)
 		if err != nil {
-			return "", fmt.Errorf("error writing map: %v", err)
+			return nil, fmt.Errorf("error writing map: %v", err)
 		}
 	}
 	_, err = buf.WriteString(strconv.FormatInt(r.Timestamp, 10))
 	if err != nil {
-		return "", fmt.Errorf("buffer error: %v", err)
+		return nil, fmt.Errorf("buffer error: %v", err)
 	}
 	_, err = buf.WriteString(r.Nonce)
 	if err != nil {
-		return "", fmt.Errorf("buffer error: %v", err)
+		return nil, fmt.Errorf("buffer error: %v", err)
 	}
-	s := buf.String()
+	s := buf.Bytes()
 	return s, nil
 }
 
@@ -294,15 +285,6 @@ func (r *InitPaymentResponse) ConfirmationFromPayment(p *payment.Payment) {
 	}
 }
 
-// Message returns the signature base string as a byte slice, nil if an error occured
-func (r *InitPaymentResponse) Message() []byte {
-	str, err := r.SignatureBaseString()
-	if err != nil {
-		return nil
-	}
-	return []byte(str)
-}
-
 // HashFunc returns the hash function for signing an init payment response
 func (r *InitPaymentResponse) HashFunc() func() hash.Hash {
 	return sha256.New
@@ -311,84 +293,84 @@ func (r *InitPaymentResponse) HashFunc() func() hash.Hash {
 // Returns the signature base string
 //
 // implementing SignableMessage
-func (r *InitPaymentResponse) SignatureBaseString() (string, error) {
+func (r *InitPaymentResponse) Message() ([]byte, error) {
 	var err error
 	buf := bytes.NewBuffer(nil)
 	_, err = buf.WriteString(r.Confirmation.Ident)
 	if err != nil {
-		return "", fmt.Errorf("buffer error: %v", err)
+		return nil, fmt.Errorf("buffer error: %v", err)
 	}
 	_, err = buf.WriteString(strconv.FormatInt(r.Confirmation.Amount, 10))
 	if err != nil {
-		return "", fmt.Errorf("buffer error: %v", err)
+		return nil, fmt.Errorf("buffer error: %v", err)
 	}
 	_, err = buf.WriteString(strconv.FormatInt(int64(r.Confirmation.Subunits), 10))
 	if err != nil {
-		return "", fmt.Errorf("buffer error: %v", err)
+		return nil, fmt.Errorf("buffer error: %v", err)
 	}
 	_, err = buf.WriteString(r.Confirmation.Currency)
 	if err != nil {
-		return "", fmt.Errorf("buffer error: %v", err)
+		return nil, fmt.Errorf("buffer error: %v", err)
 	}
 	_, err = buf.WriteString(r.Confirmation.Country)
 	if err != nil {
-		return "", fmt.Errorf("buffer error: %v", err)
+		return nil, fmt.Errorf("buffer error: %v", err)
 	}
 	if r.Confirmation.PaymentMethodID != 0 {
 		_, err = buf.WriteString(strconv.FormatInt(r.Confirmation.PaymentMethodID, 10))
 		if err != nil {
-			return "", fmt.Errorf("buffer error: %v", err)
+			return nil, fmt.Errorf("buffer error: %v", err)
 		}
 	}
 	if r.Confirmation.Locale != "" {
 		_, err = buf.WriteString(r.Confirmation.Locale)
 		if err != nil {
-			return "", fmt.Errorf("buffer error: %v", err)
+			return nil, fmt.Errorf("buffer error: %v", err)
 		}
 	}
 	if r.Confirmation.CallbackURL != "" {
 		_, err = buf.WriteString(r.Confirmation.CallbackURL)
 		if err != nil {
-			return "", fmt.Errorf("buffer error: %v", err)
+			return nil, fmt.Errorf("buffer error: %v", err)
 		}
 	}
 	if r.Confirmation.ReturnURL != "" {
 		_, err = buf.WriteString(r.Confirmation.ReturnURL)
 		if err != nil {
-			return "", fmt.Errorf("buffer error: %v", err)
+			return nil, fmt.Errorf("buffer error: %v", err)
 		}
 	}
 	if r.Confirmation.Metadata != nil {
 		err = maputil.WriteSortedMap(buf, r.Confirmation.Metadata)
 		if err != nil {
-			return "", fmt.Errorf("error writing map: %v", err)
+			return nil, fmt.Errorf("error writing map: %v", err)
 		}
 	}
 	_, err = buf.WriteString(r.Payment.PaymentId.String())
 	if err != nil {
-		return "", fmt.Errorf("buffer error: %v", err)
+		return nil, fmt.Errorf("buffer error: %v", err)
 	}
 	_, err = buf.WriteString(r.Payment.Created)
 	if err != nil {
-		return "", fmt.Errorf("buffer error: %v", err)
+		return nil, fmt.Errorf("buffer error: %v", err)
 	}
 	_, err = buf.WriteString(r.Payment.Token)
 	if err != nil {
-		return "", fmt.Errorf("buffer error: %v", err)
+		return nil, fmt.Errorf("buffer error: %v", err)
 	}
 	_, err = buf.WriteString(r.Payment.RedirectURL)
 	if err != nil {
-		return "", fmt.Errorf("buffer error: %v", err)
+		return nil, fmt.Errorf("buffer error: %v", err)
 	}
 	_, err = buf.WriteString(strconv.FormatInt(r.Timestamp, 10))
 	if err != nil {
-		return "", fmt.Errorf("buffer error: %v", err)
+		return nil, fmt.Errorf("buffer error: %v", err)
 	}
 	_, err = buf.WriteString(r.Nonce)
 	if err != nil {
-		return "", fmt.Errorf("buffer error: %v", err)
+		return nil, fmt.Errorf("buffer error: %v", err)
 	}
-	s := buf.String()
+	s := buf.Bytes()
 	return s, nil
 }
 

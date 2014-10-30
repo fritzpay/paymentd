@@ -119,17 +119,21 @@ func (t TestMsg) HashFunc() func() hash.Hash {
 	return sha256.New
 }
 
-func (t TestMsg) Message() []byte {
-	return t.msg
+func (t TestMsg) Message() ([]byte, error) {
+	return t.msg, nil
 }
 
-func (t TestMsg) Signature() []byte {
+func (t TestMsg) Signature() ([]byte, error) {
 	mac := hmac.New(t.HashFunc(), t.key)
-	_, err := mac.Write(t.Message())
+	msgBytes, err := t.Message()
 	if err != nil {
-		panic("error creating signature")
+		return nil, err
 	}
-	return mac.Sum(nil)
+	_, err = mac.Write(msgBytes)
+	if err != nil {
+		return nil, err
+	}
+	return mac.Sum(nil), nil
 }
 
 func TestKeychainCanMatchSigned(t *testing.T) {
