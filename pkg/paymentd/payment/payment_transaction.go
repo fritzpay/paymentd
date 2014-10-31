@@ -16,6 +16,9 @@ func (s *PaymentTransactionStatus) Scan(v interface{}) error {
 	case []byte:
 		*s = PaymentTransactionStatus(string(src))
 		return nil
+	case nil:
+		*s = PaymentStatusNone
+		return nil
 	}
 	str, ok := v.(string)
 	if !ok {
@@ -35,7 +38,8 @@ func (s PaymentTransactionStatus) String() string {
 }
 
 const (
-	PaymentStatusOpen           PaymentTransactionStatus = "open"
+	PaymentStatusNone           PaymentTransactionStatus = "uninitialized"
+	PaymentStatusOpen                                    = "open"
 	PaymentStatusPending                                 = "pending"
 	PaymentStatusPaid                                    = "paid"
 	PaymentStatusSettled                                 = "settled"
@@ -66,3 +70,11 @@ type PaymentTransaction struct {
 
 // Balance represents a balance which totals the ledger by currency
 type Balance map[string]*decimal.Decimal
+
+func (b Balance) FlatMap() map[string]string {
+	flat := make(map[string]string)
+	for curr, dec := range b {
+		flat[curr] = dec.String()
+	}
+	return flat
+}

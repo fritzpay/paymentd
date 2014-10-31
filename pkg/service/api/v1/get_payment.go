@@ -6,6 +6,7 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"github.com/fritzpay/paymentd/pkg/paymentd/nonce"
 	"github.com/fritzpay/paymentd/pkg/paymentd/payment"
 	"github.com/fritzpay/paymentd/pkg/paymentd/project"
 	"github.com/fritzpay/paymentd/pkg/service"
@@ -160,6 +161,8 @@ func (a *PaymentAPI) GetPayment() http.Handler {
 			ErrSystem.Write(w)
 			return
 		}
+
+		// create notification
 		var not *notification.PaymentNotification
 		not, err = notification.NewPaymentNotification(a.paymentService, p)
 		if err != nil {
@@ -167,6 +170,28 @@ func (a *PaymentAPI) GetPayment() http.Handler {
 			ErrSystem.Write(w)
 			return
 		}
+		// notification signing
+		not.Timestamp = time.Now().Unix()
+		non, err := nonce.New()
+		if err != nil {
+			log.Error("error creating nonce", log15.Ctx{"err": err})
+			ErrSystem.Write(w)
+			return
+		}
+		not.Nonce = non.Nonce
+		secret, err := projectKey.SecretBytes()
+		if err != nil {
+			log.Error("error retrieving project secret", log15.Ctx{"err": err})
+			ErrSystem.Write(w)
+			return
+		}
+		sig, err := service.Sign(not, secret)
+		if err != nil {
+			log.Error("error signing", log15.Ctx{"err": err})
+			ErrSystem.Write(w)
+			return
+		}
+		not.Signature = hex.EncodeToString(sig)
 
 		resp := ServiceResponse{}
 		resp.Status = StatusSuccess

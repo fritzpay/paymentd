@@ -184,3 +184,9 @@ func (s *Service) IsProcessablePayment(p *payment.Payment) bool {
 	}
 	return true
 }
+
+// IsInitialized returns true when the payment is in a processing state, i.e.
+// when there is at least one transaction present
+func (s *Service) IsInitialized(p *payment.Payment) bool {
+	return p.Status != payment.PaymentStatusNone
+}
