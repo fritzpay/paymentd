@@ -2,15 +2,19 @@ package notification
 
 import (
 	"bytes"
+	"crypto/sha256"
 	"fmt"
 	"github.com/fritzpay/paymentd/pkg/paymentd/payment"
 	paymentService "github.com/fritzpay/paymentd/pkg/service/payment"
+	"hash"
 )
 
 const (
 	PaymentNotificationVersion = "2.0.0-alpha"
 )
 
+// PaymentNotification represents a notification for connected systems about
+// the state of a payment
 type PaymentNotification struct {
 	Version              string
 	PaymentId            payment.PaymentID
@@ -23,8 +27,8 @@ type PaymentNotification struct {
 	PaymentMethodId      int64           `json:",string,omitempty"`
 	Locale               string          `json:",omitempty"`
 	Balance              payment.Balance `json:",omitempty"`
-	Status               string          `json:",omitempty"`
 	TransactionTimestamp int64           `json:",string,omitempty"`
+	Status               string          `json:",omitempty"`
 	Metadata             map[string]string
 	Timestamp            int64  `json:",string"`
 	Nonce                string `json:",omitempty"`
@@ -41,6 +45,12 @@ func NewPaymentNotification(srv *paymentService.Service, p *payment.Payment) (*P
 		DecimalAmount: p.Decimal().String(),
 		Currency:      p.Currency,
 		Metadata:      p.Metadata,
+	}
+	if !p.TransactionTimestamp.IsZero() {
+		n.TransactionTimestamp = p.TransactionTimestamp.UnixNano()
+	}
+	if p.Status != payment.PaymentStatusNone {
+		n.Status = p.Status.String()
 	}
 	if !p.Config.IsConfigured() {
 		return n, nil
@@ -65,4 +75,8 @@ func (n *PaymentNotification) Message() ([]byte, error) {
 		return nil, fmt.Errorf("buffer write error: %v", err)
 	}
 	return buf.Bytes(), nil
+}
+
+func (n *PaymentNotification) HashFunc() func() hash.Hash {
+	return sha256.New
 }

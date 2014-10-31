@@ -16,6 +16,9 @@ func (s *PaymentTransactionStatus) Scan(v interface{}) error {
 	case []byte:
 		*s = PaymentTransactionStatus(string(src))
 		return nil
+	case nil:
+		*s = PaymentStatusNone
+		return nil
 	}
 	str, ok := v.(string)
 	if !ok {
@@ -35,7 +38,8 @@ func (s PaymentTransactionStatus) String() string {
 }
 
 const (
-	PaymentStatusOpen           PaymentTransactionStatus = "open"
+	PaymentStatusNone           PaymentTransactionStatus = "uninitialized"
+	PaymentStatusOpen                                    = "open"
 	PaymentStatusPending                                 = "pending"
 	PaymentStatusPaid                                    = "paid"
 	PaymentStatusSettled                                 = "settled"

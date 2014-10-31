@@ -26,6 +26,9 @@ type Payment struct {
 
 	Config Config
 
+	TransactionTimestamp time.Time
+	Status               PaymentTransactionStatus
+
 	Metadata map[string]string
 }
 
