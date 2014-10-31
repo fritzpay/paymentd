@@ -8,7 +8,7 @@ import (
 )
 
 const (
-	PaymentNotificationVersion = "2.0"
+	PaymentNotificationVersion = "2.0.0-alpha"
 )
 
 type PaymentNotification struct {
