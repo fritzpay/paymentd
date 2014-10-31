@@ -3,6 +3,7 @@ package web
 import (
 	"fmt"
 	"github.com/fritzpay/paymentd/pkg/service"
+	"github.com/fritzpay/paymentd/pkg/service/payment"
 	"github.com/gorilla/mux"
 	"gopkg.in/inconshreveable/log15.v2"
 	"net/http"
@@ -18,6 +19,9 @@ type Handler struct {
 	log log15.Logger
 
 	router *mux.Router
+
+	paymentService *payment.Service
+	templateDir    string
 }
 
 func NewHandler(ctx *service.Context) (*Handler, error) {
@@ -30,7 +34,23 @@ func NewHandler(ctx *service.Context) (*Handler, error) {
 		router: mux.NewRouter(),
 	}
 
-	err := h.registerPayment()
+	var err error
+	cfg := h.ctx.Config()
+
+	h.paymentService, err = payment.NewService(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	if cfg.Web.TemplateDir == "" {
+		return nil, fmt.Errorf("no template dir configured")
+	}
+	if err := h.requireDir(cfg.Web.TemplateDir); err != nil {
+		return nil, fmt.Errorf("error on template dir: %v", err)
+	}
+	h.templateDir = cfg.Web.TemplateDir
+
+	err = h.registerPayment()
 	if err != nil {
 		h.log.Error("error registering payment", log15.Ctx{"err": err})
 		return nil, err
@@ -58,13 +78,6 @@ func (h *Handler) requireDir(dir string) error {
 
 func (h *Handler) registerPayment() error {
 	h.log.Info("registering web payment hander...")
-	cfg := h.ctx.Config()
-	if cfg.Web.TemplateDir == "" {
-		return fmt.Errorf("no template dir configured")
-	}
-	if err := h.requireDir(cfg.Web.TemplateDir); err != nil {
-		return fmt.Errorf("error on template dir: %v", err)
-	}
 	h.router.Handle(PaymentPath, h.PaymentHandler()).Methods("GET")
 	return nil
 }
