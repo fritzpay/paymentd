@@ -8,7 +8,7 @@ import (
 func TestDecimalParts(t *testing.T) {
 	decimal := dec.NewDecInt64(123)
 	decimal.SetScale(dec.Scale(2))
-	mDec := &Decimal{Dec: decimal}
+	mDec := &Decimal{Dec: *decimal}
 	expect := "1.23"
 	if mDec.String() != expect {
 		t.Errorf("expect %s, got %s", expect, mDec.String())
@@ -40,7 +40,7 @@ func TestDecimalParts(t *testing.T) {
 
 func TestDecimalPartsIntegerOnly(t *testing.T) {
 	decimal := dec.NewDecInt64(123)
-	mDec := &Decimal{Dec: decimal}
+	mDec := &Decimal{Dec: *decimal}
 	expect := "123"
 	if mDec.IntegerPart() != expect {
 		t.Errorf("expect integer part %s, got %s", expect, mDec.IntegerPart())

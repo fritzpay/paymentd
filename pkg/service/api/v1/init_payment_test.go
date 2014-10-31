@@ -22,12 +22,12 @@ func TestInitPaymentRequest(t *testing.T) {
 			req.Nonce = "testNonce"
 
 			Convey("When creating a signature base string", func() {
-				sig, err := req.SignatureBaseString()
+				sig, err := req.Message()
 				So(err, ShouldBeNil)
 
 				Convey("It should match the expected signature", func() {
 					expected := "abcdef123456testIdent12342EURDE121234567testNonce"
-					So(sig, ShouldEqual, expected)
+					So(string(sig), ShouldEqual, expected)
 				})
 			})
 
@@ -35,12 +35,12 @@ func TestInitPaymentRequest(t *testing.T) {
 				req.Locale = "en_US"
 
 				Convey("When creating a signature base string", func() {
-					sig, err := req.SignatureBaseString()
+					sig, err := req.Message()
 					So(err, ShouldBeNil)
 
 					Convey("It should match the expected signature", func() {
 						expected := "abcdef123456testIdent12342EURDE12en_US1234567testNonce"
-						So(sig, ShouldEqual, expected)
+						So(string(sig), ShouldEqual, expected)
 					})
 				})
 			})

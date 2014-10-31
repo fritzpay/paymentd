@@ -7,7 +7,6 @@ import (
 	"compress/gzip"
 	"crypto/aes"
 	"crypto/cipher"
-	"crypto/hmac"
 	"crypto/rand"
 	"encoding/base64"
 	"encoding/json"
@@ -145,31 +144,20 @@ func (a *Authorization) timestampBytes() []byte {
 }
 
 // Message implementing the Signable interface
-func (a *Authorization) Message() []byte {
+func (a *Authorization) Message() ([]byte, error) {
 	msg := append(a.timestampBytes(), a.salt...)
 	msg = append(msg, a.rawMsg...)
-	return msg
+	return msg, nil
 }
 
 // Signature implementing the Signed interface
-func (a *Authorization) Signature() []byte {
-	return a.signature
+func (a *Authorization) Signature() ([]byte, error) {
+	return a.signature, nil
 }
 
 // HashFunc implementing the Signable interface
 func (a *Authorization) HashFunc() func() hash.Hash {
 	return a.H
-}
-
-// Sign signs the container with the given key
-func (a *Authorization) Sign(key []byte) error {
-	mac := hmac.New(a.HashFunc(), key)
-	_, err := mac.Write(a.Message())
-	if err != nil {
-		return err
-	}
-	a.signature = mac.Sum(nil)
-	return nil
 }
 
 func (a *Authorization) generateSalt() error {
@@ -237,7 +225,7 @@ func (a *Authorization) Encode(key []byte) error {
 	if err != nil {
 		return err
 	}
-	err = a.Sign(key)
+	a.signature, err = Sign(a, key)
 	return err
 }
 

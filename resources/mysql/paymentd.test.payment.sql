@@ -129,7 +129,7 @@ CREATE TABLE IF NOT EXISTS `payment` (
   INDEX `created` (`created` ASC),
   UNIQUE INDEX `ident` (`project_id` ASC, `ident` ASC),
   INDEX `fk_payment_currency_idx` (`currency` ASC),
-  UNIQUE INDEX `payment_id` (`id` ASC, `project_id` ASC),
+  UNIQUE INDEX `payment_id` (`project_id` ASC, `id` ASC),
   CONSTRAINT `fk_payment_currency`
     FOREIGN KEY (`currency`)
     REFERENCES `currency` (`code_iso_4217`)
