@@ -22,6 +22,7 @@ type Handler struct {
 
 	paymentService *payment.Service
 	templateDir    string
+	keyChain       *service.Keychain
 }
 
 func NewHandler(ctx *service.Context) (*Handler, error) {

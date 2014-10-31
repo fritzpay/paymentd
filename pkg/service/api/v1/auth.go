@@ -64,7 +64,7 @@ func (a *AdminAPI) respondWithAuthorization(w http.ResponseWriter) {
 	auth := service.NewAuthorization(a.authorizationHash())
 	auth.Payload[AuthUserIDKey] = systemUserID
 	auth.Expires(time.Now().Add(AuthLifetime))
-	key, err := a.ctx.Keychain().BinKey()
+	key, err := a.ctx.APIKeychain().BinKey()
 	if err != nil {
 		log.Error("error retrieving key from keychain", log15.Ctx{"err": err})
 		w.WriteHeader(http.StatusInternalServerError)
@@ -278,12 +278,12 @@ func (a *AdminAPI) AuthHandler(success, failed http.Handler) http.Handler {
 			failed.ServeHTTP(w, r)
 			return
 		}
-		key, err := a.ctx.Keychain().MatchKey(auth)
+		key, err := a.ctx.APIKeychain().MatchKey(auth)
 		if err != nil {
 			if Debug {
 				log.Debug("error retrieving matching key from keychain", log15.Ctx{
 					"err":            err,
-					"keysInKeychain": a.ctx.Keychain().KeyCount(),
+					"keysInKeychain": a.ctx.APIKeychain().KeyCount(),
 				})
 			}
 			failed.ServeHTTP(w, r)
