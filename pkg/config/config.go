@@ -93,6 +93,23 @@ type Config struct {
 
 		AuthKeys []string
 	}
+	// Web server config
+	Web struct {
+		Active  bool
+		Service ServiceConfig
+
+		PubWWWDir   string
+		TemplateDir string
+
+		Cookie struct {
+			HTTPOnly bool
+			Secure   bool
+		}
+		AuthKeys []string
+	}
+	Provider struct {
+		ProviderTemplateDir string
+	}
 }
 
 // DefaultConfig returns a default configuration
@@ -119,6 +136,13 @@ func DefaultConfig() Config {
 	cfg.API.AuthKeys = make([]string, 0)
 
 	cfg.API.Cookie.HTTPOnly = true
+
+	cfg.Web.Service.Address = ":8443"
+	cfg.Web.Service.ReadTimeout = Duration("10s")
+	cfg.Web.Service.WriteTimeout = Duration("10s")
+	cfg.Web.AuthKeys = make([]string, 0)
+
+	cfg.Web.Cookie.HTTPOnly = true
 
 	return cfg
 }
