@@ -52,6 +52,28 @@ type ServiceConfig struct {
 
 // Config represents a full configuration for any paymentd related applications
 type Config struct {
+	// Payment config
+	Payment struct {
+		// Prime for obfuscating payment IDs
+		PaymentIDEncPrime int64
+		// XOR value to be applied to obfuscated primes
+		PaymentIDEncXOR int64
+	}
+	// Database config
+	Database struct {
+		// Maximum number of retries on transaction lock errors
+		TransactionMaxRetries int
+		// Principal database
+		Principal struct {
+			Write    DatabaseConfig
+			ReadOnly DatabaseConfig
+		}
+		// Payment database
+		Payment struct {
+			Write    DatabaseConfig
+			ReadOnly DatabaseConfig
+		}
+	}
 	// API server config
 	API struct {
 		// Should the API server be activated?
@@ -71,41 +93,13 @@ type Config struct {
 
 		AuthKeys []string
 	}
-	// Database config
-	Database struct {
-		// Maximum number of retries on transaction lock errors
-		TransactionMaxRetries int
-		// Principal database
-		Principal struct {
-			Write    DatabaseConfig
-			ReadOnly DatabaseConfig
-		}
-		// Payment database
-		Payment struct {
-			Write    DatabaseConfig
-			ReadOnly DatabaseConfig
-		}
-	}
-	// Payment config
-	Payment struct {
-		// Prime for obfuscating payment IDs
-		PaymentIDEncPrime int64
-		// XOR value to be applied to obfuscated primes
-		PaymentIDEncXOR int64
-	}
 }
 
 // DefaultConfig returns a default configuration
 func DefaultConfig() Config {
 	cfg := Config{}
-	cfg.API.Active = true
-	cfg.API.Service.Address = ":8080"
-	cfg.API.Service.ReadTimeout = Duration("10s")
-	cfg.API.Service.WriteTimeout = Duration("10s")
-	cfg.API.ServeAdmin = false
-	cfg.API.AuthKeys = make([]string, 0)
-
-	cfg.API.Cookie.HTTPOnly = true
+	cfg.Payment.PaymentIDEncPrime = 982450871
+	cfg.Payment.PaymentIDEncXOR = 123456789
 
 	cfg.Database.TransactionMaxRetries = 5
 
@@ -117,8 +111,14 @@ func DefaultConfig() Config {
 
 	cfg.Database.Principal.ReadOnly = nil
 
-	cfg.Payment.PaymentIDEncPrime = 982450871
-	cfg.Payment.PaymentIDEncXOR = 123456789
+	cfg.API.Active = true
+	cfg.API.Service.Address = ":8080"
+	cfg.API.Service.ReadTimeout = Duration("10s")
+	cfg.API.Service.WriteTimeout = Duration("10s")
+	cfg.API.ServeAdmin = false
+	cfg.API.AuthKeys = make([]string, 0)
+
+	cfg.API.Cookie.HTTPOnly = true
 
 	return cfg
 }
