@@ -40,25 +40,67 @@ func InsertPaymentTx(db *sql.Tx, p *Payment) error {
 
 const selectPayment = `
 SELECT
-	id,
-	project_id,
-	created,
-	ident,
-	amount,
-	subunits,
-	currency
-FROM payment
+	p.id,
+	p.project_id,
+	p.created,
+	p.ident,
+	p.amount,
+	p.subunits,
+	p.currency,
+
+	c.timestamp,
+	c.payment_method_id,
+	c.country,
+	c.locale,
+	c.callback_url,
+	c.return_url,
+
+	tx.timestamp,
+	tx.status
+FROM payment AS p
+LEFT JOIN payment_config AS c ON
+	c.project_id = p.project_id
+	AND
+	c.payment_id = p.id
+	AND
+	c.timestamp = (
+		SELECT MAX(timestamp) FROM payment_config
+		WHERE
+			project_id = c.project_id
+			AND
+			payment_id = c.payment_id
+	)
+LEFT JOIN payment_transaction AS tx ON
+	tx.project_id = p.project_id
+	AND
+	tx.payment_id = p.id
+	AND
+	tx.timestamp = (
+		SELECT MAX(timestamp) FROM payment_transaction
+		WHERE
+			project_id = tx.project_id
+			AND
+			payment_id = tx.payment_id
+	)
+`
+
+const selectPaymentByProjectIDAndID = selectPayment + `
+WHERE
+	p.project_id = ?
+	AND
+	p.id = ?
 `
 
 const selectPaymentByProjectIDAndIdent = selectPayment + `
 WHERE
-	project_id = ?
+	p.project_id = ?
 	AND
-	ident = ?
+	p.ident = ?
 `
 
 func scanSingleRow(row *sql.Row) (*Payment, error) {
 	p := &Payment{}
+	var ts, txTs sql.NullInt64
 	err := row.Scan(
 		&p.id,
 		&p.projectID,
@@ -67,6 +109,14 @@ func scanSingleRow(row *sql.Row) (*Payment, error) {
 		&p.Amount,
 		&p.Subunits,
 		&p.Currency,
+		&ts,
+		&p.Config.PaymentMethodID,
+		&p.Config.Country,
+		&p.Config.Locale,
+		&p.Config.CallbackURL,
+		&p.Config.ReturnURL,
+		&txTs,
+		&p.Status,
 	)
 	if err != nil {
 		if err == sql.ErrNoRows {
@@ -74,7 +124,23 @@ func scanSingleRow(row *sql.Row) (*Payment, error) {
 		}
 		return p, err
 	}
+	if ts.Valid {
+		p.Config.Timestamp = time.Unix(0, ts.Int64)
+	}
+	if txTs.Valid {
+		p.TransactionTimestamp = time.Unix(0, ts.Int64)
+	}
 	return p, nil
+}
+
+func PaymentByProjectIDAndIDDB(db *sql.DB, projectID int64, id int64) (*Payment, error) {
+	row := db.QueryRow(selectPaymentByProjectIDAndID, projectID, id)
+	return scanSingleRow(row)
+}
+
+func PaymentByProjectIDAndIdentDB(db *sql.DB, projectID int64, ident string) (*Payment, error) {
+	row := db.QueryRow(selectPaymentByProjectIDAndIdent, projectID, ident)
+	return scanSingleRow(row)
 }
 
 func PaymentByProjectIDAndIdentTx(db *sql.Tx, projectID int64, ident string) (*Payment, error) {

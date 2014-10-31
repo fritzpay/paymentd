@@ -11,8 +11,16 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"sync"
 	"syscall"
+	"time"
 )
+
+const (
+	serverWaitTimeout = 10 * time.Second
+)
+
+var Wait sync.WaitGroup
 
 // Server is a  paymentd server
 type Server struct {
@@ -27,14 +35,18 @@ type Server struct {
 	listeners []grace.Listener
 	// errors while serving
 	errors chan error
+	// shutdown chan, will be closed when cleaned up
+	shutdown chan struct{}
 }
 
 // NewServer creates a new paymentd server for the given config
 func NewServer(ctx context.Context) *Server {
 	srv := &Server{
 		httpServers: make([]*http.Server, 0, 3),
+
+		shutdown: make(chan struct{}),
 	}
-	srv.ctx, srv.Cancel = context.WithCancel(ctx)
+	srv.ctx = ctx
 	if log, ok := srv.ctx.Value("log").(log15.Logger); ok {
 		srv.log = log
 	} else {
@@ -118,6 +130,8 @@ func (s *Server) Serve() error {
 	}
 
 	err = s.wait()
+
+	<-s.shutdown
 
 	s.log.Info("exiting. graceful handoff complete.", log15.Ctx{
 		"pid": pid,
@@ -213,8 +227,21 @@ func (s *Server) wait() error {
 // It will cancel all server child contexts, disable Keepalive on all servers
 func (s *Server) Shutdown() {
 	s.log.Warn("server going into shutdown mode")
-	s.Cancel()
 	for _, srv := range s.httpServers {
 		srv.SetKeepAlivesEnabled(false)
 	}
+	if s.Cancel != nil {
+		s.Cancel()
+	}
+	waited := make(chan struct{})
+	go func() {
+		Wait.Wait()
+		close(waited)
+	}()
+	select {
+	case <-waited:
+	case <-time.After(serverWaitTimeout):
+		s.log.Warn("server exiting after wait timeout", log15.Ctx{"waitTimeout": serverWaitTimeout})
+	}
+	close(s.shutdown)
 }
