@@ -38,7 +38,7 @@ func InsertPaymentTx(db *sql.Tx, p *Payment) error {
 	return err
 }
 
-const selectPayment = `
+const selectPaymentFields = `
 SELECT
 	p.id,
 	p.project_id,
@@ -57,6 +57,9 @@ SELECT
 
 	tx.timestamp,
 	tx.status
+`
+
+const selectPayment = selectPaymentFields + `
 FROM payment AS p
 LEFT JOIN payment_config AS c ON
 	c.project_id = p.project_id

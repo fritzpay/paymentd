@@ -10,6 +10,7 @@ import (
 	"github.com/fritzpay/paymentd/pkg/server"
 	"github.com/fritzpay/paymentd/pkg/service"
 	"github.com/fritzpay/paymentd/pkg/service/api"
+	"github.com/fritzpay/paymentd/pkg/service/web"
 	_ "github.com/go-sql-driver/mysql"
 	"gopkg.in/inconshreveable/log15.v2"
 	"os"
@@ -100,6 +101,21 @@ func main() {
 		err = srv.RegisterService(cfg.API.Service, apiHandler)
 		if err != nil {
 			log.Crit("error registering API service", log15.Ctx{"err": err})
+			log.Info("exiting...")
+			os.Exit(1)
+		}
+	}
+	if cfg.Web.Active {
+		log.Info("enabling Web service...")
+		webHandler, err := web.NewHandler(serviceCtx)
+		if err != nil {
+			log.Crit("error initializing Web service", log15.Ctx{"err": err})
+			log.Info("exiting...")
+			os.Exit(1)
+		}
+		err = srv.RegisterService(cfg.Web.Service, webHandler)
+		if err != nil {
+			log.Crit("error registering Web service", log15.Ctx{"err": err})
 			log.Info("exiting...")
 			os.Exit(1)
 		}

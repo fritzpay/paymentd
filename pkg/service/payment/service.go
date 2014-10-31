@@ -6,6 +6,7 @@ import (
 	"github.com/fritzpay/paymentd/pkg/service"
 	"github.com/go-sql-driver/mysql"
 	"gopkg.in/inconshreveable/log15.v2"
+	"time"
 )
 
 type errorID int
@@ -34,6 +35,10 @@ const (
 	ErrDuplicateIdent
 	// internal error
 	ErrInternal
+)
+
+const (
+	PaymentTokenMaxAgeDefault = time.Minute * 15
 )
 
 // Service is the payment service
@@ -189,4 +194,25 @@ func (s *Service) IsProcessablePayment(p *payment.Payment) bool {
 // when there is at least one transaction present
 func (s *Service) IsInitialized(p *payment.Payment) bool {
 	return p.Status != payment.PaymentStatusNone
+}
+
+// TODO use token max age from config
+func (s *Service) PaymentByToken(tx *sql.Tx, token string) (*payment.Payment, error) {
+	tokenMaxAge := PaymentTokenMaxAgeDefault
+	return payment.PaymentByTokenTx(tx, token, tokenMaxAge)
+}
+
+func (s *Service) DeletePaymentToken(tx *sql.Tx, token string) error {
+	log := s.log.New(log15.Ctx{"method": "DeletePaymentToken"})
+	err := payment.DeletePaymentTokenTx(tx, token)
+	if err != nil {
+		if mysqlErr, ok := err.(*mysql.MySQLError); ok {
+			if mysqlErr.Number == 1213 {
+				return ErrDBLockTimeout
+			}
+		}
+		log.Error("error deleting payment token", log15.Ctx{"err": err})
+		return ErrDB
+	}
+	return nil
 }
