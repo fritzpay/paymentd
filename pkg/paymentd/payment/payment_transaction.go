@@ -70,3 +70,11 @@ type PaymentTransaction struct {
 
 // Balance represents a balance which totals the ledger by currency
 type Balance map[string]*decimal.Decimal
+
+func (b Balance) FlatMap() map[string]string {
+	flat := make(map[string]string)
+	for curr, dec := range b {
+		flat[curr] = dec.String()
+	}
+	return flat
+}
