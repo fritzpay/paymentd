@@ -91,6 +91,9 @@ type Config struct {
 			Secure          bool
 		}
 
+		// serve the adminpanel gui files (fullfill same origin policy)
+		AdminGUIPubWWWDir string
+
 		AuthKeys []string
 	}
 	// Web server config
