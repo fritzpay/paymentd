@@ -216,10 +216,30 @@ func (h *Handler) resetPaymentCookie(w http.ResponseWriter) {
 func (h *Handler) PaymentHandler() http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")
-		// log := h.log.New(log15.Ctx{"method": "PaymentHandler"})
+		log := h.log.New(log15.Ctx{"method": "PaymentHandler"})
 		// will set the appropriate header if false
 		if !h.authenticatePaymentRequest(w, r) {
 			return
+		}
+		paymentIDStr, ok := service.RequestContext(r).Value(PaymentAuthPaymentID).(string)
+		if !ok {
+			log.Crit("error in request context payment id", log15.Ctx{"hasType": fmt.Sprintf("%T", service.RequestContext(r).Value(PaymentAuthPaymentID))})
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+		paymentID, err := payment.ParsePaymentIDStr(paymentIDStr)
+		if err != nil {
+			log.Crit("invalid payment id", log15.Ctx{"err": err})
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+		log = log.New(log15.Ctx{
+			"displayPaymentId": h.paymentService.EncodedPaymentID(paymentID).String(),
+			"projectID":        paymentID.ProjectID,
+			"paymentID":        paymentID.PaymentID,
+		})
+		if Debug {
+			log.Debug("handling payment...")
 		}
 	})
 }
