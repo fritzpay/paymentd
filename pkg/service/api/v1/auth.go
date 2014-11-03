@@ -114,8 +114,12 @@ func (a *AdminAPI) AuthorizationHandler() http.Handler {
 		case "GET":
 			a.AuthRequiredHandler(a.refreshAuthorizationHandler()).ServeHTTP(w, r)
 
-		case "POST":
+		case "PUT":
 			a.AuthRequiredHandler(a.updateSystemUserPasswordHandler()).ServeHTTP(w, r)
+			return
+
+		case "DELETE":
+			a.AuthRequiredHandler(http.HandlerFunc(a.resetCookie)).ServeHTTP(w, r)
 			return
 
 		default:
@@ -136,6 +140,17 @@ func (a *AdminAPI) AuthorizeHandler() http.Handler {
 			switch authMethod {
 			case "basic":
 				a.authenticateBasicAuth(w, r)
+				return
+			default:
+				w.WriteHeader(http.StatusNotFound)
+				return
+			}
+		case "POST":
+			vars := mux.Vars(r)
+			authMethod := vars["method"]
+			switch authMethod {
+			case "text":
+				a.authenticateBodyAuth(w, r)
 				return
 			default:
 				w.WriteHeader(http.StatusNotFound)
@@ -184,6 +199,20 @@ func (a *AdminAPI) authenticateBasicAuth(w http.ResponseWriter, r *http.Request)
 	} else {
 		a.authenticateSystemPassword(pw, w)
 	}
+}
+
+func (a *AdminAPI) authenticateBodyAuth(w http.ResponseWriter, r *http.Request) {
+	if !strings.Contains(r.Header.Get("Content-Type"), "text/plain") {
+		w.WriteHeader(http.StatusUnsupportedMediaType)
+		return
+	}
+	b, err := ioutil.ReadAll(r.Body)
+	if err != nil {
+		a.log.Error("error reading request body", log15.Ctx{"err": err})
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+	a.authenticateSystemPassword(string(b), w)
 }
 
 func requestBasicAuth(w http.ResponseWriter) {
@@ -268,6 +297,7 @@ func (a *AdminAPI) AuthHandler(success, failed http.Handler) http.Handler {
 			if Debug {
 				log.Debug("error reading authorization", log15.Ctx{"err": err})
 			}
+			a.resetCookie(w, r)
 			failed.ServeHTTP(w, r)
 			return
 		}
@@ -275,6 +305,7 @@ func (a *AdminAPI) AuthHandler(success, failed http.Handler) http.Handler {
 			if Debug {
 				log.Debug("authorization expired", log15.Ctx{"expiry": auth.Expiry()})
 			}
+			a.resetCookie(w, r)
 			failed.ServeHTTP(w, r)
 			return
 		}
@@ -286,6 +317,7 @@ func (a *AdminAPI) AuthHandler(success, failed http.Handler) http.Handler {
 					"keysInKeychain": a.ctx.APIKeychain().KeyCount(),
 				})
 			}
+			a.resetCookie(w, r)
 			failed.ServeHTTP(w, r)
 			return
 		}
@@ -294,6 +326,7 @@ func (a *AdminAPI) AuthHandler(success, failed http.Handler) http.Handler {
 			if Debug {
 				log.Debug("error decoding authorization", log15.Ctx{"err": err})
 			}
+			a.resetCookie(w, r)
 			failed.ServeHTTP(w, r)
 			return
 		}
@@ -302,6 +335,21 @@ func (a *AdminAPI) AuthHandler(success, failed http.Handler) http.Handler {
 
 		success.ServeHTTP(w, r)
 	})
+}
+
+func (a *AdminAPI) resetCookie(w http.ResponseWriter, r *http.Request) {
+	if !a.ctx.Config().API.Cookie.AllowCookieAuth {
+		return
+	}
+	c := &http.Cookie{
+		Name:     AuthCookieName,
+		Value:    "",
+		Path:     ServicePath,
+		Expires:  time.Unix(0, 0),
+		HttpOnly: a.ctx.Config().API.Cookie.HTTPOnly,
+		Secure:   a.ctx.Config().API.Cookie.Secure,
+	}
+	http.SetCookie(w, c)
 }
 
 func getAuthContainer(r *http.Request) (map[string]interface{}, error) {

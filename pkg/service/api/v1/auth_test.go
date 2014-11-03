@@ -43,21 +43,8 @@ func TestGetCredentialsWithBasicAuth(t *testing.T) {
 				r, err := http.NewRequest("GET", ServicePath+"/authorization", nil)
 				So(err, ShouldBeNil)
 
-				Convey("When the request method is PUT", func() {
-					r.Method = "PUT"
-
-					Convey("When the handler is called", func() {
-						w := testutil.NewResponseWriter()
-						mx.ServeHTTP(w, r)
-						Convey("The handler should respond with method not allowed", func() {
-							So(w.HeaderWritten, ShouldBeTrue)
-							So(w.StatusCode, ShouldEqual, http.StatusMethodNotAllowed)
-						})
-					})
-				})
-
-				Convey("When the request method is DELETE", func() {
-					r.Method = "DELETE"
+				Convey("When the request method is POST", func() {
+					r.Method = "POST"
 
 					Convey("When the handler is called", func() {
 						w := testutil.NewResponseWriter()
