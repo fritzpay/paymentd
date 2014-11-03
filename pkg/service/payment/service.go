@@ -3,6 +3,7 @@ package payment
 import (
 	"database/sql"
 	"github.com/fritzpay/paymentd/pkg/paymentd/payment"
+	"github.com/fritzpay/paymentd/pkg/paymentd/payment_method"
 	"github.com/fritzpay/paymentd/pkg/service"
 	"github.com/go-sql-driver/mysql"
 	"gopkg.in/inconshreveable/log15.v2"
@@ -19,6 +20,12 @@ func (e errorID) Error() string {
 		return "lock wait timeout"
 	case ErrDuplicateIdent:
 		return "duplicate ident in payment"
+	case ErrPaymentMethodNotFound:
+		return "payment method not found"
+	case ErrPaymentMethodConflict:
+		return "payment method project mismatch"
+	case ErrPaymentMethodInactive:
+		return "payment method inactive"
 	case ErrInternal:
 		return "internal error"
 	default:
@@ -33,6 +40,12 @@ const (
 	ErrDBLockTimeout
 	// duplicate Ident in payment
 	ErrDuplicateIdent
+	// payment method not found
+	ErrPaymentMethodNotFound
+	// payment method project mismatch
+	ErrPaymentMethodConflict
+	// payment method inactive
+	ErrPaymentMethodInactive
 	// internal error
 	ErrInternal
 )
@@ -119,6 +132,31 @@ func (s *Service) CreatePayment(tx *sql.Tx, p *payment.Payment) error {
 
 func (s *Service) SetPaymentConfig(tx *sql.Tx, p *payment.Payment) error {
 	log := s.log.New(log15.Ctx{"method": "SetPaymentConfig"})
+	if p.Config.PaymentMethodID.Valid {
+		log = log.New(log15.Ctx{"paymentMethodID": p.Config.PaymentMethodID.Int64})
+		meth, err := payment_method.PaymentMethodByIDTx(tx, p.Config.PaymentMethodID.Int64)
+		if err != nil {
+			if mysqlErr, ok := err.(*mysql.MySQLError); ok {
+				if mysqlErr.Number == 1213 {
+					return ErrDBLockTimeout
+				}
+			}
+			if err == payment_method.ErrPaymentMethodNotFound {
+				log.Warn(ErrPaymentMethodNotFound.Error())
+				return ErrPaymentMethodNotFound
+			}
+			log.Error("error on select payment method", log15.Ctx{"err": err})
+			return ErrDB
+		}
+		if meth.ProjectID != p.ProjectID() {
+			log.Warn(ErrPaymentMethodConflict.Error())
+			return ErrPaymentMethodConflict
+		}
+		if meth.Status != payment_method.PaymentMethodStatusActive {
+			log.Warn(ErrPaymentMethodInactive.Error())
+			return ErrPaymentMethodInactive
+		}
+	}
 	err := payment.InsertPaymentConfigTx(tx, p)
 	if err != nil {
 		if mysqlErr, ok := err.(*mysql.MySQLError); ok {

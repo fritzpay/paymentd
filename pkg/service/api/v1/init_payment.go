@@ -491,6 +491,7 @@ func (a *PaymentAPI) InitPayment() http.Handler {
 			resp = ErrDatabase
 			return
 		}
+
 		// actions on payment service errors
 		handlePaymentServiceErr := func(err error) {
 			switch err {
