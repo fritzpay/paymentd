@@ -29,9 +29,10 @@ func NewHandler(ctx *service.Context) (*Handler, error) {
 		mux: mux.NewRouter(),
 	}
 
+	// Serve Admin GUI if active and path provided
 	cfg := h.ctx.Config()
 	adminGUIPubWWWDir := cfg.API.AdminGUIPubWWWDir
-	if len(adminGUIPubWWWDir) > 0 {
+	if cfg.API.ServeAdmin && len(adminGUIPubWWWDir) > 0 {
 
 		err := h.requireDir(adminGUIPubWWWDir)
 		if err != nil {
@@ -80,7 +81,7 @@ func (h *Handler) requireDir(dir string) error {
 }
 
 func (h *Handler) registerPublic() error {
-	h.log.Info("registering www public directory...")
+	h.log.Info("registering www public admin gui directory...")
 	cfg := h.ctx.Config()
 	if cfg.API.AdminGUIPubWWWDir == "" {
 		return fmt.Errorf("no public admin gui www dir configured")
