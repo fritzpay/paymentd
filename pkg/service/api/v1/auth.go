@@ -118,6 +118,10 @@ func (a *AdminAPI) AuthorizationHandler() http.Handler {
 			a.AuthRequiredHandler(a.updateSystemUserPasswordHandler()).ServeHTTP(w, r)
 			return
 
+		case "DELETE":
+			a.AuthRequiredHandler(http.HandlerFunc(a.resetCookie)).ServeHTTP(w, r)
+			return
+
 		default:
 			w.WriteHeader(http.StatusMethodNotAllowed)
 			return
@@ -268,6 +272,7 @@ func (a *AdminAPI) AuthHandler(success, failed http.Handler) http.Handler {
 			if Debug {
 				log.Debug("error reading authorization", log15.Ctx{"err": err})
 			}
+			a.resetCookie(w, r)
 			failed.ServeHTTP(w, r)
 			return
 		}
@@ -275,6 +280,7 @@ func (a *AdminAPI) AuthHandler(success, failed http.Handler) http.Handler {
 			if Debug {
 				log.Debug("authorization expired", log15.Ctx{"expiry": auth.Expiry()})
 			}
+			a.resetCookie(w, r)
 			failed.ServeHTTP(w, r)
 			return
 		}
@@ -286,6 +292,7 @@ func (a *AdminAPI) AuthHandler(success, failed http.Handler) http.Handler {
 					"keysInKeychain": a.ctx.APIKeychain().KeyCount(),
 				})
 			}
+			a.resetCookie(w, r)
 			failed.ServeHTTP(w, r)
 			return
 		}
@@ -294,6 +301,7 @@ func (a *AdminAPI) AuthHandler(success, failed http.Handler) http.Handler {
 			if Debug {
 				log.Debug("error decoding authorization", log15.Ctx{"err": err})
 			}
+			a.resetCookie(w, r)
 			failed.ServeHTTP(w, r)
 			return
 		}
@@ -302,6 +310,21 @@ func (a *AdminAPI) AuthHandler(success, failed http.Handler) http.Handler {
 
 		success.ServeHTTP(w, r)
 	})
+}
+
+func (a *AdminAPI) resetCookie(w http.ResponseWriter, r *http.Request) {
+	if !a.ctx.Config().API.Cookie.AllowCookieAuth {
+		return
+	}
+	c := &http.Cookie{
+		Name:     AuthCookieName,
+		Value:    "",
+		Path:     ServicePath,
+		Expires:  time.Unix(0, 0),
+		HttpOnly: a.ctx.Config().API.Cookie.HTTPOnly,
+		Secure:   a.ctx.Config().API.Cookie.Secure,
+	}
+	http.SetCookie(w, c)
 }
 
 func getAuthContainer(r *http.Request) (map[string]interface{}, error) {
