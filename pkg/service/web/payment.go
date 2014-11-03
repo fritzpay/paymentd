@@ -117,9 +117,15 @@ beginTx:
 		return
 	}
 	commit = true
+	h.redirectTokenRequest(w, r)
+}
+
+func (h *Handler) redirectTokenRequest(w http.ResponseWriter, r *http.Request) {
 	// remove query from current request, redirect
 	redirectURL := &(*r.URL)
-	redirectURL.RawQuery = ""
+	q := r.URL.Query()
+	q.Del("token")
+	redirectURL.RawQuery = q.Encode()
 	http.Redirect(w, r, redirectURL.String(), http.StatusMovedPermanently)
 }
 
