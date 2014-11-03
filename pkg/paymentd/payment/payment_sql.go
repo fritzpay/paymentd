@@ -136,8 +136,13 @@ func scanSingleRow(row *sql.Row) (*Payment, error) {
 	return p, nil
 }
 
-func PaymentByProjectIDAndIDDB(db *sql.DB, projectID int64, id int64) (*Payment, error) {
-	row := db.QueryRow(selectPaymentByProjectIDAndID, projectID, id)
+func PaymentByProjectIDAndIDTx(db *sql.Tx, id PaymentID) (*Payment, error) {
+	row := db.QueryRow(selectPaymentByProjectIDAndID, id.ProjectID, id.PaymentID)
+	return scanSingleRow(row)
+}
+
+func PaymentByProjectIDAndIDDB(db *sql.DB, id PaymentID) (*Payment, error) {
+	row := db.QueryRow(selectPaymentByProjectIDAndID, id.ProjectID, id.PaymentID)
 	return scanSingleRow(row)
 }
 
