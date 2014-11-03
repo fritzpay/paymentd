@@ -125,8 +125,6 @@ func (a *PaymentAPI) GetPayment() http.Handler {
 		if req.PaymentId != "" {
 			req.paymentID = a.paymentService.DecodedPaymentID(req.paymentID)
 			log = log.New(log15.Ctx{
-				"ProjectID":        req.paymentID.ProjectID,
-				"PaymentID":        req.paymentID.PaymentID,
 				"DisplayPaymentId": req.PaymentId,
 			})
 		} else if req.Ident != "" {
@@ -145,7 +143,7 @@ func (a *PaymentAPI) GetPayment() http.Handler {
 		if req.Ident != "" {
 			p, err = payment.PaymentByProjectIDAndIdentDB(a.ctx.PaymentDB(service.ReadOnly), projectKey.Project.ID, req.Ident)
 		} else {
-			p, err = payment.PaymentByProjectIDAndIDDB(a.ctx.PaymentDB(service.ReadOnly), projectKey.Project.ID, req.paymentID.PaymentID)
+			p, err = payment.PaymentByIDDB(a.ctx.PaymentDB(service.ReadOnly), req.paymentID)
 		}
 		if err != nil {
 			if err == payment.ErrPaymentNotFound {
@@ -159,6 +157,13 @@ func (a *PaymentAPI) GetPayment() http.Handler {
 		if p == nil || !p.Valid() {
 			log.Crit("invalid payment received")
 			ErrSystem.Write(w)
+			return
+		}
+		if projectKey.Project.ID != p.ProjectID() {
+			log.Warn("project key project and requested payment id mismatch", log15.Ctx{
+				"projectID": projectKey.Project.ID,
+			})
+			ErrUnauthorized.Write(w)
 			return
 		}
 

@@ -14,6 +14,15 @@ const (
 	IdentMaxLen = 175
 )
 
+const (
+	DefaultLocale = "en_US"
+	// MetadataKeyAcceptLanguage is the key for the Accept-Language header
+	// which will be stored in the metadata
+	MetadataKeyAcceptLanguage = "_fAcceptLanguage"
+	MetadataKeyBrowserLocale  = "_fBrowserLocale"
+	MetadataKeyRemoteAddress  = "_fRemoteAddress"
+)
+
 // Payment represents a payment
 type Payment struct {
 	projectID int64
