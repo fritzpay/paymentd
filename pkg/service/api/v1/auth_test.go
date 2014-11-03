@@ -56,19 +56,6 @@ func TestGetCredentialsWithBasicAuth(t *testing.T) {
 					})
 				})
 
-				Convey("When the request method is DELETE", func() {
-					r.Method = "DELETE"
-
-					Convey("When the handler is called", func() {
-						w := testutil.NewResponseWriter()
-						mx.ServeHTTP(w, r)
-						Convey("The handler should respond with method not allowed", func() {
-							So(w.HeaderWritten, ShouldBeTrue)
-							So(w.StatusCode, ShouldEqual, http.StatusMethodNotAllowed)
-						})
-					})
-				})
-
 				Convey("When the authentication method is unknown", func() {
 					r.URL.Path += "/unknown"
 
