@@ -2,12 +2,16 @@ package payment
 
 import (
 	"database/sql"
+	"errors"
+	"time"
+)
+
+var (
+	ErrPaymentTransactionNotFound = errors.New("payment transaction not found")
 )
 
 const selectPaymentTransaction = `
 SELECT
-	tx.project_id,
-	tx.payment_id,
 	tx.timestamp,
 
 	tx.amount,
@@ -33,6 +37,7 @@ func InsertPaymentTransactionTx(db *sql.Tx, paymentTx *PaymentTransaction) error
 	_, err = stmt.Exec(
 		paymentTx.Payment.ProjectID(),
 		paymentTx.Payment.ID(),
+		paymentTx.Timestamp.UnixNano(),
 		paymentTx.Amount,
 		paymentTx.Subunits,
 		paymentTx.Currency,
@@ -41,4 +46,42 @@ func InsertPaymentTransactionTx(db *sql.Tx, paymentTx *PaymentTransaction) error
 	)
 	stmt.Close()
 	return err
+}
+
+const selectCurrentPaymentTransaction = selectPaymentTransaction + `
+WHERE
+	tx.project_id = ?
+	AND
+	tx.payment_id = ?
+	AND
+	tx.timestamp = (
+		SELECT MAX(timestamp) FROM payment_transaction
+		WHERE
+			project_id = tx.project_id
+			AND
+			payment_id = tx.payment_id
+	)
+`
+
+func PaymentTransactionCurrentTx(db *sql.Tx, p *Payment) (*PaymentTransaction, error) {
+	paymentTx := &PaymentTransaction{
+		Payment: p,
+	}
+	var ts int64
+	row := db.QueryRow(selectCurrentPaymentTransaction, p.ProjectID(), p.ID())
+	err := row.Scan(
+		&ts,
+		&paymentTx.Amount,
+		&paymentTx.Subunits,
+		&paymentTx.Status,
+		&paymentTx.Comment,
+	)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return paymentTx, ErrPaymentTransactionNotFound
+		}
+		return paymentTx, err
+	}
+	paymentTx.Timestamp = time.Unix(0, ts)
+	return paymentTx, nil
 }
