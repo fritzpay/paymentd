@@ -216,21 +216,7 @@ func (s *Service) IsInitialized(p *payment.Payment) bool {
 
 func (s *Service) SetPaymentTransaction(tx *sql.Tx, paymentTx *payment.PaymentTransaction) error {
 	log := s.log.New(log15.Ctx{"method": "SetPaymentTransaction"})
-	curr, err := payment.PaymentTransactionCurrentTx(tx, paymentTx.Payment)
-	if err != nil && err != payment.ErrPaymentTransactionNotFound {
-		if mysqlErr, ok := err.(*mysql.MySQLError); ok {
-			if mysqlErr.Number == 1213 {
-				return ErrDBLockTimeout
-			}
-		}
-	}
-	if err == nil {
-		if curr.Status == paymentTx.Status {
-			log.Warn("payment transaction already has requested status", log15.Ctx{"status": paymentTx.Status})
-			return nil
-		}
-	}
-	err = payment.InsertPaymentTransactionTx(tx, paymentTx)
+	err := payment.InsertPaymentTransactionTx(tx, paymentTx)
 	if err != nil {
 		if mysqlErr, ok := err.(*mysql.MySQLError); ok {
 			if mysqlErr.Number == 1213 {
