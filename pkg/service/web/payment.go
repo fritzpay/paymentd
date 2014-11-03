@@ -122,6 +122,7 @@ beginTx:
 
 func (h *Handler) readPaymentCookie(w http.ResponseWriter, r *http.Request) (proceed bool) {
 	log := h.log.New(log15.Ctx{"method": "readPaymentCookie"})
+
 	if c, err := r.Cookie(PaymentCookieName); err == nil {
 		auth := service.NewAuthorization(h.hashFunc())
 		_, err = auth.ReadFrom(strings.NewReader(c.Value))
@@ -170,7 +171,6 @@ func (h *Handler) readPaymentCookie(w http.ResponseWriter, r *http.Request) (pro
 
 func (h *Handler) setPaymentCookie(w http.ResponseWriter, p *payment.Payment) error {
 	log := h.log.New(log15.Ctx{"method": "setPaymentCookie"})
-
 	auth := service.NewAuthorization(h.hashFunc())
 	auth.Payload[PaymentAuthPaymentID] = p.PaymentID().String()
 	auth.Expires(time.Now().Add(PaymentCookieMaxLifetime))
@@ -216,11 +216,11 @@ func (h *Handler) resetPaymentCookie(w http.ResponseWriter) {
 func (h *Handler) PaymentHandler() http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")
-		log := h.log.New(log15.Ctx{"method": "PaymentHandler"})
 		// will set the appropriate header if false
 		if !h.authenticatePaymentRequest(w, r) {
 			return
 		}
+		log := h.log.New(log15.Ctx{"method": "PaymentHandler"})
 		paymentIDStr, ok := service.RequestContext(r).Value(PaymentAuthPaymentID).(string)
 		if !ok {
 			log.Crit("error in request context payment id", log15.Ctx{"hasType": fmt.Sprintf("%T", service.RequestContext(r).Value(PaymentAuthPaymentID))})
@@ -235,8 +235,28 @@ func (h *Handler) PaymentHandler() http.Handler {
 		}
 		log = log.New(log15.Ctx{
 			"displayPaymentId": h.paymentService.EncodedPaymentID(paymentID).String(),
-			"projectID":        paymentID.ProjectID,
-			"paymentID":        paymentID.PaymentID,
+		})
+
+		tx, err := h.ctx.PaymentDB().Begin()
+		if err != nil {
+			log.Crit("error on begin tx", log15.Ctx{"err": err})
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+		p, err := payment.PaymentByIDTx(tx, paymentID)
+		if err != nil {
+			if err == payment.ErrPaymentNotFound {
+				log.Warn("requested payment not found")
+				w.WriteHeader(http.StatusNotFound)
+				return
+			}
+			log.Error("error retrieving payment", log15.Ctx{"err": err})
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+		log = log.New(log15.Ctx{
+			"projectID": p.ProjectID(),
+			"paymentID": p.ID(),
 		})
 		if Debug {
 			log.Debug("handling payment...")

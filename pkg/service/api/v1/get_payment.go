@@ -143,7 +143,7 @@ func (a *PaymentAPI) GetPayment() http.Handler {
 		if req.Ident != "" {
 			p, err = payment.PaymentByProjectIDAndIdentDB(a.ctx.PaymentDB(service.ReadOnly), projectKey.Project.ID, req.Ident)
 		} else {
-			p, err = payment.PaymentByProjectIDAndIDDB(a.ctx.PaymentDB(service.ReadOnly), req.paymentID)
+			p, err = payment.PaymentByIDDB(a.ctx.PaymentDB(service.ReadOnly), req.paymentID)
 		}
 		if err != nil {
 			if err == payment.ErrPaymentNotFound {
