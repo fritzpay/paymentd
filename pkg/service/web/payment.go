@@ -343,6 +343,22 @@ func (h *Handler) PaymentHandler() http.Handler {
 			if Debug {
 				log.Debug("will serve payment method selection...")
 			}
+			err = tx.Commit()
+			if err != nil {
+				if mysqlErr, ok := err.(*mysql.MySQLError); ok {
+					// lock error
+					if mysqlErr.Number == 1213 {
+						retries++
+						time.Sleep(time.Second)
+						goto beginTx
+					}
+				}
+				commit = true
+				log.Crit("error on commit tx", log15.Ctx{"err": err})
+				w.WriteHeader(http.StatusInternalServerError)
+				return
+			}
+			commit = true
 			h.SelectPaymentMethodHandler(p).ServeHTTP(w, r)
 			return
 		}
@@ -442,6 +458,10 @@ func (h *Handler) determinePaymentMethodID(tx *sql.Tx, p *payment.Payment, w htt
 		}
 		meth, err := payment_method.PaymentMethodByIDTx(tx, id)
 		if err != nil {
+			if err == payment_method.ErrPaymentMethodNotFound {
+				w.WriteHeader(http.StatusNotFound)
+				return fmt.Errorf("payment method id %d not found", id)
+			}
 			w.WriteHeader(http.StatusInternalServerError)
 			return fmt.Errorf("error selecting payment method id: %v", err)
 		}
