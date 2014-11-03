@@ -151,26 +151,6 @@ func (s *Service) SetPaymentMetadata(tx *sql.Tx, p *payment.Payment) error {
 	return nil
 }
 
-func (s *Service) CreatePaymentToken(tx *sql.Tx, p *payment.Payment) (*payment.PaymentToken, error) {
-	log := s.log.New(log15.Ctx{"method": "CreatePaymentToken"})
-	token, err := payment.NewPaymentToken(p.PaymentID())
-	if err != nil {
-		log.Error("error creating payment token", log15.Ctx{"err": err})
-		return nil, ErrInternal
-	}
-	err = payment.InsertPaymentTokenTx(tx, token)
-	if err != nil {
-		if mysqlErr, ok := err.(*mysql.MySQLError); ok {
-			if mysqlErr.Number == 1213 {
-				return nil, ErrDBLockTimeout
-			}
-		}
-		log.Error("error saving payment token", log15.Ctx{"err": err})
-		return nil, ErrDB
-	}
-	return token, nil
-}
-
 // IsProcessablePayment returns true if the given payment is considered processable
 //
 // All required fields are present.
@@ -194,6 +174,41 @@ func (s *Service) IsProcessablePayment(p *payment.Payment) bool {
 // when there is at least one transaction present
 func (s *Service) IsInitialized(p *payment.Payment) bool {
 	return p.Status != payment.PaymentStatusNone
+}
+
+func (s *Service) SetPaymentTransaction(tx *sql.Tx, paymentTx *payment.PaymentTransaction) error {
+	log := s.log.New(log15.Ctx{"method": "SetPaymentTransaction"})
+	err := payment.InsertPaymentTransactionTx(tx, paymentTx)
+	if err != nil {
+		if mysqlErr, ok := err.(*mysql.MySQLError); ok {
+			if mysqlErr.Number == 1213 {
+				return ErrDBLockTimeout
+			}
+		}
+		log.Error("error saving payment transaction", log15.Ctx{"err": err})
+		return ErrDB
+	}
+	return nil
+}
+
+func (s *Service) CreatePaymentToken(tx *sql.Tx, p *payment.Payment) (*payment.PaymentToken, error) {
+	log := s.log.New(log15.Ctx{"method": "CreatePaymentToken"})
+	token, err := payment.NewPaymentToken(p.PaymentID())
+	if err != nil {
+		log.Error("error creating payment token", log15.Ctx{"err": err})
+		return nil, ErrInternal
+	}
+	err = payment.InsertPaymentTokenTx(tx, token)
+	if err != nil {
+		if mysqlErr, ok := err.(*mysql.MySQLError); ok {
+			if mysqlErr.Number == 1213 {
+				return nil, ErrDBLockTimeout
+			}
+		}
+		log.Error("error saving payment token", log15.Ctx{"err": err})
+		return nil, ErrDB
+	}
+	return token, nil
 }
 
 // TODO use token max age from config
