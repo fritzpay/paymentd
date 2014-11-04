@@ -52,7 +52,7 @@ func NewService(ctx *service.Context, mux *mux.Router) (*Service, error) {
 		mux.Handle(ServicePath+"/user", admin.AuthRequiredHandler(admin.GetUserID()))
 
 		mux.Handle(ServicePath+"/principal", admin.AuthRequiredHandler(admin.PrincipalRequest()))
-		mux.Handle(ServicePath+"/principal/{name}", admin.AuthRequiredHandler(admin.PrincipalGetRequest()))
+		mux.Handle(ServicePath+"/principal/{name:[-A-Za-z0-9_]+}", admin.AuthRequiredHandler(admin.PrincipalGetRequest()))
 		mux.Handle(ServicePath+"/provider", admin.AuthRequiredHandler(admin.ProviderGetAllRequest()))
 		mux.Handle(ServicePath+"/provider/{id}", admin.AuthRequiredHandler(admin.ProviderGetRequest()))
 		mux.Handle(ServicePath+"/project", admin.AuthRequiredHandler(admin.ProjectRequest()))
