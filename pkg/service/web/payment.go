@@ -291,25 +291,12 @@ func (h *Handler) PaymentHandler() http.Handler {
 		if Debug {
 			log.Debug("handling payment...")
 		}
-		// continue processing payment
-		if h.paymentService.IsInitialized(p) {
-			if Debug {
-				log.Debug("will process payment...")
-			}
-			// commit tx
-			err = tx.Commit()
-			if err != nil {
-				log.Crit("error on commit", log15.Ctx{"err": err})
-			}
-			commit = true
-			h.servePaymentHandler(p).ServeHTTP(w, r)
-			return
-		}
 
 		var configChanged, metadataChanged bool
 		h.determineLocale(p, r, &configChanged, &metadataChanged)
 		h.determineEnv(p, r, &configChanged, &metadataChanged)
-		err = h.determinePaymentMethodID(tx, p, w, r, &configChanged, &metadataChanged)
+		var method *payment_method.Method
+		method, err = h.determinePaymentMethodID(tx, p, w, r, &configChanged, &metadataChanged)
 		if err != nil {
 			log.Warn("error determining payment method id", log15.Ctx{"err": err})
 			return
@@ -409,7 +396,7 @@ func (h *Handler) PaymentHandler() http.Handler {
 		}
 		commit = true
 
-		h.servePaymentHandler(p).ServeHTTP(w, r)
+		h.servePaymentHandler(p, method).ServeHTTP(w, r)
 	})
 }
 
@@ -452,40 +439,63 @@ func (h *Handler) determineEnv(p *payment.Payment, r *http.Request, configChange
 	}
 }
 
-func (h *Handler) determinePaymentMethodID(tx *sql.Tx, p *payment.Payment, w http.ResponseWriter, r *http.Request, configChanged, metadataChanged *bool) error {
+func (h *Handler) determinePaymentMethodID(tx *sql.Tx, p *payment.Payment, w http.ResponseWriter, r *http.Request, configChanged, metadataChanged *bool) (*payment_method.Method, error) {
+	var paymenMethodID int64
 	if p.Config.PaymentMethodID.Valid {
-		return nil
+		paymenMethodID = p.Config.PaymentMethodID.Int64
+	} else if idStr := r.URL.Query().Get("paymentMethodId"); idStr != "" {
+		var err error
+		paymenMethodID, err = strconv.ParseInt(idStr, 10, 64)
+		if err != nil {
+			w.WriteHeader(http.StatusBadRequest)
+			return nil, fmt.Errorf("invalid payment method id: %s", idStr)
+		}
 	}
-	if paymentMethodID := r.URL.Query().Get("paymentMethodId"); paymentMethodID != "" {
-		id, err := strconv.ParseInt(paymentMethodID, 10, 64)
-		if err != nil {
-			w.WriteHeader(http.StatusBadRequest)
-			return fmt.Errorf("invalid payment method id: %s", paymentMethodID)
+	meth, err := payment_method.PaymentMethodByIDTx(tx, paymenMethodID)
+	if err != nil {
+		if err == payment_method.ErrPaymentMethodNotFound {
+			w.WriteHeader(http.StatusNotFound)
+			return nil, fmt.Errorf("payment method id %d not found", paymenMethodID)
 		}
-		meth, err := payment_method.PaymentMethodByIDTx(tx, id)
-		if err != nil {
-			if err == payment_method.ErrPaymentMethodNotFound {
-				w.WriteHeader(http.StatusNotFound)
-				return fmt.Errorf("payment method id %d not found", id)
-			}
-			w.WriteHeader(http.StatusInternalServerError)
-			return fmt.Errorf("error selecting payment method id: %v", err)
-		}
-		if meth.ProjectID != p.ProjectID() {
-			w.WriteHeader(http.StatusBadRequest)
-			return fmt.Errorf("invalid payment method id %d. project mismatch", id)
-		}
-		if meth.Status != payment_method.PaymentMethodStatusActive {
-			w.WriteHeader(http.StatusConflict)
-			return fmt.Errorf("invalid payment method id %d. payment method not active", id)
-		}
+		w.WriteHeader(http.StatusInternalServerError)
+		return nil, fmt.Errorf("error selecting payment method id: %v", err)
+	}
+	if meth.ProjectID != p.ProjectID() {
+		w.WriteHeader(http.StatusBadRequest)
+		return nil, fmt.Errorf("invalid payment method id %d. project mismatch", paymenMethodID)
+	}
+	if meth.Status != payment_method.PaymentMethodStatusActive {
+		w.WriteHeader(http.StatusConflict)
+		return nil, fmt.Errorf("invalid payment method id %d. payment method not active", paymenMethodID)
+	}
+	if !p.Config.PaymentMethodID.Valid {
 		p.Config.SetPaymentMethodID(meth.ID)
 		*configChanged = true
 	}
-	return nil
+	return &meth, nil
 }
 
-func (h *Handler) servePaymentHandler(p *payment.Payment) http.Handler {
+func (h *Handler) servePaymentHandler(p *payment.Payment, method *payment_method.Method) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		log := h.log.New(log15.Ctx{
+			"method":          "servePaymentHandler",
+			"projectID":       p.ProjectID(),
+			"paymentID":       p.PaymentID(),
+			"paymentMethodID": method.ID,
+			"providerID":      method.Provider.ID,
+		})
+		driver, err := h.providerService.Driver(method)
+		if err != nil {
+			log.Crit("error retrieving driver", log15.Ctx{"err": err})
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+		h, err := driver.InitPayment(p, method)
+		if err != nil {
+			log.Error("error on driver init payment", log15.Ctx{"err": err})
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+		h.ServeHTTP(w, r)
 	})
 }
