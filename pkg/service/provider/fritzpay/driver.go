@@ -25,7 +25,9 @@ func (d *Driver) Attach(ctx *service.Context, mux *mux.Router) error {
 }
 
 func (d *Driver) InitPayment(p *payment.Payment, method *payment_method.Method) (http.Handler, error) {
-	return nil, nil
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		fmt.Fprint(w, "FritzPay test payment.")
+	}), nil
 }
 
 func (d *Driver) Status(w http.ResponseWriter, r *http.Request) {

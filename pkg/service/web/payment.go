@@ -490,6 +490,9 @@ func (h *Handler) servePaymentHandler(p *payment.Payment, method *payment_method
 			w.WriteHeader(http.StatusInternalServerError)
 			return
 		}
+		if Debug {
+			log.Debug("initializing payment with driver...")
+		}
 		h, err := driver.InitPayment(p, method)
 		if err != nil {
 			log.Error("error on driver init payment", log15.Ctx{"err": err})

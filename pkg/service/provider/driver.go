@@ -9,7 +9,7 @@ import (
 )
 
 const (
-	driverFritzpay int64 = iota
+	driverFritzpay int64 = 1
 )
 
 type Driver interface {
