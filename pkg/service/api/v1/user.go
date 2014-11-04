@@ -1,7 +1,6 @@
 package v1
 
 import (
-	"github.com/fritzpay/paymentd/pkg/service"
 	"gopkg.in/inconshreveable/log15.v2"
 	"net/http"
 )
@@ -20,19 +19,18 @@ func (a *AdminAPI) GetUserID() http.Handler {
 			return
 		}
 		log := a.log.New(log15.Ctx{"method": "GetUserID"})
-		ctx := service.RequestContext(r)
-		if ctx == nil {
-			log.Error("no request context registered")
+
+		auth, err := getAuthContainer(r)
+		if err != nil {
+			log.Crit("auth container error", log15.Ctx{"err": err})
 			ErrSystem.Write(w)
 			return
 		}
-		auth := ctx.Value(service.ContextVarAuthKey).(map[string]interface{})
 
 		resp := UserAdminAPIResponse{}
 		resp.Info = "user id"
 		resp.Status = StatusSuccess
 		resp.Response = auth[AuthUserIDKey].(string)
 		resp.Write(w)
-
 	})
 }

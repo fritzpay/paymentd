@@ -12,6 +12,7 @@ Contents:
    principal
    project
    provider
+   payment_method
    currency
 
 

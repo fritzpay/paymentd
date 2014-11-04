@@ -14,6 +14,15 @@ const (
 	IdentMaxLen = 175
 )
 
+const (
+	DefaultLocale = "en_US"
+	// MetadataKeyAcceptLanguage is the key for the Accept-Language header
+	// which will be stored in the metadata
+	MetadataKeyAcceptLanguage = "_fAcceptLanguage"
+	MetadataKeyBrowserLocale  = "_fBrowserLocale"
+	MetadataKeyRemoteAddress  = "_fRemoteAddress"
+)
+
 // Payment represents a payment
 type Payment struct {
 	projectID int64
@@ -25,6 +34,9 @@ type Payment struct {
 	Currency  string
 
 	Config Config
+
+	TransactionTimestamp time.Time
+	Status               PaymentTransactionStatus
 
 	Metadata map[string]string
 }
@@ -55,11 +67,26 @@ func (p *Payment) SetProject(pr *project.Project) error {
 }
 
 // Decimal returns the decimal representation of the Amount and Subunits values
-func (p *Payment) Decimal() decimal.Decimal {
+func (p *Payment) Decimal() *decimal.Decimal {
 	d := dec.NewDecInt64(p.Amount)
 	sc := dec.Scale(int32(p.Subunits))
 	d.SetScale(sc)
-	return decimal.Decimal{Dec: d}
+	return &decimal.Decimal{Dec: *d}
+}
+
+// NewTransaction creates a new payment transaction for this payment
+//
+// Its transaction fields will be populated with the copied values from the payment
+func (p *Payment) NewTransaction(s PaymentTransactionStatus) *PaymentTransaction {
+	return &PaymentTransaction{
+		Payment: p,
+
+		Timestamp: time.Now(),
+		Amount:    p.Amount,
+		Subunits:  p.Subunits,
+		Currency:  p.Currency,
+		Status:    s,
+	}
 }
 
 type Config struct {
@@ -73,4 +100,24 @@ type Config struct {
 
 func (cfg *Config) IsConfigured() bool {
 	return cfg.PaymentMethodID.Valid && cfg.Country.Valid && cfg.Locale.Valid
+}
+
+func (cfg *Config) SetPaymentMethodID(id int64) {
+	cfg.PaymentMethodID.Int64, cfg.PaymentMethodID.Valid = id, true
+}
+
+func (cfg *Config) SetCountry(country string) {
+	cfg.Country.String, cfg.Country.Valid = country, true
+}
+
+func (cfg *Config) SetLocale(locale string) {
+	cfg.Locale.String, cfg.Locale.Valid = locale, true
+}
+
+func (cfg *Config) SetCallbackURL(url string) {
+	cfg.CallbackURL.String, cfg.CallbackURL.Valid = url, true
+}
+
+func (cfg *Config) SetReturnURL(url string) {
+	cfg.ReturnURL.String, cfg.ReturnURL.Valid = url, true
 }

@@ -15,6 +15,7 @@ import (
 	"github.com/fritzpay/paymentd/pkg/paymentd/payment"
 	"github.com/fritzpay/paymentd/pkg/paymentd/project"
 	"github.com/fritzpay/paymentd/pkg/service"
+	paymentService "github.com/fritzpay/paymentd/pkg/service/payment"
 	"github.com/go-sql-driver/mysql"
 	"gopkg.in/inconshreveable/log15.v2"
 	"hash"
@@ -24,10 +25,6 @@ import (
 	"strconv"
 	"time"
 	"unicode/utf8"
-)
-
-const (
-	initPaymentTimestampMaxAge = time.Minute
 )
 
 // InitPaymentRequest is the request JSON struct for POST /payment
@@ -120,17 +117,8 @@ func (r *InitPaymentRequest) Validate() error {
 // Return the (binary) signature from the request
 //
 // implementing AuthenticatedRequest
-func (r *InitPaymentRequest) Signature() []byte {
-	return r.binarySignature
-}
-
-// Message returns the signature base string as bytes or nil on error
-func (r *InitPaymentRequest) Message() []byte {
-	str, err := r.SignatureBaseString()
-	if err != nil {
-		return nil
-	}
-	return []byte(str)
+func (r *InitPaymentRequest) Signature() ([]byte, error) {
+	return r.binarySignature, nil
 }
 
 // HashFunc returns the hash function used to generate a signature
@@ -139,79 +127,112 @@ func (r *InitPaymentRequest) HashFunc() func() hash.Hash {
 }
 
 // Return the signature base string (msg)
-func (r *InitPaymentRequest) SignatureBaseString() (string, error) {
+func (r *InitPaymentRequest) Message() ([]byte, error) {
 	var err error
 	buf := bytes.NewBuffer(nil)
 	_, err = buf.WriteString(r.ProjectKey)
 	if err != nil {
-		return "", fmt.Errorf("buffer error: %v", err)
+		return nil, fmt.Errorf("buffer error: %v", err)
 	}
 	_, err = buf.WriteString(r.Ident)
 	if err != nil {
-		return "", fmt.Errorf("buffer error: %v", err)
+		return nil, fmt.Errorf("buffer error: %v", err)
 	}
 	_, err = buf.WriteString(strconv.FormatInt(r.Amount.Int64, 10))
 	if err != nil {
-		return "", fmt.Errorf("buffer error: %v", err)
+		return nil, fmt.Errorf("buffer error: %v", err)
 	}
 	_, err = buf.WriteString(strconv.FormatInt(int64(r.Subunits.Int8), 10))
 	if err != nil {
-		return "", fmt.Errorf("buffer error: %v", err)
+		return nil, fmt.Errorf("buffer error: %v", err)
 	}
 	_, err = buf.WriteString(r.Currency)
 	if err != nil {
-		return "", fmt.Errorf("buffer error: %v", err)
+		return nil, fmt.Errorf("buffer error: %v", err)
 	}
 	_, err = buf.WriteString(r.Country)
 	if err != nil {
-		return "", fmt.Errorf("buffer error: %v", err)
+		return nil, fmt.Errorf("buffer error: %v", err)
 	}
 	if r.PaymentMethodID != 0 {
 		_, err = buf.WriteString(strconv.FormatInt(r.PaymentMethodID, 10))
 		if err != nil {
-			return "", fmt.Errorf("buffer error: %v", err)
+			return nil, fmt.Errorf("buffer error: %v", err)
 		}
 	}
 	if r.Locale != "" {
 		_, err = buf.WriteString(r.Locale)
 		if err != nil {
-			return "", fmt.Errorf("buffer error: %v", err)
+			return nil, fmt.Errorf("buffer error: %v", err)
 		}
 	}
 	if r.CallbackURL != "" {
 		_, err = buf.WriteString(r.CallbackURL)
 		if err != nil {
-			return "", fmt.Errorf("buffer error: %v", err)
+			return nil, fmt.Errorf("buffer error: %v", err)
 		}
 	}
 	if r.ReturnURL != "" {
 		_, err = buf.WriteString(r.ReturnURL)
 		if err != nil {
-			return "", fmt.Errorf("buffer error: %v", err)
+			return nil, fmt.Errorf("buffer error: %v", err)
 		}
 	}
 	if r.Metadata != nil {
 		err = maputil.WriteSortedMap(buf, r.Metadata)
 		if err != nil {
-			return "", fmt.Errorf("error writing map: %v", err)
+			return nil, fmt.Errorf("error writing map: %v", err)
 		}
 	}
 	_, err = buf.WriteString(strconv.FormatInt(r.Timestamp, 10))
 	if err != nil {
-		return "", fmt.Errorf("buffer error: %v", err)
+		return nil, fmt.Errorf("buffer error: %v", err)
 	}
 	_, err = buf.WriteString(r.Nonce)
 	if err != nil {
-		return "", fmt.Errorf("buffer error: %v", err)
+		return nil, fmt.Errorf("buffer error: %v", err)
 	}
-	s := buf.String()
+	s := buf.Bytes()
 	return s, nil
+}
+
+func (r *InitPaymentRequest) RequestProjectKey() string {
+	return r.ProjectKey
+}
+
+func (r *InitPaymentRequest) Time() time.Time {
+	return time.Unix(r.Timestamp, 0)
 }
 
 func (r *InitPaymentRequest) ReadJSON(rd io.Reader) error {
 	dec := json.NewDecoder(rd)
 	err := dec.Decode(r)
 	return err
+}
+
+func (r *InitPaymentRequest) PopulatePaymentFields(p *payment.Payment) {
+	p.Ident = r.Ident
+	p.Amount = r.Amount.Int64
+	p.Subunits = r.Subunits.Int8
+	// payment config fields
+	if r.PaymentMethodID != 0 {
+		p.Config.SetPaymentMethodID(r.PaymentMethodID)
+	}
+	if r.Country != "" {
+		p.Config.SetCountry(r.Country)
+	}
+	if r.Locale != "" {
+		p.Config.SetLocale(r.Locale)
+	}
+	if r.CallbackURL != "" {
+		p.Config.SetCallbackURL(r.CallbackURL)
+	}
+	if r.ReturnURL != "" {
+		p.Config.SetReturnURL(r.ReturnURL)
+	}
+	if r.Metadata != nil {
+		p.Metadata = r.Metadata
+	}
 }
 
 // InitPaymentResponse is the JSON response struct for POST /payment
@@ -268,15 +289,6 @@ func (r *InitPaymentResponse) ConfirmationFromPayment(p *payment.Payment) {
 	}
 }
 
-// Message returns the signature base string as a byte slice, nil if an error occured
-func (r *InitPaymentResponse) Message() []byte {
-	str, err := r.SignatureBaseString()
-	if err != nil {
-		return nil
-	}
-	return []byte(str)
-}
-
 // HashFunc returns the hash function for signing an init payment response
 func (r *InitPaymentResponse) HashFunc() func() hash.Hash {
 	return sha256.New
@@ -285,96 +297,85 @@ func (r *InitPaymentResponse) HashFunc() func() hash.Hash {
 // Returns the signature base string
 //
 // implementing SignableMessage
-func (r *InitPaymentResponse) SignatureBaseString() (string, error) {
+func (r *InitPaymentResponse) Message() ([]byte, error) {
 	var err error
 	buf := bytes.NewBuffer(nil)
 	_, err = buf.WriteString(r.Confirmation.Ident)
 	if err != nil {
-		return "", fmt.Errorf("buffer error: %v", err)
+		return nil, fmt.Errorf("buffer error: %v", err)
 	}
 	_, err = buf.WriteString(strconv.FormatInt(r.Confirmation.Amount, 10))
 	if err != nil {
-		return "", fmt.Errorf("buffer error: %v", err)
+		return nil, fmt.Errorf("buffer error: %v", err)
 	}
 	_, err = buf.WriteString(strconv.FormatInt(int64(r.Confirmation.Subunits), 10))
 	if err != nil {
-		return "", fmt.Errorf("buffer error: %v", err)
+		return nil, fmt.Errorf("buffer error: %v", err)
 	}
 	_, err = buf.WriteString(r.Confirmation.Currency)
 	if err != nil {
-		return "", fmt.Errorf("buffer error: %v", err)
+		return nil, fmt.Errorf("buffer error: %v", err)
 	}
 	_, err = buf.WriteString(r.Confirmation.Country)
 	if err != nil {
-		return "", fmt.Errorf("buffer error: %v", err)
+		return nil, fmt.Errorf("buffer error: %v", err)
 	}
 	if r.Confirmation.PaymentMethodID != 0 {
 		_, err = buf.WriteString(strconv.FormatInt(r.Confirmation.PaymentMethodID, 10))
 		if err != nil {
-			return "", fmt.Errorf("buffer error: %v", err)
+			return nil, fmt.Errorf("buffer error: %v", err)
 		}
 	}
 	if r.Confirmation.Locale != "" {
 		_, err = buf.WriteString(r.Confirmation.Locale)
 		if err != nil {
-			return "", fmt.Errorf("buffer error: %v", err)
+			return nil, fmt.Errorf("buffer error: %v", err)
 		}
 	}
 	if r.Confirmation.CallbackURL != "" {
 		_, err = buf.WriteString(r.Confirmation.CallbackURL)
 		if err != nil {
-			return "", fmt.Errorf("buffer error: %v", err)
+			return nil, fmt.Errorf("buffer error: %v", err)
 		}
 	}
 	if r.Confirmation.ReturnURL != "" {
 		_, err = buf.WriteString(r.Confirmation.ReturnURL)
 		if err != nil {
-			return "", fmt.Errorf("buffer error: %v", err)
+			return nil, fmt.Errorf("buffer error: %v", err)
 		}
 	}
 	if r.Confirmation.Metadata != nil {
 		err = maputil.WriteSortedMap(buf, r.Confirmation.Metadata)
 		if err != nil {
-			return "", fmt.Errorf("error writing map: %v", err)
+			return nil, fmt.Errorf("error writing map: %v", err)
 		}
 	}
 	_, err = buf.WriteString(r.Payment.PaymentId.String())
 	if err != nil {
-		return "", fmt.Errorf("buffer error: %v", err)
+		return nil, fmt.Errorf("buffer error: %v", err)
 	}
 	_, err = buf.WriteString(r.Payment.Created)
 	if err != nil {
-		return "", fmt.Errorf("buffer error: %v", err)
+		return nil, fmt.Errorf("buffer error: %v", err)
 	}
 	_, err = buf.WriteString(r.Payment.Token)
 	if err != nil {
-		return "", fmt.Errorf("buffer error: %v", err)
+		return nil, fmt.Errorf("buffer error: %v", err)
 	}
 	_, err = buf.WriteString(r.Payment.RedirectURL)
 	if err != nil {
-		return "", fmt.Errorf("buffer error: %v", err)
+		return nil, fmt.Errorf("buffer error: %v", err)
 	}
 	_, err = buf.WriteString(strconv.FormatInt(r.Timestamp, 10))
 	if err != nil {
-		return "", fmt.Errorf("buffer error: %v", err)
+		return nil, fmt.Errorf("buffer error: %v", err)
 	}
 	_, err = buf.WriteString(r.Nonce)
 	if err != nil {
-		return "", fmt.Errorf("buffer error: %v", err)
+		return nil, fmt.Errorf("buffer error: %v", err)
 	}
-	s := buf.String()
+	s := buf.Bytes()
 	return s, nil
-}
-
-func (a *PaymentAPI) authenticateMessage(projectKey *project.Projectkey, msg service.Signed) (bool, error) {
-	if projectKey == nil || !projectKey.IsValid() {
-		return false, fmt.Errorf("invalid project key: %+v", projectKey)
-	}
-	secret, err := projectKey.SecretBytes()
-	if err != nil {
-		return false, err
-	}
-	return service.IsAuthentic(msg, secret)
 }
 
 func (a *PaymentAPI) InitPayment() http.Handler {
@@ -387,11 +388,14 @@ func (a *PaymentAPI) InitPayment() http.Handler {
 		log := a.log.New(log15.Ctx{
 			"method": "InitPayment",
 		})
+		var responseWritten bool
 		var resp ServiceResponse
 		defer func() {
-			err := resp.Write(w)
-			if err != nil {
-				log.Error("error writing response", log15.Ctx{"err": err})
+			if !responseWritten {
+				err := resp.Write(w)
+				if err != nil {
+					log.Error("error writing response", log15.Ctx{"err": err})
+				}
 			}
 		}()
 		req := &InitPaymentRequest{}
@@ -409,49 +413,12 @@ func (a *PaymentAPI) InitPayment() http.Handler {
 			resp.Info = err.Error()
 			return
 		}
-		projectKey, err := project.ProjectKeyByKeyDB(a.ctx.PrincipalDB(service.ReadOnly), req.ProjectKey)
-		if err != nil {
-			if err == project.ErrProjectKeyNotFound {
-				resp = ErrUnauthorized
-				if Debug {
-					resp.Info = fmt.Sprintf("project key %s not found", req.ProjectKey)
-				}
-				return
-			}
-			log.Error("error on retrieving project key", log15.Ctx{"err": err})
-			resp = ErrDatabase
-			if Debug {
-				resp.Info = fmt.Sprintf("database error: %v", err)
-			}
+		var projectKey *project.Projectkey
+		if projectKey = a.authenticateRequest(req, log, w); projectKey == nil {
+			responseWritten = true
 			return
 		}
-		if !projectKey.IsValid() {
-			log.Warn("invalid project key on request", log15.Ctx{
-				"ProjectKey": projectKey.Key,
-			})
-			resp = ErrUnauthorized
-			if Debug {
-				resp.Info = fmt.Sprintf("project key %s is not valid (inactive project key?)", projectKey.Key)
-			}
-			return
-		}
-		// authenticate
-		// skip if dev mode
-		if !Debug {
-			if auth, err := a.authenticateMessage(projectKey, req); err != nil {
-				log.Error("error on authenticate message", log15.Ctx{"err": err})
-				resp = ErrSystem
-				return
-			} else if !auth {
-				resp = ErrUnauthorized
-				return
-			}
-			if time.Since(time.Unix(req.Timestamp, 0)) > initPaymentTimestampMaxAge {
-				resp = ErrUnauthorized
-				return
-			}
-			// TODO include nonce handling
-		}
+
 		// extend log info
 		log = log.New(log15.Ctx{"projectId": projectKey.Project.ID})
 
@@ -478,9 +445,6 @@ func (a *PaymentAPI) InitPayment() http.Handler {
 		// create payment
 		p := &payment.Payment{
 			Created:  time.Now(),
-			Ident:    req.Ident,
-			Amount:   req.Amount.Int64,
-			Subunits: req.Subunits.Int8,
 			Currency: curr.CodeISO4217,
 		}
 		err = p.SetProject(&projectKey.Project)
@@ -492,22 +456,7 @@ func (a *PaymentAPI) InitPayment() http.Handler {
 			}
 			return
 		}
-		// payment config fields
-		if req.PaymentMethodID != 0 {
-			p.Config.PaymentMethodID.Int64, p.Config.PaymentMethodID.Valid = req.PaymentMethodID, true
-		}
-		if req.Country != "" {
-			p.Config.Country.String, p.Config.Country.Valid = req.Country, true
-		}
-		if req.Locale != "" {
-			p.Config.Locale.String, p.Config.Locale.Valid = req.Locale, true
-		}
-		if req.CallbackURL != "" {
-			p.Config.CallbackURL.String, p.Config.CallbackURL.Valid = req.CallbackURL, true
-		}
-		if req.ReturnURL != "" {
-			p.Config.ReturnURL.String, p.Config.ReturnURL.Valid = req.ReturnURL, true
-		}
+		req.PopulatePaymentFields(p)
 
 		// DB
 		var tx *sql.Tx
@@ -542,84 +491,46 @@ func (a *PaymentAPI) InitPayment() http.Handler {
 			resp = ErrDatabase
 			return
 		}
-		err = payment.InsertPaymentTx(tx, p)
-		if err != nil {
-			if mysqlErr, ok := err.(*mysql.MySQLError); ok {
-				// lock error
-				if mysqlErr.Number == 1213 {
-					retries++
-					time.Sleep(time.Second)
-					goto beginTx
-				}
-			}
-			_, existErr := payment.PaymentByProjectIDAndIdentTx(tx, p.ProjectID(), p.Ident)
-			if existErr != nil && existErr != payment.ErrPaymentNotFound {
-				log.Error("error on checking duplicate ident", log15.Ctx{"err": err})
+
+		// actions on payment service errors
+		handlePaymentServiceErr := func(err error) {
+			switch err {
+			case paymentService.ErrDB:
 				resp = ErrDatabase
-				if Debug {
-					resp.Info = fmt.Sprintf("error on checking duplicate ident: %v", existErr)
-				}
-				return
-			}
-			// payment found => duplicate error
-			if existErr == nil {
+			case paymentService.ErrDuplicateIdent:
 				resp = ErrConflict
 				resp.Info = "your ident was already used"
-				return
+			default:
+				resp = ErrSystem
+				log.Error("unknown error in payment service")
 			}
-			log.Error("error on insert payment", log15.Ctx{"err": err})
-			resp = ErrDatabase
-			if Debug {
-				resp.Info = fmt.Sprintf("error on insert payment: %v", err)
-			}
-			return
 		}
-		err = payment.InsertPaymentConfigTx(tx, p)
+
+		err = a.paymentService.CreatePayment(tx, p)
 		if err != nil {
-			log.Error("error on insert payment config", log15.Ctx{"err": err})
-			resp = ErrDatabase
-			return
-		}
-		// payment metadata
-		if req.Metadata != nil {
-			err = payment.InsertPaymentMetadataTx(tx, p)
-			if err != nil {
-				log.Error("error on insert payment metadata", log15.Ctx{"err": err})
-				resp = ErrDatabase
-				return
+			if err == paymentService.ErrDBLockTimeout {
+				retries++
+				time.Sleep(time.Second)
+				goto beginTx
 			}
+			handlePaymentServiceErr(err)
+			return
 		}
 		// payment token
-		token, err := payment.NewPaymentToken(p.PaymentID())
+		token, err := a.paymentService.CreatePaymentToken(tx, p)
 		if err != nil {
-			log.Error("error creating payment token", log15.Ctx{"err": err})
-			resp = ErrSystem
-			return
-		}
-		err = payment.InsertPaymentTokenTx(tx, token)
-		if err != nil {
-			if mysqlErr, ok := err.(*mysql.MySQLError); ok {
-				// lock error
-				if mysqlErr.Number == 1213 {
-					retries++
-					time.Sleep(time.Second)
-					goto beginTx
-				}
+			if err == paymentService.ErrDBLockTimeout {
+				retries++
+				time.Sleep(time.Second)
+				goto beginTx
 			}
-			log.Error("error saving payment token", log15.Ctx{"err": err})
-			resp = ErrDatabase
+			handlePaymentServiceErr(err)
 			return
 		}
 
 		paymentResp := &InitPaymentResponse{}
 		paymentResp.ConfirmationFromPayment(p)
-		if encoder, ok := a.ctx.Value(serviceContextPaymentIDEncoder).(*payment.IDEncoder); !ok {
-			log.Error("error retrieving payment id encoder from context")
-			resp = ErrSystem
-			return
-		} else {
-			paymentResp.Payment.PaymentId = p.PaymentID().Encoded(encoder)
-		}
+		paymentResp.Payment.PaymentId = a.paymentService.EncodedPaymentID(p.PaymentID())
 		paymentResp.Payment.Created = p.Created.UTC().Format(time.RFC3339)
 		paymentResp.Payment.Token = token.Token
 

@@ -45,7 +45,7 @@ func (a *AdminAPI) PaymentMethodsGetRequest() http.Handler {
 		prdb, err = project.ProjectByIdDB(db, projectId)
 		if err != nil {
 			ErrDatabase.Write(w)
-			log.Error("database request failed", log15.Ctx{"err": err})
+			log.Error("database error", log15.Ctx{"err": err})
 			return
 		}
 
@@ -79,7 +79,7 @@ func (a *AdminAPI) PaymentMethodsRequest() http.Handler {
 			projectId, err := strconv.ParseInt(projectIdParam, 10, 64)
 			if err != nil {
 				ErrReadParam.Write(w)
-				log.Info("param not readable" + projectIdParam)
+				log.Info("malformed param", log15.Ctx{"projectIdParam": projectIdParam})
 				return
 			}
 			db := a.ctx.PrincipalDB()
@@ -112,9 +112,9 @@ func (a *AdminAPI) PaymentMethodsRequest() http.Handler {
 			// set paymentMethod values
 			// get user id
 			auth := service.RequestContextAuth(r)
-			var pm payment_method.PaymentMethod
+			var pm payment_method.Method
 			// parse status value
-			pm.Status, err = payment_method.ParsePaymentMethodStatus(pmr.Status)
+			pm.Status, err = payment_method.ParseMethodStatus(pmr.Status)
 			pm.StatusChanged = time.Now()
 			pm.StatusCreatedBy = auth[AuthUserIDKey].(string)
 			if err != nil {
@@ -128,54 +128,68 @@ func (a *AdminAPI) PaymentMethodsRequest() http.Handler {
 			pm.CreatedBy = auth[AuthUserIDKey].(string)
 			pm.Metadata = pmr.Metadata
 
-			// @todo check if alreday exists
-			//			if err == payment_method.ErrPaymentMethodNotFound {
+			// check if payment_method already exists
+			pmdb, err := payment_method.PaymentMethodByProjectIDProviderIDMethodKey(paydb, pm.ProjectID, pm.Provider.ID, pm.MethodKey)
+			if err == payment_method.ErrPaymentMethodNotFound {
 
-			// save to db
-			tx, err := paydb.Begin()
-			if err != nil {
-				ErrDatabase.Write(w)
-				log.Error("database tx failed", log15.Ctx{"err": err})
-			}
-			paymentMethodId, err := payment_method.InsertPaymentMethodTx(tx, pm)
-			if err != nil {
-				tx.Rollback()
-				ErrDatabase.Write(w)
-				log.Error("database metadata failed", log15.Ctx{"err": err})
+				// save to db
+				tx, err := paydb.Begin()
+				if err != nil {
+					ErrDatabase.Write(w)
+					log.Error("database error", log15.Ctx{"err": err})
+				}
+				paymentMethodId, err := payment_method.InsertPaymentMethodTx(tx, pm)
+				if err != nil {
+					tx.Rollback()
+					ErrDatabase.Write(w)
+					log.Error("database error", log15.Ctx{"err": err})
+					return
+				}
+				pm.ID = paymentMethodId
+
+				// save method metadata
+				md := metadata.MetadataFromValues(pm.Metadata, pm.CreatedBy)
+				err = metadata.InsertMetadataTx(tx, payment_method.MetadataModel, pm.ID, md)
+				if err != nil {
+					tx.Rollback()
+					ErrDatabase.Write(w)
+					log.Error("database error", log15.Ctx{"err": err})
+					return
+				}
+				err = tx.Commit()
+				if err != nil {
+					ErrDatabase.Write(w)
+					log.Error("database error", log15.Ctx{"err": err})
+					return
+				}
+
+				resp := ProjectAdminAPIResponse{}
+				resp.Status = StatusSuccess
+				resp.Info = "created with methodkey " + pmr.MethodKey
+				resp.Response = pm
+				resp.Write(w)
+			} else if err != nil {
+				ErrConflict.Write(w)
+				log.Error("conflict", log15.Ctx{"err": err})
+				return
+			} else {
+				ErrConflict.Write(w)
+				log.Info("conflict", log15.Ctx{"err": err})
+				log.Info("conflict", log15.Ctx{"MethodKey": pmdb.ProjectID})
+				log.Info("conflict", log15.Ctx{"MethodKey": pmdb.Provider.ID})
+				log.Info("conflict", log15.Ctx{"MethodKey": pmdb.MethodKey})
 				return
 			}
-			pm.ID = paymentMethodId
-
-			// save method metadata
-			md := metadata.MetadataFromValues(pm.Metadata, pm.CreatedBy)
-			err = metadata.InsertMetadataTx(tx, payment_method.MetadataModel, pm.ID, md)
-			if err != nil {
-				tx.Rollback()
-				ErrDatabase.Write(w)
-				log.Error("database metadata failed", log15.Ctx{"err": err})
-				return
-			}
-			err = tx.Commit()
-			if err != nil {
-				ErrDatabase.Write(w)
-				log.Error("database txt commit failed", log15.Ctx{"err": err})
-				return
-			}
-
-			resp := ProjectAdminAPIResponse{}
-			resp.Status = StatusSuccess
-			resp.Info = "created with methodkey " + pmr.MethodKey
-			resp.Response = pm
-			resp.Write(w)
 
 		} else if r.Method == "POST" {
 
 			// POST change
 			// set status
 			// set metadata
+
 		} else {
 			ErrMethod.Write(w)
-			log.Error("http method not supported")
+			log.Info("unsupported method", log15.Ctx{"requestMethod": r.Method})
 			return
 		}
 

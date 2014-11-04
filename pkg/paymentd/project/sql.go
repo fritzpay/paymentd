@@ -81,9 +81,6 @@ func execInsertProjectConfig(insert *sql.Stmt, p *Project) error {
 //
 // It will update the project config timestamp
 func InsertProjectConfigDB(db *sql.DB, p *Project) error {
-	if p.Empty() || !p.IsValid() {
-		return errors.New("invalid project")
-	}
 	insert, err := db.Prepare(insertProjectConfig)
 	if err != nil {
 		return err
@@ -95,9 +92,6 @@ func InsertProjectConfigDB(db *sql.DB, p *Project) error {
 //
 // It will update the project config timestamp
 func InsertProjectConfigTx(db *sql.Tx, p *Project) error {
-	if p.Empty() || !p.IsValid() {
-		return errors.New("invalid project")
-	}
 	insert, err := db.Prepare(insertProjectConfig)
 	if err != nil {
 		return err
@@ -139,11 +133,6 @@ WHERE
 	principal_id = ?
 AND
 	name = ?	
-`
-
-const selectProjectByName = selectProject + `
-WHERE
-	name = ?
 `
 
 func scanProject(row *sql.Row) (*Project, error) {
@@ -193,16 +182,16 @@ func ProjectByIdTx(db *sql.Tx, projectId int64) (*Project, error) {
 // ProjectByName selects a project by the given project name
 //
 // If no such project exists, it will return an empty project
-func ProjectByNameDB(db *sql.DB, projectName string) (*Project, error) {
-	row := db.QueryRow(selectProjectByName, projectName)
+func ProjectByNameDB(db *sql.DB, principalID int64, projectName string) (*Project, error) {
+	row := db.QueryRow(selectProjectByPrincipalIdAndName, principalID, projectName)
 	return scanProject(row)
 }
 
 // ProjectByNameTx selects a project by the given project name
 //
 // If no such project exists, it will return an empty project
-func ProjectByNameTx(db *sql.Tx, projectName string) (*Project, error) {
-	row := db.QueryRow(selectProjectByName, projectName)
+func ProjectByNameTx(db *sql.Tx, principalID int64, projectName string) (*Project, error) {
+	row := db.QueryRow(selectProjectByPrincipalIdAndName, principalID, projectName)
 	return scanProject(row)
 }
 

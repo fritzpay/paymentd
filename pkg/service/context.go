@@ -16,7 +16,8 @@ type Context struct {
 	cfg config.Config
 	log log15.Logger
 
-	keychain *Keychain
+	apiKeychain *Keychain
+	webKeychain *Keychain
 
 	principalDBWrite    *sql.DB
 	principalDBReadOnly *sql.DB
@@ -33,7 +34,7 @@ func (ctx *Context) Value(key interface{}) interface{} {
 	case "log":
 		return ctx.log
 	case "keychain":
-		return ctx.keychain
+		return ctx.apiKeychain
 	default:
 		return ctx.Context.Value(key)
 	}
@@ -45,7 +46,8 @@ func (ctx *Context) WithValue(key, value interface{}) *Context {
 		Context:             context.WithValue(ctx.Context, key, value),
 		cfg:                 ctx.cfg,
 		log:                 ctx.log,
-		keychain:            ctx.keychain,
+		apiKeychain:         ctx.apiKeychain,
+		webKeychain:         ctx.webKeychain,
 		principalDBWrite:    ctx.principalDBWrite,
 		principalDBReadOnly: ctx.principalDBReadOnly,
 		paymentDBWrite:      ctx.paymentDBWrite,
@@ -64,8 +66,12 @@ func (ctx *Context) Log() log15.Logger {
 }
 
 // Keychain returns the authorization container keychain associated with the context
-func (ctx *Context) Keychain() *Keychain {
-	return ctx.keychain
+func (ctx *Context) APIKeychain() *Keychain {
+	return ctx.apiKeychain
+}
+
+func (ctx *Context) WebKeychain() *Keychain {
+	return ctx.webKeychain
 }
 
 type dbRequestReadOnly bool
@@ -132,13 +138,25 @@ func (ctx *Context) SetPaymentDB(w, ro *sql.DB) {
 	ctx.paymentDBWrite, ctx.paymentDBReadOnly = w, ro
 }
 
-func (ctx *Context) registerKeychainFromConfig() error {
+func (ctx *Context) registerKeychain(kc *Keychain, keys []string) error {
 	var err error
-	for _, k := range ctx.cfg.API.AuthKeys {
-		err = ctx.keychain.AddKey(k)
+	for _, k := range keys {
+		err = kc.AddKey(k)
 		if err != nil {
 			return err
 		}
+	}
+	return nil
+}
+
+func (ctx *Context) registerKeychainFromConfig() error {
+	err := ctx.registerKeychain(ctx.apiKeychain, ctx.Config().API.AuthKeys)
+	if err != nil {
+		return err
+	}
+	err = ctx.registerKeychain(ctx.webKeychain, ctx.Config().Web.AuthKeys)
+	if err != nil {
+		return err
 	}
 	return nil
 }
@@ -149,10 +167,11 @@ func NewContext(ctx context.Context, cfg config.Config, log log15.Logger) (*Cont
 		return nil, errors.New("log cannot be nil")
 	}
 	c := &Context{
-		Context:  ctx,
-		cfg:      cfg,
-		log:      log,
-		keychain: NewKeychain(),
+		Context:     ctx,
+		cfg:         cfg,
+		log:         log,
+		apiKeychain: NewKeychain(),
+		webKeychain: NewKeychain(),
 	}
 	err := c.registerKeychainFromConfig()
 	if err != nil {

@@ -1,7 +1,6 @@
 package v1
 
 import (
-	"github.com/fritzpay/paymentd/pkg/paymentd/payment"
 	"github.com/fritzpay/paymentd/pkg/service"
 	"github.com/gorilla/mux"
 	"gopkg.in/inconshreveable/log15.v2"
@@ -64,17 +63,17 @@ func NewService(ctx *service.Context, mux *mux.Router) (*Service, error) {
 		mux.Handle(ServicePath+"/currency/{currencycode}", admin.AuthRequiredHandler(admin.CurrencyGetRequest()))
 	}
 
-	s.log.Info("initializing payment ID encoder...")
-	idCoder, err := payment.NewIDEncoder(cfg.Payment.PaymentIDEncPrime, cfg.Payment.PaymentIDEncXOR)
+	s.log.Info("registering payment API...")
+	payment, err := NewPaymentAPI(ctx)
 	if err != nil {
-		s.log.Error("error initializing payment ID encoder", log15.Ctx{"err": err})
+		s.log.Error("error registering payment API", log15.Ctx{"err": err})
 		return nil, err
 	}
-	ctx = ctx.WithValue(serviceContextPaymentIDEncoder, idCoder)
-
-	s.log.Info("registering payment API...")
-	payment := NewPaymentAPI(ctx)
-	mux.Handle(ServicePath+"/payment", payment.InitPayment())
+	mux.Handle(ServicePath+"/payment", payment.InitPayment()).Methods("POST")
+	mux.Handle(ServicePath+"/payment/paymentId/{paymentId}", payment.GetPayment()).Methods("GET")
+	mux.Handle(ServicePath+"/payment/PaymentId/{paymentId}", payment.GetPayment()).Methods("GET")
+	mux.Handle(ServicePath+"/payment/ident/{ident}", payment.GetPayment()).Methods("GET")
+	mux.Handle(ServicePath+"/payment/Ident/{ident}", payment.GetPayment()).Methods("GET")
 
 	return s, nil
 }

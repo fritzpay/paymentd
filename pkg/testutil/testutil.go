@@ -26,8 +26,8 @@ func WithContext(f func(*service.Context, <-chan *log15.Record)) func() {
 		ctx, err := service.NewContext(context.Background(), config.DefaultConfig(), log)
 		So(err, ShouldBeNil)
 
-		ctx.Keychain().AddBinKey([]byte("test"))
-		So(ctx.Keychain().KeyCount(), ShouldEqual, 1)
+		ctx.APIKeychain().AddBinKey([]byte("test"))
+		So(ctx.APIKeychain().KeyCount(), ShouldEqual, 1)
 
 		f(ctx, logChan)
 
@@ -60,6 +60,12 @@ func (r *ResponseWriter) Header() http.Header {
 
 // Write implementing the http.ResponseWriter, io.Writer
 func (r *ResponseWriter) Write(p []byte) (int, error) {
+	if !r.HeaderWritten {
+		r.HeaderWritten = true
+	}
+	if r.StatusCode == 0 {
+		r.StatusCode = http.StatusOK
+	}
 	return (&(r.Buf)).Write(p)
 }
 

@@ -26,7 +26,6 @@ func WithTestProject(db, prDB *sql.DB, f func(pr project.Project)) func() {
 		proj.CreatedBy = "test"
 		err = project.InsertProjectDB(prDB, &proj)
 		So(err, ShouldBeNil)
-		So(proj.IsValid(), ShouldBeTrue)
 
 		Reset(func() {
 			_, err = prDB.Exec("delete from project where name = 'payment_testproject'")

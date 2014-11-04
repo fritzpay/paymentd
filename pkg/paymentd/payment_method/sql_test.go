@@ -40,7 +40,6 @@ func TestPaymentMethodSQL(t *testing.T) {
 					proj.CreatedBy = "test"
 					err := project.InsertProjectDB(prDB, &proj)
 					So(err, ShouldBeNil)
-					So(proj.IsValid(), ShouldBeTrue)
 
 					Reset(func() {
 						_, err = prDB.Exec("delete from project where name = 'payment_method_testproject'")
@@ -61,8 +60,15 @@ func TestPaymentMethodSQL(t *testing.T) {
 							So(err, ShouldBeNil)
 							So(pr.ID, ShouldEqual, 1)
 
+							Convey("When retrieving a nonexistent payment method", func() {
+								_, err = PaymentMethodByProjectIDProviderIDMethodKey(db, proj.ID, pr.ID, "test")
+								Convey("It should return a not found error", func() {
+									So(err, ShouldEqual, ErrPaymentMethodNotFound)
+								})
+							})
+
 							Convey("When inserting a new payment method", func() {
-								pm := PaymentMethod{}
+								pm := Method{}
 								pm.ProjectID = proj.ID
 								pm.Provider.ID = pr.ID
 								pm.MethodKey = "test"
