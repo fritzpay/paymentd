@@ -480,7 +480,7 @@ func (h *Handler) servePaymentHandler(p *payment.Payment, method *payment_method
 		log := h.log.New(log15.Ctx{
 			"method":          "servePaymentHandler",
 			"projectID":       p.ProjectID(),
-			"paymentID":       p.PaymentID(),
+			"paymentID":       p.ID(),
 			"paymentMethodID": method.ID,
 			"providerID":      method.Provider.ID,
 		})
