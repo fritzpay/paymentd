@@ -50,8 +50,8 @@ AND
 	m.method_key = ?
 `
 
-func scanSinglePaymentMethod(row *sql.Row) (PaymentMethod, error) {
-	pm := PaymentMethod{}
+func scanSinglePaymentMethod(row *sql.Row) (Method, error) {
+	pm := Method{}
 	var ts int64
 	err := row.Scan(
 		&pm.ID,
@@ -75,17 +75,17 @@ func scanSinglePaymentMethod(row *sql.Row) (PaymentMethod, error) {
 	return pm, nil
 }
 
-func PaymentMethodByIDDB(db *sql.DB, id int64) (PaymentMethod, error) {
+func PaymentMethodByIDDB(db *sql.DB, id int64) (Method, error) {
 	row := db.QueryRow(selectPaymentMethodByID, id)
 	return scanSinglePaymentMethod(row)
 }
 
-func PaymentMethodByProjectIDProviderIDMethodKey(db *sql.DB, project_id int64, provider_id int64, method_key string) (PaymentMethod, error) {
+func PaymentMethodByProjectIDProviderIDMethodKey(db *sql.DB, project_id int64, provider_id int64, method_key string) (Method, error) {
 	row := db.QueryRow(selectPaymentMethodByProjectIDProviderIDMethodKey, project_id, provider_id, method_key)
 	return scanSinglePaymentMethod(row)
 }
 
-func PaymentMethodByIDTx(db *sql.Tx, id int64) (PaymentMethod, error) {
+func PaymentMethodByIDTx(db *sql.Tx, id int64) (Method, error) {
 	row := db.QueryRow(selectPaymentMethodByID, id)
 	return scanSinglePaymentMethod(row)
 }
@@ -97,7 +97,7 @@ VALUES
 (?, ?, ?, ?, ?)
 `
 
-func InsertPaymentMethodTx(db *sql.Tx, pm PaymentMethod) (int64, error) {
+func InsertPaymentMethodTx(db *sql.Tx, pm Method) (int64, error) {
 	stmt, err := db.Prepare(insertPaymentMethod)
 	if err != nil {
 		return 0, err
@@ -117,7 +117,7 @@ VALUES
 (?, ?, ?, ?)
 `
 
-func InsertPaymentMethodStatusTx(db *sql.Tx, pm PaymentMethod) error {
+func InsertPaymentMethodStatusTx(db *sql.Tx, pm Method) error {
 	stmt, err := db.Prepare(insertPaymentMethodStatus)
 	if err != nil {
 		return err
@@ -128,7 +128,7 @@ func InsertPaymentMethodStatusTx(db *sql.Tx, pm PaymentMethod) error {
 	return err
 }
 
-func InsertPaymentMethodMetadataTx(db *sql.Tx, pm PaymentMethod, createdBy string) error {
+func InsertPaymentMethodMetadataTx(db *sql.Tx, pm Method, createdBy string) error {
 	if pm.ID == 0 {
 		return ErrPaymentMethodWithoutID
 	}
@@ -136,7 +136,7 @@ func InsertPaymentMethodMetadataTx(db *sql.Tx, pm PaymentMethod, createdBy strin
 	return metadata.InsertMetadataTx(db, MetadataModel, pm.ID, m)
 }
 
-func PaymentMethodMetadataTx(db *sql.Tx, pm PaymentMethod) (map[string]string, error) {
+func PaymentMethodMetadataTx(db *sql.Tx, pm Method) (map[string]string, error) {
 	if pm.ID == 0 {
 		return nil, ErrPaymentMethodWithoutID
 	}
