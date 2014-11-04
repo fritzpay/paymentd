@@ -15,7 +15,7 @@ Create a new project
 		PUT /project
 		Host: example.com
 		Accept: application/json
-		Authorization: Basic cm9vdDpyb290
+		Authorization: MTQxNTA5NTI5MHxYaCVyOkp7RNaMujhp...
 
 	.. sourcecode:: http
 
@@ -30,7 +30,6 @@ Create a new project
 
 		HTTP/1.1 200 OK
 		Accept: application/json
-		Authorization: Basic cm9vdDpyb290
 		Content-Type: application/json
 
 		{

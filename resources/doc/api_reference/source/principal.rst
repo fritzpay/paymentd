@@ -6,22 +6,20 @@ Create a new principal
 
 .. http:put:: /v1/principal
 
-	Crate a new principal
+	Create a new principal resource.
 
 	**Example request**:
 
 	.. sourcecode:: http
 
-		PUT /principal
+		PUT /principal HTTP/1.1
 		Host: example.com
+		Content-Type: application/json
 		Accept: application/json
-		Authorization: Basic cm9vdDpyb290
-
-	.. sourcecode:: http
+		Authorization: MTQxNTA5NTI5MHxYaCVyOkp7RNaMujhp...
 
 		{
-			"Name": "acme_corporation",
-			"CreatedBy": "Jane Doe"
+			"Name": "acme_corporation"
 		}
 
 	:reqheader Authorization: HTTP Basic Auth
@@ -30,25 +28,20 @@ Create a new principal
 
 	.. sourcecode:: http
 
-		Accept: application/json
-		Authorization: Basic cm9vdDpyb290
-		Content-Type: application/json
-
-	.. sourcecode:: http
-
 		HTTP/1.1 200 OK
 		Content-Type: application/json
 
 		{
+			"Version": "1.2",
 			"Status": "success",
 			"Info": "principal acme_corporation created",
 			"Response": {
-					"ID":1,
-					"Created":"2014-10-17T14:12:11Z",
-					"CreatedBy":"Jane Doe",
-					"Name":"acme_corporation",
-					"Metadata":null
-				},
+				"ID": "3",
+				"Created": "2014-11-04T09:59:28Z",
+				"CreatedBy": "Jane Joe",
+				"Name": "acme_corporation",
+				"Metadata": null
+			},
 			"Error": null
 		}
 
@@ -63,23 +56,23 @@ Change an existing principal
 
 .. http:post:: /v1/principal
 
-	Change an existing principal
+	Change an existing principal.
 
 	**Example request**:
 
 	.. sourcecode:: http
 
-		POST /principal
+		POST /principal HTTP/1.1
 		Host: example.com
+		Content-Type: application/json
 		Accept: application/json
-		Authorization: Basic cm9vdDpyb290
-
-	.. sourcecode:: http
+		Authorization: QxNTA4NTO7MHxYaCVyOkp7RNaMujhpMT...
 
 		{
-			"PrincipalID":"1",
-			"Name":"DifferentName",
-			"CreatedBy":"Dohn Joe"
+			"ID":"1",
+			"Metadata": {
+				"city":"munic"
+			}
 		}
 
 	**Example reponse**:
@@ -87,21 +80,20 @@ Change an existing principal
 	.. sourcecode:: http
 
 		HTTP/1.1 200 OK
-		Accept: application/json
-		Authorization: Basic cm9vdDpyb290
 		Content-Type: application/json
 
 		{
+			"Version": "1.2",
 			"Status": "success",
 			"Info": "principal acme_corporation changed",
 			"Response": {
-				"ID":1,
-				"PrincipalID":"1",
-				"Name":"DifferentName",
-				"CreatedBy":"John Doe",
-				"Created":"2014-10-17T14:12:11Z",
-				"Metadata":null
-			},
+				"ID": "1",
+				"Created": "2014-11-04T14:07:49Z",
+				"CreatedBy": "Dan Done",
+				"Name": "acme_corporation",
+				"Metadata": {
+					"city": "munic"
+				},
 			"Error": null
 		}
 
@@ -123,32 +115,33 @@ Informational
 
 	.. sourcecode:: http
 
-		GET /principal/acme_corporation
+		GET /principal/acme_corporation  HTTP/1.1
 		Host: example.com
+		Content-Type: application/json
 		Accept: application/json
-		Authorization: dEFFEFeddedeGGEGMceokr353521234
+		Authorization: MTQxNTA5NTI5MHxYaCVyOkp7RNaMujhp...
 
 	:param name: The principal name.
-	:reqheader Authorization: HTTP Basic Auth
 	
 	**Example response**:
 
 	.. sourcecode:: http
 		
 		HTTP/1.1 200 OK
-		Authorization: Basic cm9vdDpyb290
 		Content-Type: application/json
 
 		{
+			"Version": "1.2",
 			"Status": "success",
 			"Info": "principal acme_corporation found",
 			"Response": {
 				"ID":1,
-				"Created":"2014-10-17T14:12:11Z",
-				"CreatedBy":"Jane Doe",
-				"Name":"acme_corporation",
-				"Metadata":null
-			},
+				"Created": "2014-11-04T14:07:49Z",
+				"CreatedBy": "Dan Done",
+				"Name": "acme_corporation",
+				"Metadata": {
+					"city": "munic",
+				},
 			"Error": null
 		}
 

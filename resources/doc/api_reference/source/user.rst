@@ -43,8 +43,7 @@ Authentication and Authorization
 
 	:statuscode 200: No error, credentials accepted.
 	:statuscode 400: The request was malformed; the provided fields could not be understood.
-	:statuscode 401: Unauthorized, either the username does not exist or the credentials
-	                 were incorrect.
+	:statuscode 401: Unauthorized, either the username does not exist or the credentials were incorrect.
 
 Informational
 -------------
@@ -59,6 +58,8 @@ Informational
 
 		GET /v1/user HTTP/1.1
 		Host: example.com
+		Accept: application/json
+		Content-Type: application/json
 		Authorization: dEFFEFeddedeGGEGMceokr353521234
 
 	**Example response**:
@@ -66,7 +67,7 @@ Informational
 	.. sourcecode:: http
 
 		HTTP/1.1 200 OK
-		Content-Type: text/plain
+		Content-Type: application/json
 	
 		{
 			"Status": "success",
