@@ -14,9 +14,9 @@ const (
 )
 
 type Driver interface {
-	Attach(ctx *service.Context, mux *mux.Router)
+	Attach(ctx *service.Context, mux *mux.Router) error
 
-	InitPayment(p *payment.Payment, method *payment_method.PaymentMethod) (http.Handler, error)
+	InitPayment(p *payment.Payment, method *payment_method.Method) (http.Handler, error)
 }
 
 var drivers map[int64]Driver

@@ -25,9 +25,14 @@ func NewService(ctx *service.Context) (*Service, error) {
 	return s, nil
 }
 
-func (s *Service) AttachDrivers(mux *mux.Router) {
+func (s *Service) AttachDrivers(mux *mux.Router) error {
+	var err error
 	mux = mux.PathPrefix(ProviderPath).Subrouter()
 	for _, dr := range drivers {
-		dr.Attach(s.ctx, mux)
+		err = dr.Attach(s.ctx, mux)
+		if err != nil {
+			return err
+		}
 	}
+	return nil
 }
