@@ -68,7 +68,7 @@ func TestPaymentMethodSQL(t *testing.T) {
 							})
 
 							Convey("When inserting a new payment method", func() {
-								pm := PaymentMethod{}
+								pm := Method{}
 								pm.ProjectID = proj.ID
 								pm.Provider.ID = pr.ID
 								pm.MethodKey = "test"

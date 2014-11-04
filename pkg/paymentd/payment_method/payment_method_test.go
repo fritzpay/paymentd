@@ -7,7 +7,7 @@ import (
 
 func TestPaymentMethodStatus(t *testing.T) {
 	Convey("Given an empty payment method status", t, func() {
-		st := paymentMethodStatus("")
+		st := methodStatus("")
 
 		Convey("When retrieving the string value of the status", func() {
 			str := st.String()
