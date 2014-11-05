@@ -129,18 +129,12 @@ func (a *AdminAPI) putNewPrincipal(w http.ResponseWriter, r *http.Request) {
 		log.Error("TX insert failed.", log15.Ctx{"err": err})
 		return
 	}
-
+	// insert Metadata
 	err = insertPrincipalMetadata(tx, &pr)
 	if err != nil {
 		tx.Rollback()
 		ErrDatabase.Write(w)
 		log.Error("metadata insert failed.", log15.Ctx{"err": err})
-		return
-	}
-
-	if err != nil {
-		log.Error("get metadata failed.", log15.Ctx{"err": err})
-		ErrDatabase.Write(w)
 		return
 	}
 
@@ -215,33 +209,20 @@ func (a *AdminAPI) postChangePrincipal(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// insert Metadata
 	md := metadata.MetadataFromValues(pr.Metadata, pr.CreatedBy)
-
-	err = metadata.InsertMetadataTx(tx, principal.MetadataModel, pr.ID, md)
+	err = insertPrincipalMetadata(tx, &pr)
 	if err != nil {
-		txErr := tx.Rollback()
-		if txErr != nil {
-			log.Crit("error on rollback", log15.Ctx{"err": err})
-		}
-		log.Error("insert metadata failed", log15.Ctx{"err": err})
+		tx.Rollback()
 		ErrDatabase.Write(w)
+		log.Error("metadata insert failed.", log15.Ctx{"err": err})
 		return
 	}
 
-	// get stored data from db
-	pr, err = principal.PrincipalByIDTx(tx, pr.ID)
-	if err != nil {
-		if err == principal.ErrPrincipalNotFound {
-			log.Error("principal not found")
-			ErrNotFound.Write(w)
-			return
-		}
-		ErrDatabase.Write(w)
-		log.Error("DB get by id failed.", log15.Ctx{"err": err})
-		return
-	}
+	// get stored and added metadata from db
 	md, err = metadata.MetadataByPrimaryTx(tx, principal.MetadataModel, pr.ID)
 	if err != nil {
+		tx.Rollback()
 		log.Error("get metadata failed.", log15.Ctx{"err": err})
 		ErrDatabase.Write(w)
 		return
@@ -269,7 +250,9 @@ func (a *AdminAPI) postChangePrincipal(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// adds metadata into the database
 func insertPrincipalMetadata(tx *sql.Tx, pr *principal.Principal) error {
+
 	// check if principal exists
 	_, err := principal.PrincipalByNameTx(tx, pr.Name)
 	if err != nil && err != principal.ErrPrincipalNotFound {
@@ -279,20 +262,6 @@ func insertPrincipalMetadata(tx *sql.Tx, pr *principal.Principal) error {
 	// insert metadata
 	md := metadata.MetadataFromValues(pr.Metadata, pr.CreatedBy)
 	err = metadata.InsertMetadataTx(tx, principal.MetadataModel, pr.ID, md)
-	if err != nil {
-		return err
-	}
-	// get data explicit from DB
-	prDB, err := principal.PrincipalByIDTx(tx, pr.ID)
-	if err != nil {
-		return err
-	}
-	md, err = metadata.MetadataByPrimaryTx(tx, principal.MetadataModel, pr.ID)
-	if len(md) > 0 {
-		prDB.Metadata = md.Values()
-	}
-	// rereference
-	pr = &prDB
 
 	return err
 }
