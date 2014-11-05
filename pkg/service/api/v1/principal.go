@@ -209,9 +209,8 @@ func (a *AdminAPI) postChangePrincipal(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	md := metadata.MetadataFromValues(pr.Metadata, pr.CreatedBy)
-
 	// insert Metadata
+	md := metadata.MetadataFromValues(pr.Metadata, pr.CreatedBy)
 	err = insertPrincipalMetadata(tx, &pr)
 	if err != nil {
 		tx.Rollback()
@@ -223,6 +222,7 @@ func (a *AdminAPI) postChangePrincipal(w http.ResponseWriter, r *http.Request) {
 	// get stored and added metadata from db
 	md, err = metadata.MetadataByPrimaryTx(tx, principal.MetadataModel, pr.ID)
 	if err != nil {
+		tx.Rollback()
 		log.Error("get metadata failed.", log15.Ctx{"err": err})
 		ErrDatabase.Write(w)
 		return
