@@ -20,7 +20,7 @@ const (
 	// AppName is the name of the application
 	AppName = "paymentd"
 	// AppVersion is the version of the application
-	AppVersion = "0.1"
+	AppVersion = "0.9.0-alpha"
 )
 
 // command line flags
