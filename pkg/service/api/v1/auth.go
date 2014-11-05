@@ -96,7 +96,7 @@ func (a *AdminAPI) respondWithAuthorization(w http.ResponseWriter) {
 			Path:     ServicePath,
 			Expires:  auth.Expiry(),
 			HttpOnly: a.ctx.Config().API.Cookie.HTTPOnly,
-			Secure:   a.ctx.Config().API.Cookie.Secure,
+			Secure:   a.ctx.Config().API.Secure,
 		}
 		http.SetCookie(w, c)
 	}
@@ -347,7 +347,7 @@ func (a *AdminAPI) resetCookie(w http.ResponseWriter, r *http.Request) {
 		Path:     ServicePath,
 		Expires:  time.Unix(0, 0),
 		HttpOnly: a.ctx.Config().API.Cookie.HTTPOnly,
-		Secure:   a.ctx.Config().API.Cookie.Secure,
+		Secure:   a.ctx.Config().API.Secure,
 	}
 	http.SetCookie(w, c)
 }

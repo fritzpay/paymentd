@@ -65,3 +65,10 @@ func InsertPaymentTx(db *sql.Tx, p *Payment) error {
 	p.ID, err = res.LastInsertId()
 	return err
 }
+
+const insertPaymentTransaction = `
+INSERT INTO provider_fritzpay_payment_transaction
+(fritzpay_payment_id, timestamp, status, fritzpay_id, payload)
+VALUES
+(?, ?, ?, ?, ?)
+`

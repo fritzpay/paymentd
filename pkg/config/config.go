@@ -83,12 +83,13 @@ type Config struct {
 
 		// Should the API server provide administrative endpoints?
 		ServeAdmin bool
+		// SSL?
+		Secure bool
 		// Cookie-based authentication settings
 		Cookie struct {
 			// Should the API allow cookie-based authentication?
 			AllowCookieAuth bool
 			HTTPOnly        bool
-			Secure          bool
 		}
 
 		// serve the adminpanel gui files (fullfill same origin policy)
@@ -104,9 +105,10 @@ type Config struct {
 		PubWWWDir   string
 		TemplateDir string
 
+		Secure bool
+
 		Cookie struct {
 			HTTPOnly bool
-			Secure   bool
 		}
 		AuthKeys []string
 	}

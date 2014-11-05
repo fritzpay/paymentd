@@ -35,6 +35,10 @@ func (ctx *Context) Value(key interface{}) interface{} {
 		return ctx.log
 	case "keychain":
 		return ctx.apiKeychain
+	case "paymentDB":
+		return ctx.paymentDBWrite
+	case "principalDB":
+		return ctx.principalDBWrite
 	default:
 		return ctx.Context.Value(key)
 	}
