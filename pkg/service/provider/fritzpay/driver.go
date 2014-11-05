@@ -8,6 +8,7 @@ import (
 	"github.com/fritzpay/paymentd/pkg/paymentd/payment_method"
 	"github.com/fritzpay/paymentd/pkg/service"
 	paymentService "github.com/fritzpay/paymentd/pkg/service/payment"
+	"github.com/go-sql-driver/mysql"
 	"github.com/gorilla/mux"
 	"gopkg.in/inconshreveable/log15.v2"
 	"net/http"
@@ -98,6 +99,15 @@ func (d *Driver) InitPayment(p *payment.Payment, method *payment_method.Method) 
 			}
 		}
 	}()
+	maxRetries := d.ctx.Config().Database.TransactionMaxRetries
+	var retries int
+beginTx:
+	if retries >= maxRetries {
+		// no need to roll back
+		commit = true
+		log.Crit("too many retries on tx. aborting...", log15.Ctx{"maxRetries": maxRetries})
+		return nil, ErrDB
+	}
 	tx, err = d.ctx.PaymentDB().Begin()
 	if err != nil {
 		commit = true
@@ -143,17 +153,30 @@ func (d *Driver) InitPayment(p *payment.Payment, method *payment_method.Method) 
 			paymentTx.Comment.String, paymentTx.Comment.Valid = "initialized by FritzPay demo provider", true
 			err = d.paymentService.SetPaymentTransaction(tx, paymentTx)
 			if err != nil {
+				if err == paymentService.ErrDBLockTimeout {
+					retries++
+					time.Sleep(time.Second)
+					goto beginTx
+				}
 				log.Error("error setting payment tx", log15.Ctx{"err": err})
 				return nil, ErrDB
 			}
 		}
 	}
 	err = tx.Commit()
-	commit = true
 	if err != nil {
+		if mysqlErr, ok := err.(*mysql.MySQLError); ok {
+			if mysqlErr.Number == 1213 {
+				retries++
+				time.Sleep(time.Second)
+				goto beginTx
+			}
+		}
 		log.Crit("error on commit", log15.Ctx{"err": err})
+		commit = true
 		return nil, ErrDB
 	}
+	commit = true
 
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 	}), nil
