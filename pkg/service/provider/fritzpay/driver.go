@@ -73,7 +73,7 @@ func (d *Driver) Attach(ctx *service.Context, mux *mux.Router) error {
 }
 
 func (d *Driver) InitPayment(p *payment.Payment, method *payment_method.Method) (http.Handler, error) {
-	log := d.ctx.Log().New(log15.Ctx{
+	log := d.log.New(log15.Ctx{
 		"method":          "InitPayment",
 		"projectID":       p.ProjectID(),
 		"paymentID":       p.ID(),
