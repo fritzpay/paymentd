@@ -9,8 +9,8 @@ import (
 	paymentService "github.com/fritzpay/paymentd/pkg/service/payment"
 	"github.com/go-sql-driver/mysql"
 	"gopkg.in/inconshreveable/log15.v2"
-	"net"
 	"net/http"
+	"net/url"
 	"time"
 )
 
@@ -123,40 +123,27 @@ beginTx:
 		// call psp init worker
 		// this simulates the initialization of the payment on the
 		// payment service provider (PSP) end
-		url, err := d.mux.GetRoute("fritzpayCallback").URL()
+		//
+		// the worker will call the web server (pretty much itself)
+		routeURL, err := d.mux.GetRoute("fritzpayCallback").URL()
 		if err != nil {
-			log.Error("error creating callback URL", log15.Ctx{"err": err})
+			log.Error("error retrieving callback URL", log15.Ctx{"err": err})
 			w.WriteHeader(http.StatusInternalServerError)
 			return
 		}
-		webHostAddr := d.ctx.Config().Web.Service.Address
-		addr, err := net.ResolveTCPAddr("tcp", webHostAddr)
+		callbackURL, err := url.Parse(d.ctx.Config().Web.URL)
 		if err != nil {
-			log.Error("error determining address", log15.Ctx{"err": err})
+			log.Error("error parsing web URL", log15.Ctx{"err": err})
 			w.WriteHeader(http.StatusInternalServerError)
 			return
 		}
-		host, port, err := net.SplitHostPort(addr.String())
-		if err != nil {
-			log.Error("error splitting host/port", log15.Ctx{"err": err})
-			w.WriteHeader(http.StatusInternalServerError)
-			return
-		}
-		if host == "" {
-			host = "localhost"
-		}
-		if d.ctx.Config().Web.Secure {
-			url.Scheme = "https"
-		} else {
-			url.Scheme = "http"
-		}
-		url.Host = host + ":" + port
-		q := url.Query()
+		callbackURL.Path = routeURL.Path
+		q := callbackURL.Query()
 		q.Set("paymentID", d.paymentService.EncodedPaymentID(p.PaymentID()).String())
-		url.RawQuery = q.Encode()
+		callbackURL.RawQuery = q.Encode()
 
 		workerCtx, _ := context.WithTimeout(d.ctx, fritzpayDefaultTimeout)
-		go pspInit(workerCtx, fritzpayP, url.String())
+		go pspInit(workerCtx, fritzpayP, callbackURL.String())
 		defer func() {
 			if err := recover(); err != nil {
 				log.Crit("panic on worker", log15.Ctx{"err": err})

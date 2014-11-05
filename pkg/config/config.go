@@ -100,6 +100,7 @@ type Config struct {
 	// Web server config
 	Web struct {
 		Active  bool
+		URL     string
 		Service ServiceConfig
 
 		PubWWWDir   string
@@ -142,6 +143,7 @@ func DefaultConfig() Config {
 
 	cfg.API.Cookie.HTTPOnly = true
 
+	cfg.Web.URL = "http://localhost:8443"
 	cfg.Web.Service.Address = ":8443"
 	cfg.Web.Service.ReadTimeout = Duration("10s")
 	cfg.Web.Service.WriteTimeout = Duration("10s")
