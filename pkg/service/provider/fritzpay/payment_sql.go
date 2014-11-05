@@ -4,10 +4,12 @@ import (
 	"database/sql"
 	"errors"
 	"github.com/fritzpay/paymentd/pkg/paymentd/payment"
+	"time"
 )
 
 var (
-	ErrPaymentNotFound = errors.New("payment not found")
+	ErrPaymentNotFound     = errors.New("payment not found")
+	ErrTransactionNotFound = errors.New("transaction not found")
 )
 
 const selectPayment = `
@@ -67,8 +69,70 @@ func InsertPaymentTx(db *sql.Tx, p *Payment) error {
 }
 
 const insertPaymentTransaction = `
-INSERT INTO provider_fritzpay_payment_transaction
+INSERT INTO provider_fritzpay_transaction
 (fritzpay_payment_id, timestamp, status, fritzpay_id, payload)
 VALUES
 (?, ?, ?, ?, ?)
 `
+
+func InsertPaymentTransactionTx(db *sql.Tx, paymentTx PaymentTransaction) error {
+	stmt, err := db.Prepare(insertPaymentTransaction)
+	if err != nil {
+		return err
+	}
+	_, err = stmt.Exec(
+		paymentTx.FritzpayPaymentID,
+		paymentTx.Timestamp.UnixNano(),
+		paymentTx.Status,
+		paymentTx.FritzpayID,
+		paymentTx.Payload,
+	)
+	stmt.Close()
+	return err
+}
+
+const selectPaymentTransaction = `
+SELECT
+	t.fritzpay_payment_id,
+	t.timestamp,
+	t.status,
+	t.fritzpay_id,
+	t.payload
+FROM provider_fritzpay_transaction AS t
+`
+
+const selectPaymentTransactionByID = selectPaymentTransaction + `
+WHERE
+	t.fritzpay_payment_id = ?
+	AND
+	t.timestamp = (
+		SELECT MAX(timestamp) FROM provider_fritzpay_transaction
+		WHERE
+			fritzpay_payment_id = t.fritzpay_payment_id
+	)
+`
+
+func PaymentTransactionCurrentByPaymentIDProviderTx(db *sql.Tx, id int64) (PaymentTransaction, error) {
+	query := selectPaymentTransactionByID + `
+AND
+	t.status LIKE 'psp_%'
+	`
+	row := db.QueryRow(query, id)
+	paymentTx := PaymentTransaction{}
+	var ts int64
+	err := row.Scan(
+		&paymentTx.FritzpayPaymentID,
+		&ts,
+		&paymentTx.Status,
+		&paymentTx.FritzpayID,
+		&paymentTx.Payload,
+	)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return paymentTx, ErrTransactionNotFound
+		}
+		return paymentTx, err
+	}
+	paymentTx.Timestamp = time.Unix(0, ts)
+	return paymentTx, nil
+}

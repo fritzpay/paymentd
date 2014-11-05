@@ -13,6 +13,12 @@ type Payment struct {
 	MethodKey string
 }
 
+const (
+	TransactionPSPInit  = "psp_init"
+	TransactionInit     = "initialized"
+	TransactionPSPError = "psp_error"
+)
+
 type PaymentTransaction struct {
 	FritzpayPaymentID int64
 	Timestamp         time.Time

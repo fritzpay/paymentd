@@ -1,8 +1,6 @@
 package fritzpay
 
 import (
-	"code.google.com/p/go.net/context"
-	"database/sql"
 	"errors"
 	"fmt"
 	"github.com/fritzpay/paymentd/pkg/service"
@@ -85,42 +83,10 @@ func (d *Driver) PaymentInfo() http.Handler {
 }
 
 func (d *Driver) Callback(w http.ResponseWriter, r *http.Request) {
-
-}
-
-func doInit(ctx context.Context, fritzpayP Payment, callbackURL string) {
-	if deadline, ok := ctx.Deadline(); ok {
-		// let's assume we will need at least 3 seconds to run
-		if deadline.Before(time.Now().Add(3 * time.Second)) {
-			return
-		}
-	}
-	log := ctx.Value("log").(log15.Logger).New(log15.Ctx{
-		"pkg":         "github.com/fritzpay/paymentd/pkg/service/provider/fritzpay",
-		"method":      "doInit",
-		"callbackURL": callbackURL,
+	log := d.log.New(log15.Ctx{
+		"method": "Callback",
 	})
-	tx, err := ctx.Value("paymentDB").(*sql.DB).Begin()
-	if err != nil {
-		log.Crit("error on begin tx", log15.Ctx{"err": err})
-		return
-	}
 	if Debug {
-		log.Debug("worker start...")
-	}
-	ok := make(chan struct{})
-	select {
-	case <-ctx.Done():
-		log.Warn("cancelled worker", log15.Ctx{"err": ctx.Err()})
-		err = tx.Rollback()
-		if err != nil {
-			log.Crit("error on rollback", log15.Ctx{"err": err})
-		}
-		return
-	case <-ok:
-		if Debug {
-			log.Debug("worker done")
-		}
-		return
+		log.Debug("received callback", log15.Ctx{"query": r.URL.Query()})
 	}
 }

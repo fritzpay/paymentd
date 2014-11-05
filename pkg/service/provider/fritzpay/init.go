@@ -120,6 +120,9 @@ beginTx:
 	commit = true
 
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// call psp init worker
+		// this simulates the initialization of the payment on the
+		// payment service provider (PSP) end
 		url, err := d.mux.GetRoute("fritzpayCallback").URL()
 		if err != nil {
 			log.Error("error creating callback URL", log15.Ctx{"err": err})
@@ -148,9 +151,12 @@ beginTx:
 			url.Scheme = "http"
 		}
 		url.Host = host + ":" + port
+		q := url.Query()
+		q.Set("paymentID", d.paymentService.EncodedPaymentID(p.PaymentID()).String())
+		url.RawQuery = q.Encode()
 
 		workerCtx, _ := context.WithTimeout(d.ctx, fritzpayDefaultTimeout)
-		go doInit(workerCtx, fritzpayP, url.String())
+		go pspInit(workerCtx, fritzpayP, url.String())
 		defer func() {
 			if err := recover(); err != nil {
 				log.Crit("panic on worker", log15.Ctx{"err": err})
