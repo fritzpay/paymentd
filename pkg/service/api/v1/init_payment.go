@@ -500,6 +500,15 @@ func (a *PaymentAPI) InitPayment() http.Handler {
 		}
 		req.PopulatePaymentFields(p)
 
+		// callback config
+		if p.Config.HasCallback() {
+			if !p.Config.CallbackURL.Valid || !p.Config.CallbackAPIVersion.Valid || !p.Config.CallbackProjectKey.Valid {
+				resp = ErrInval
+				resp.Info = "incomplete callback config"
+				return
+			}
+		}
+
 		// DB
 		var tx *sql.Tx
 		var commit bool
@@ -554,6 +563,11 @@ func (a *PaymentAPI) InitPayment() http.Handler {
 				retries++
 				time.Sleep(time.Second)
 				goto beginTx
+			}
+			if err == paymentService.ErrPaymentCallbackConfig {
+				resp = ErrInval
+				resp.Info = "callback config error"
+				return
 			}
 			handlePaymentServiceErr(err)
 			return

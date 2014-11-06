@@ -270,6 +270,12 @@ func scanProjectKey(row *sql.Row) (*Projectkey, error) {
 	return pk, nil
 }
 
+// ProjectKeyByKeyTx selects a project key by the given key
+func ProjectKeyByKeyTx(db *sql.Tx, key string) (*Projectkey, error) {
+	row := db.QueryRow(selectProjectKeyByKey, key)
+	return scanProjectKey(row)
+}
+
 // ProjectKeyByKeyDB selects a project key by the given key
 func ProjectKeyByKeyDB(db *sql.DB, key string) (*Projectkey, error) {
 	row := db.QueryRow(selectProjectKeyByKey, key)

@@ -24,6 +24,8 @@ func (e errorID) Error() string {
 		return "lock wait timeout"
 	case ErrDuplicateIdent:
 		return "duplicate ident in payment"
+	case ErrPaymentCallbackConfig:
+		return "callback config error"
 	case ErrPaymentMethodNotFound:
 		return "payment method not found"
 	case ErrPaymentMethodConflict:
@@ -44,6 +46,8 @@ const (
 	ErrDBLockTimeout
 	// duplicate Ident in payment
 	ErrDuplicateIdent
+	// callback config error
+	ErrPaymentCallbackConfig
 	// payment method not found
 	ErrPaymentMethodNotFound
 	// payment method project mismatch
@@ -130,6 +134,25 @@ func (s *Service) CreatePayment(tx *sql.Tx, p *payment.Payment) error {
 	log := s.log.New(log15.Ctx{
 		"method": "CreatePayment",
 	})
+	if p.Config.HasCallback() {
+		callbackProjectKey, err := project.ProjectKeyByKeyTx(tx, p.Config.CallbackProjectKey.String)
+		if err != nil {
+			if err == project.ErrProjectKeyNotFound {
+				log.Error("callback project key not found", log15.Ctx{"callbackProjectKey": p.Config.CallbackProjectKey.String})
+				return ErrPaymentCallbackConfig
+			}
+			log.Error("error retrieving callback project key", log15.Ctx{"err": err})
+			return ErrDB
+		}
+		if callbackProjectKey.Project.ID != p.ProjectID() {
+			log.Error("callback project mismatch", log15.Ctx{
+				"callbackProjectKey": callbackProjectKey.Key,
+				"callbackProjectID":  callbackProjectKey.Project.ID,
+				"projectID":          p.ProjectID(),
+			})
+			return ErrPaymentCallbackConfig
+		}
+	}
 	err := payment.InsertPaymentTx(tx, p)
 	if err != nil {
 		if mysqlErr, ok := err.(*mysql.MySQLError); ok {
