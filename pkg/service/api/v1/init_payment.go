@@ -2,7 +2,6 @@ package v1
 
 import (
 	"bytes"
-	"code.google.com/p/go.text/language"
 	"crypto/sha256"
 	"database/sql"
 	"encoding/hex"
@@ -17,6 +16,7 @@ import (
 	"github.com/fritzpay/paymentd/pkg/service"
 	paymentService "github.com/fritzpay/paymentd/pkg/service/payment"
 	"github.com/go-sql-driver/mysql"
+	"golang.org/x/text/language"
 	"gopkg.in/inconshreveable/log15.v2"
 	"hash"
 	"io"

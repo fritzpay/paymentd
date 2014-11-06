@@ -1,7 +1,6 @@
 package main
 
 import (
-	"code.google.com/p/go.net/context"
 	"database/sql"
 	"errors"
 	"flag"
@@ -12,6 +11,7 @@ import (
 	"github.com/fritzpay/paymentd/pkg/service/api"
 	"github.com/fritzpay/paymentd/pkg/service/web"
 	_ "github.com/go-sql-driver/mysql"
+	"golang.org/x/net/context"
 	"gopkg.in/inconshreveable/log15.v2"
 	"os"
 )
