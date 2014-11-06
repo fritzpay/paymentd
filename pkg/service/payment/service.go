@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"github.com/fritzpay/paymentd/pkg/paymentd/payment"
 	"github.com/fritzpay/paymentd/pkg/paymentd/payment_method"
+	"github.com/fritzpay/paymentd/pkg/paymentd/project"
 	"github.com/fritzpay/paymentd/pkg/server"
 	"github.com/fritzpay/paymentd/pkg/service"
 	"github.com/go-sql-driver/mysql"
@@ -254,7 +255,31 @@ func (s *Service) SetPaymentTransaction(tx *sql.Tx, paymentTx *payment.PaymentTr
 		log.Error("error saving payment transaction", log15.Ctx{"err": err})
 		return ErrDB
 	}
+	var callbackURL string
+	if paymentTx.Payment.Config.CallbackURL.Valid {
+		callbackURL = paymentTx.Payment.Config.CallbackURL.String
+	} else {
+		pr, err := project.ProjectByIdTx(tx, paymentTx.Payment.ProjectID())
+		if err != nil {
+			if err == project.ErrProjectNotFound {
+				log.Crit("payment with invalid project", log15.Ctx{"projectID": paymentTx.Payment.ProjectID()})
+				return ErrInternal
+			}
+			log.Error("error retrieving project", log15.Ctx{"err": err})
+			return ErrDB
+		}
+		if pr.Config.CallbackURL.Valid {
+			callbackURL = pr.Config.CallbackURL.String
+		}
+	}
+	if callbackURL != "" {
+		s.notifyPaymentTransaction(callbackURL, paymentTx)
+	}
 	return nil
+}
+
+func (s *Service) notifyPaymentTransaction(callbackURL string, paymentTx *payment.PaymentTransaction) {
+
 }
 
 func (s *Service) PaymentTransaction(tx *sql.Tx, p *payment.Payment) (*payment.PaymentTransaction, error) {
