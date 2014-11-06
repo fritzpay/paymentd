@@ -60,3 +60,58 @@ func TestPrincipalSQL(t *testing.T) {
 		}))
 	}))
 }
+
+func TestPrincipalSQLTx(t *testing.T) {
+	Convey("Given a principal DB connection", t, testutil.WithPrincipalDB(t, func(db *sql.DB) {
+		Reset(func() {
+			db.Close()
+		})
+		Convey("Given a transaction", func() {
+			tx, err := db.Begin()
+			So(err, ShouldBeNil)
+			Reset(func() {
+				err = tx.Rollback()
+				So(err, ShouldBeNil)
+			})
+
+			Convey("Given a principal", func() {
+				pr := &Principal{
+					Created:   time.Now(),
+					CreatedBy: "test",
+					Name:      "testins",
+				}
+
+				Convey("When inserting the principal", func() {
+					err = InsertPrincipalTx(tx, pr)
+
+					Convey("It should succeed", func() {
+						So(err, ShouldBeNil)
+						So(pr.ID, ShouldNotBeEmpty)
+
+						Convey("When selecting the principal by ID", func() {
+							selPr, err := PrincipalByIDTx(tx, pr.ID)
+
+							Convey("It should match", func() {
+								So(err, ShouldBeNil)
+								So(selPr.Name, ShouldEqual, pr.Name)
+								So(selPr.Created.Unix(), ShouldEqual, pr.Created.Unix())
+								So(selPr.CreatedBy, ShouldEqual, pr.CreatedBy)
+							})
+						})
+
+						Convey("When selecting the principal by name", func() {
+							selPr, err := PrincipalByNameTx(tx, pr.Name)
+
+							Convey("It should match", func() {
+								So(err, ShouldBeNil)
+								So(selPr.Name, ShouldEqual, pr.Name)
+								So(selPr.Created.Unix(), ShouldEqual, pr.Created.Unix())
+								So(selPr.CreatedBy, ShouldEqual, pr.CreatedBy)
+							})
+						})
+					})
+				})
+			})
+		})
+	}))
+}
