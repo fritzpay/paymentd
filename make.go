@@ -27,7 +27,7 @@ var (
 var output bytes.Buffer
 
 var dependencies = []string{
-	"code.google.com/p/go.tools/cmd/vet",
+	"golang.org/x/tools/cmd/vet",
 	"github.com/tools/godep",
 }
 

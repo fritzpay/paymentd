@@ -1,10 +1,10 @@
 package service
 
 import (
-	"code.google.com/p/go.net/context"
 	"database/sql"
 	"github.com/fritzpay/paymentd/pkg/config"
 	. "github.com/smartystreets/goconvey/convey"
+	"golang.org/x/net/context"
 	"gopkg.in/inconshreveable/log15.v2"
 	"testing"
 )

@@ -1,11 +1,11 @@
 package server
 
 import (
-	"code.google.com/p/go.net/context"
 	"errors"
 	"fmt"
 	"github.com/facebookgo/grace"
 	"github.com/fritzpay/paymentd/pkg/config"
+	"golang.org/x/net/context"
 	"gopkg.in/inconshreveable/log15.v2"
 	"net"
 	"net/http"
