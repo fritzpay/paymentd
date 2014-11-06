@@ -242,6 +242,51 @@ CREATE TABLE IF NOT EXISTS `payment_transaction` (
 ENGINE = InnoDB;
 
 
+-- -----------------------------------------------------
+-- Table `provider_fritzpay_payment`
+-- -----------------------------------------------------
+DROP TABLE IF EXISTS `provider_fritzpay_payment` ;
+
+CREATE TABLE IF NOT EXISTS `provider_fritzpay_payment` (
+  `id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+  `project_id` INT UNSIGNED NOT NULL,
+  `payment_id` BIGINT UNSIGNED NOT NULL,
+  `created` DATETIME NOT NULL,
+  `method_key` VARCHAR(64) NOT NULL,
+  PRIMARY KEY (`id`),
+  INDEX `fk_provider_fritzpay_payment_payment_id_idx` (`payment_id` ASC),
+  UNIQUE INDEX `payment_id` (`project_id` ASC, `payment_id` ASC),
+  CONSTRAINT `fk_provider_fritzpay_payment_payment_id`
+    FOREIGN KEY (`payment_id`)
+    REFERENCES `payment` (`id`)
+    ON DELETE RESTRICT
+    ON UPDATE CASCADE)
+ENGINE = InnoDB
+COMMENT = 'Stores payments made with the FritzPay demo provider.';
+
+
+-- -----------------------------------------------------
+-- Table `fritzpay_payment`.`provider_fritzpay_transaction`
+-- -----------------------------------------------------
+DROP TABLE IF EXISTS `provider_fritzpay_transaction` ;
+
+CREATE TABLE IF NOT EXISTS `provider_fritzpay_transaction` (
+  `fritzpay_payment_id` BIGINT UNSIGNED NOT NULL,
+  `timestamp` BIGINT UNSIGNED NOT NULL,
+  `status` VARCHAR(32) NOT NULL,
+  `fritzpay_id` VARCHAR(64) NULL COMMENT 'This would be the ID which identifies the payment on the provider.',
+  `payload` TEXT NULL,
+  PRIMARY KEY (`fritzpay_payment_id`, `timestamp`),
+  INDEX `fritzpay_id` (`fritzpay_id` ASC),
+  INDEX `status` (`status` ASC),
+  CONSTRAINT `fk_provider_fritzpay_transaction_fritzpay_payment_id`
+    FOREIGN KEY (`fritzpay_payment_id`)
+    REFERENCES `provider_fritzpay_payment` (`id`)
+    ON DELETE RESTRICT
+    ON UPDATE CASCADE)
+ENGINE = InnoDB;
+
+
 SET SQL_MODE=@OLD_SQL_MODE;
 SET FOREIGN_KEY_CHECKS=@OLD_FOREIGN_KEY_CHECKS;
 SET UNIQUE_CHECKS=@OLD_UNIQUE_CHECKS;
