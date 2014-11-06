@@ -73,6 +73,7 @@ func PaymentTransactionCurrentTx(db *sql.Tx, p *Payment) (*PaymentTransaction, e
 		&ts,
 		&paymentTx.Amount,
 		&paymentTx.Subunits,
+		&paymentTx.Currency,
 		&paymentTx.Status,
 		&paymentTx.Comment,
 	)

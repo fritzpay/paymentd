@@ -33,11 +33,13 @@ func NewService(ctx *service.Context) (*Service, error) {
 
 		drivers: make(map[int64]Driver),
 	}
-	s.drivers[driverFritzpay] = &fritzpay.Driver{}
 	return s, nil
 }
 
 func (s *Service) AttachDrivers(mux *mux.Router) error {
+	// add drivers
+	s.drivers[driverFritzpay] = &fritzpay.Driver{}
+
 	var err error
 	mux = mux.PathPrefix(ProviderPath).Subrouter()
 	for _, dr := range s.drivers {

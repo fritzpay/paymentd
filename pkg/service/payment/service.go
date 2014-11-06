@@ -229,6 +229,10 @@ func (s *Service) SetPaymentTransaction(tx *sql.Tx, paymentTx *payment.PaymentTr
 	return nil
 }
 
+func (s *Service) PaymentTransaction(tx *sql.Tx, p *payment.Payment) (*payment.PaymentTransaction, error) {
+	return payment.PaymentTransactionCurrentTx(tx, p)
+}
+
 func (s *Service) CreatePaymentToken(tx *sql.Tx, p *payment.Payment) (*payment.PaymentToken, error) {
 	log := s.log.New(log15.Ctx{"method": "CreatePaymentToken"})
 	token, err := payment.NewPaymentToken(p.PaymentID())

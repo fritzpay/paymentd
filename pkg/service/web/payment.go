@@ -204,7 +204,7 @@ func (h *Handler) setPaymentCookie(w http.ResponseWriter, p *payment.Payment) er
 		return err
 	}
 	c.HttpOnly = h.ctx.Config().Web.Cookie.HTTPOnly
-	c.Secure = h.ctx.Config().Web.Cookie.Secure
+	c.Secure = h.ctx.Config().Web.Secure
 
 	http.SetCookie(w, c)
 	return nil
@@ -218,7 +218,7 @@ func (h *Handler) resetPaymentCookie(w http.ResponseWriter) {
 		Expires: time.Unix(0, 0),
 	}
 	c.HttpOnly = h.ctx.Config().Web.Cookie.HTTPOnly
-	c.Secure = h.ctx.Config().Web.Cookie.Secure
+	c.Secure = h.ctx.Config().Web.Secure
 	http.SetCookie(w, c)
 }
 
