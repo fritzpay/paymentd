@@ -124,6 +124,10 @@ func (cfg *Config) SetCallbackAPIVersion(ver string) {
 	cfg.CallbackAPIVersion.String, cfg.CallbackAPIVersion.Valid = ver, true
 }
 
+func (cfg *Config) SetCallbackProjectKey(key string) {
+	cfg.CallbackProjectKey.String, cfg.CallbackProjectKey.Valid = key, true
+}
+
 func (cfg *Config) SetReturnURL(url string) {
 	cfg.ReturnURL.String, cfg.ReturnURL.Valid = url, true
 }
