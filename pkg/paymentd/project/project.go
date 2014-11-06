@@ -60,6 +60,26 @@ func (c Config) HasValues() bool {
 	return c.WebURL.Valid || c.CallbackURL.Valid || c.CallbackAPIVersion.Valid || c.ProjectKey.Valid || c.ReturnURL.Valid
 }
 
+func (c *Config) SetWebURL(webURL string) {
+	c.WebURL.String, c.WebURL.Valid = webURL, true
+}
+
+func (c *Config) SetCallbackURL(callbackURL string) {
+	c.CallbackURL.String, c.CallbackURL.Valid = callbackURL, true
+}
+
+func (c *Config) SetCallbackAPIVersion(ver string) {
+	c.CallbackAPIVersion.String, c.CallbackAPIVersion.Valid = ver, true
+}
+
+func (c *Config) SetProjectKey(key string) {
+	c.ProjectKey.String, c.ProjectKey.Valid = key, true
+}
+
+func (c *Config) SetReturnURL(url string) {
+	c.ReturnURL.String, c.ReturnURL.Valid = url, true
+}
+
 func (c *Config) UnmarshalJSON(p []byte) error {
 	cfg := &ConfigJSON{}
 	err := json.Unmarshal(p, cfg)
@@ -67,19 +87,19 @@ func (c *Config) UnmarshalJSON(p []byte) error {
 		return err
 	}
 	if cfg.WebURL != nil {
-		c.WebURL.String, c.WebURL.Valid = *cfg.WebURL, true
+		c.SetWebURL(*cfg.WebURL)
 	}
 	if cfg.CallbackURL != nil {
-		c.WebURL.String, c.WebURL.Valid = *cfg.WebURL, true
+		c.SetCallbackURL(*cfg.WebURL)
 	}
 	if cfg.CallbackAPIVersion != nil {
-		c.CallbackAPIVersion.String, c.CallbackAPIVersion.Valid = *cfg.CallbackAPIVersion, true
+		c.SetCallbackAPIVersion(*cfg.CallbackAPIVersion)
 	}
 	if cfg.ProjectKey != nil {
-		c.ProjectKey.String, c.ProjectKey.Valid = *cfg.ProjectKey, true
+		c.SetProjectKey(*cfg.ProjectKey)
 	}
 	if cfg.ReturnURL != nil {
-		c.ReturnURL.String, c.ReturnURL.Valid = *cfg.ReturnURL, true
+		c.SetReturnURL(*cfg.ReturnURL)
 	}
 	return nil
 }
