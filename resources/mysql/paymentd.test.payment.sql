@@ -151,6 +151,8 @@ CREATE TABLE IF NOT EXISTS `payment_config` (
   `country` VARCHAR(2) NULL,
   `locale` VARCHAR(5) NULL,
   `callback_url` TEXT NULL,
+  `callback_api_version` VARCHAR(32) NULL,
+  `callback_project_key` VARCHAR(64) NULL,
   `return_url` TEXT NULL,
   PRIMARY KEY (`project_id`, `payment_id`, `timestamp`),
   INDEX `fk_payment_config_payment_method_id_idx` (`payment_method_id` ASC),

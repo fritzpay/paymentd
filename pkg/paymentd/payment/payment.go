@@ -90,12 +90,14 @@ func (p *Payment) NewTransaction(s PaymentTransactionStatus) *PaymentTransaction
 }
 
 type Config struct {
-	Timestamp       time.Time
-	PaymentMethodID sql.NullInt64
-	Country         sql.NullString
-	Locale          sql.NullString
-	CallbackURL     sql.NullString
-	ReturnURL       sql.NullString
+	Timestamp          time.Time
+	PaymentMethodID    sql.NullInt64
+	Country            sql.NullString
+	Locale             sql.NullString
+	CallbackURL        sql.NullString
+	CallbackAPIVersion sql.NullString
+	CallbackProjectKey sql.NullString
+	ReturnURL          sql.NullString
 }
 
 func (cfg *Config) IsConfigured() bool {
@@ -118,6 +120,18 @@ func (cfg *Config) SetCallbackURL(url string) {
 	cfg.CallbackURL.String, cfg.CallbackURL.Valid = url, true
 }
 
+func (cfg *Config) SetCallbackAPIVersion(ver string) {
+	cfg.CallbackAPIVersion.String, cfg.CallbackAPIVersion.Valid = ver, true
+}
+
 func (cfg *Config) SetReturnURL(url string) {
 	cfg.ReturnURL.String, cfg.ReturnURL.Valid = url, true
+}
+
+func (cfg *Config) HasCallback() bool {
+	return cfg.CallbackURL.Valid && cfg.CallbackAPIVersion.Valid && cfg.CallbackProjectKey.Valid
+}
+
+func (cfg *Config) CallbackConfig() (url, apiVersion, projectKey string) {
+	return cfg.CallbackURL.String, cfg.CallbackAPIVersion.String, cfg.CallbackProjectKey.String
 }

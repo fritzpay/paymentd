@@ -16,7 +16,7 @@ func TestProjectConfig(t *testing.T) {
 		})
 
 		Convey("When a config value is set", func() {
-			pr.Config.SetProjectKey("testkey")
+			pr.Config.SetCallbackProjectKey("testkey")
 
 			Convey("The config should be considered to have values", func() {
 				So(pr.Config.HasValues(), ShouldBeTrue)
@@ -27,13 +27,13 @@ func TestProjectConfig(t *testing.T) {
 			jsonStr, err := json.Marshal(pr.Config)
 			Convey("It should be filled with null values", func() {
 				So(err, ShouldBeNil)
-				expect := `{"WebURL":null,"CallbackURL":null,"CallbackAPIVersion":null,"ProjectKey":null,"ReturnURL":null}`
+				expect := `{"WebURL":null,"CallbackURL":null,"CallbackAPIVersion":null,"CallbackProjectKey":null,"ReturnURL":null}`
 				So(string(jsonStr), ShouldEqual, expect)
 			})
 		})
 
 		Convey("Given a serialized JSON string", func() {
-			cfgStr := `{"WebURL":"WebURL","CallbackURL":"CallbackURL","CallbackAPIVersion":"CallbackAPIVersion","ProjectKey":"ProjectKey","ReturnURL":"ReturnURL"}`
+			cfgStr := `{"WebURL":"WebURL","CallbackURL":"CallbackURL","CallbackAPIVersion":"CallbackAPIVersion","CallbackProjectKey":"CallbackProjectKey","ReturnURL":"ReturnURL"}`
 
 			Convey("When unmarshalling the JSON", func() {
 				err := json.Unmarshal([]byte(cfgStr), &pr.Config)
