@@ -3,7 +3,6 @@ package service
 import (
 	"bufio"
 	"bytes"
-	"code.google.com/p/go.crypto/pbkdf2"
 	"compress/gzip"
 	"crypto/aes"
 	"crypto/cipher"
@@ -11,6 +10,7 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"errors"
+	"golang.org/x/crypto/pbkdf2"
 	"hash"
 	"io"
 	"io/ioutil"

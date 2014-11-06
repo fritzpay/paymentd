@@ -1,11 +1,11 @@
 package config
 
 import (
-	"code.google.com/p/go.crypto/bcrypt"
 	"crypto/rand"
 	"database/sql"
 	"encoding/hex"
 	"fmt"
+	"golang.org/x/crypto/bcrypt"
 )
 
 // Config represents a config set

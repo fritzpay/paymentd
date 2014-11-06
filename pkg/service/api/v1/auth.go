@@ -13,9 +13,9 @@ import (
 	"strings"
 	"time"
 
-	"code.google.com/p/go.crypto/bcrypt"
 	"github.com/fritzpay/paymentd/pkg/paymentd/config"
 	"github.com/fritzpay/paymentd/pkg/service"
+	"golang.org/x/crypto/bcrypt"
 	"gopkg.in/inconshreveable/log15.v2"
 )
 

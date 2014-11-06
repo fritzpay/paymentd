@@ -6,29 +6,9 @@
 	],
 	"Deps": [
 		{
-			"ImportPath": "code.google.com/p/go.crypto/bcrypt",
-			"Comment": "null-226",
-			"Rev": "c9a0e9891d8ff16d1d41100bf923145b2bf25812"
-		},
-		{
 			"ImportPath": "code.google.com/p/go.crypto/blowfish",
 			"Comment": "null-226",
 			"Rev": "c9a0e9891d8ff16d1d41100bf923145b2bf25812"
-		},
-		{
-			"ImportPath": "code.google.com/p/go.crypto/pbkdf2",
-			"Comment": "null-226",
-			"Rev": "c9a0e9891d8ff16d1d41100bf923145b2bf25812"
-		},
-		{
-			"ImportPath": "code.google.com/p/go.net/context",
-			"Comment": "null-157",
-			"Rev": "d94d34f344f8563415625719fe339726ed965d86"
-		},
-		{
-			"ImportPath": "code.google.com/p/go.text/language",
-			"Comment": "null-102",
-			"Rev": "f8db539672d039f96d1531d03c21e3a381c9f473"
 		},
 		{
 			"ImportPath": "code.google.com/p/godec/dec",
@@ -60,6 +40,26 @@
 			"ImportPath": "github.com/smartystreets/goconvey/convey",
 			"Comment": "1.5.0-270-gc9900a9",
 			"Rev": "c9900a95b757fd2e72857ee2c9bf9529fc335eb0"
+		},
+		{
+			"ImportPath": "golang.org/x/crypto/bcrypt",
+			"Comment": "null-231",
+			"Rev": "88f995681294397936c136182f54e1f6891db323"
+		},
+		{
+			"ImportPath": "golang.org/x/crypto/pbkdf2",
+			"Comment": "null-231",
+			"Rev": "88f995681294397936c136182f54e1f6891db323"
+		},
+		{
+			"ImportPath": "golang.org/x/net/context",
+			"Comment": "null-181",
+			"Rev": "eb3aa32581e642b8f84f8103124a98c82e252b4e"
+		},
+		{
+			"ImportPath": "golang.org/x/text/language",
+			"Comment": "null-104",
+			"Rev": "7ab6d3749429e2c62c53eecadf3e4ec5e715c11b"
 		},
 		{
 			"ImportPath": "gopkg.in/inconshreveable/log15.v2",

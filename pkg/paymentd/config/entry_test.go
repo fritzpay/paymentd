@@ -1,11 +1,11 @@
 package config
 
 import (
-	"code.google.com/p/go.crypto/bcrypt"
 	"database/sql"
 	"fmt"
 	"github.com/fritzpay/paymentd/pkg/testutil"
 	. "github.com/smartystreets/goconvey/convey"
+	"golang.org/x/crypto/bcrypt"
 	"math/rand"
 	"strconv"
 	"testing"

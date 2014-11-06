@@ -2,10 +2,10 @@ package testutil
 
 import (
 	"bytes"
-	"code.google.com/p/go.net/context"
 	"github.com/fritzpay/paymentd/pkg/config"
 	"github.com/fritzpay/paymentd/pkg/service"
 	. "github.com/smartystreets/goconvey/convey"
+	"golang.org/x/net/context"
 	"gopkg.in/inconshreveable/log15.v2"
 	"net/http"
 )
