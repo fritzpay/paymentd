@@ -90,7 +90,7 @@ func (c *Config) UnmarshalJSON(p []byte) error {
 		c.SetWebURL(*cfg.WebURL)
 	}
 	if cfg.CallbackURL != nil {
-		c.SetCallbackURL(*cfg.WebURL)
+		c.SetCallbackURL(*cfg.CallbackURL)
 	}
 	if cfg.CallbackAPIVersion != nil {
 		c.SetCallbackAPIVersion(*cfg.CallbackAPIVersion)
@@ -104,7 +104,7 @@ func (c *Config) UnmarshalJSON(p []byte) error {
 	return nil
 }
 
-func (c *Config) MarshalJSON() ([]byte, error) {
+func (c Config) MarshalJSON() ([]byte, error) {
 	cfg := &ConfigJSON{}
 	if c.WebURL.Valid {
 		cfg.WebURL = &c.WebURL.String
