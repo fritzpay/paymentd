@@ -1,13 +1,13 @@
 package fritzpay
 
 import (
-	"code.google.com/p/go.net/context"
 	"database/sql"
 	"fmt"
 	"github.com/fritzpay/paymentd/pkg/paymentd/payment"
 	"github.com/fritzpay/paymentd/pkg/paymentd/payment_method"
 	paymentService "github.com/fritzpay/paymentd/pkg/service/payment"
 	"github.com/go-sql-driver/mysql"
+	"golang.org/x/net/context"
 	"gopkg.in/inconshreveable/log15.v2"
 	"net/http"
 	"net/url"

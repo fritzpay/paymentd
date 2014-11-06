@@ -1,11 +1,11 @@
 package fritzpay
 
 import (
-	"code.google.com/p/go.net/context"
 	"crypto/sha1"
 	"database/sql"
 	"encoding/hex"
 	"fmt"
+	"golang.org/x/net/context"
 	"gopkg.in/inconshreveable/log15.v2"
 	"net/http"
 	"net/url"
