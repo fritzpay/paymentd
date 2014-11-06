@@ -4,9 +4,11 @@ import (
 	"database/sql"
 	"github.com/fritzpay/paymentd/pkg/paymentd/payment"
 	"github.com/fritzpay/paymentd/pkg/paymentd/payment_method"
+	"github.com/fritzpay/paymentd/pkg/server"
 	"github.com/fritzpay/paymentd/pkg/service"
 	"github.com/go-sql-driver/mysql"
 	"gopkg.in/inconshreveable/log15.v2"
+	"net/http"
 	"time"
 )
 
@@ -60,6 +62,9 @@ type Service struct {
 	log log15.Logger
 
 	idCoder *payment.IDEncoder
+
+	tr *http.Transport
+	cl *http.Client
 }
 
 // NewService creates a new payment service
@@ -80,7 +85,30 @@ func NewService(ctx *service.Context) (*Service, error) {
 		return nil, err
 	}
 
+	s.tr = &http.Transport{}
+	s.cl = &http.Client{
+		Transport: s.tr,
+	}
+
+	go s.handleContext()
+
 	return s, nil
+}
+
+func (s *Service) handleContext() {
+	// if attached to a server, this will tell the server to wait with shutting down
+	// until the cleanup process is complete
+	server.Wait.Add(1)
+	defer server.Wait.Done()
+	for {
+		select {
+		case <-s.ctx.Done():
+			s.log.Info("service context closed", log15.Ctx{"err": s.ctx.Err()})
+			s.log.Info("closing idle connections...")
+			s.tr.CloseIdleConnections()
+			return
+		}
+	}
 }
 
 // EncodedPaymentID returns a payment id with the id part encoded
