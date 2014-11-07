@@ -121,12 +121,12 @@ CREATE TABLE IF NOT EXISTS `project_config` (
   `web_url` TEXT NULL,
   `callback_url` TEXT NULL,
   `callback_api_version` VARCHAR(32) NULL,
-  `project_key` VARCHAR(64) NULL,
+  `callback_project_key` VARCHAR(64) NULL,
   `return_url` TEXT NULL,
   PRIMARY KEY (`project_id`, `timestamp`),
-  INDEX `fk_project_config_project_key_idx` (`project_key` ASC),
-  CONSTRAINT `fk_project_config_project_key`
-    FOREIGN KEY (`project_key`)
+  INDEX `fk_project_config_project_key_idx` (`callback_project_key` ASC),
+  CONSTRAINT `fk_project_config_callback_project_key`
+    FOREIGN KEY (`callback_project_key`)
     REFERENCES `project_key` (`key`)
     ON DELETE RESTRICT
     ON UPDATE CASCADE,

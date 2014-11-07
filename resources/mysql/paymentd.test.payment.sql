@@ -151,6 +151,8 @@ CREATE TABLE IF NOT EXISTS `payment_config` (
   `country` VARCHAR(2) NULL,
   `locale` VARCHAR(5) NULL,
   `callback_url` TEXT NULL,
+  `callback_api_version` VARCHAR(32) NULL,
+  `callback_project_key` VARCHAR(64) NULL,
   `return_url` TEXT NULL,
   PRIMARY KEY (`project_id`, `payment_id`, `timestamp`),
   INDEX `fk_payment_config_payment_method_id_idx` (`payment_method_id` ASC),
@@ -237,6 +239,51 @@ CREATE TABLE IF NOT EXISTS `payment_transaction` (
   CONSTRAINT `fk_payment_transaction_currency`
     FOREIGN KEY (`currency`)
     REFERENCES `currency` (`code_iso_4217`)
+    ON DELETE RESTRICT
+    ON UPDATE CASCADE)
+ENGINE = InnoDB;
+
+
+-- -----------------------------------------------------
+-- Table `provider_fritzpay_payment`
+-- -----------------------------------------------------
+DROP TABLE IF EXISTS `provider_fritzpay_payment` ;
+
+CREATE TABLE IF NOT EXISTS `provider_fritzpay_payment` (
+  `id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+  `project_id` INT UNSIGNED NOT NULL,
+  `payment_id` BIGINT UNSIGNED NOT NULL,
+  `created` DATETIME NOT NULL,
+  `method_key` VARCHAR(64) NOT NULL,
+  PRIMARY KEY (`id`),
+  INDEX `fk_provider_fritzpay_payment_payment_id_idx` (`payment_id` ASC),
+  UNIQUE INDEX `payment_id` (`project_id` ASC, `payment_id` ASC),
+  CONSTRAINT `fk_provider_fritzpay_payment_payment_id`
+    FOREIGN KEY (`payment_id`)
+    REFERENCES `payment` (`id`)
+    ON DELETE RESTRICT
+    ON UPDATE CASCADE)
+ENGINE = InnoDB
+COMMENT = 'Stores payments made with the FritzPay demo provider.';
+
+
+-- -----------------------------------------------------
+-- Table `fritzpay_payment`.`provider_fritzpay_transaction`
+-- -----------------------------------------------------
+DROP TABLE IF EXISTS `provider_fritzpay_transaction` ;
+
+CREATE TABLE IF NOT EXISTS `provider_fritzpay_transaction` (
+  `fritzpay_payment_id` BIGINT UNSIGNED NOT NULL,
+  `timestamp` BIGINT UNSIGNED NOT NULL,
+  `status` VARCHAR(32) NOT NULL,
+  `fritzpay_id` VARCHAR(64) NULL COMMENT 'This would be the ID which identifies the payment on the provider.',
+  `payload` TEXT NULL,
+  PRIMARY KEY (`fritzpay_payment_id`, `timestamp`),
+  INDEX `fritzpay_id` (`fritzpay_id` ASC),
+  INDEX `status` (`status` ASC),
+  CONSTRAINT `fk_provider_fritzpay_transaction_fritzpay_payment_id`
+    FOREIGN KEY (`fritzpay_payment_id`)
+    REFERENCES `provider_fritzpay_payment` (`id`)
     ON DELETE RESTRICT
     ON UPDATE CASCADE)
 ENGINE = InnoDB;

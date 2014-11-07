@@ -83,12 +83,13 @@ type Config struct {
 
 		// Should the API server provide administrative endpoints?
 		ServeAdmin bool
+		// SSL?
+		Secure bool
 		// Cookie-based authentication settings
 		Cookie struct {
 			// Should the API allow cookie-based authentication?
 			AllowCookieAuth bool
 			HTTPOnly        bool
-			Secure          bool
 		}
 
 		// serve the adminpanel gui files (fullfill same origin policy)
@@ -99,14 +100,16 @@ type Config struct {
 	// Web server config
 	Web struct {
 		Active  bool
+		URL     string
 		Service ServiceConfig
 
 		PubWWWDir   string
 		TemplateDir string
 
+		Secure bool
+
 		Cookie struct {
 			HTTPOnly bool
-			Secure   bool
 		}
 		AuthKeys []string
 	}
@@ -140,6 +143,7 @@ func DefaultConfig() Config {
 
 	cfg.API.Cookie.HTTPOnly = true
 
+	cfg.Web.URL = "http://localhost:8443"
 	cfg.Web.Service.Address = ":8443"
 	cfg.Web.Service.ReadTimeout = Duration("10s")
 	cfg.Web.Service.WriteTimeout = Duration("10s")

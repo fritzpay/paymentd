@@ -1,7 +1,6 @@
 package main
 
 import (
-	"code.google.com/p/go.net/context"
 	"database/sql"
 	"errors"
 	"flag"
@@ -12,6 +11,7 @@ import (
 	"github.com/fritzpay/paymentd/pkg/service/api"
 	"github.com/fritzpay/paymentd/pkg/service/web"
 	_ "github.com/go-sql-driver/mysql"
+	"golang.org/x/net/context"
 	"gopkg.in/inconshreveable/log15.v2"
 	"os"
 )
@@ -20,7 +20,7 @@ const (
 	// AppName is the name of the application
 	AppName = "paymentd"
 	// AppVersion is the version of the application
-	AppVersion = "0.1"
+	AppVersion = "0.9.0-alpha"
 )
 
 // command line flags

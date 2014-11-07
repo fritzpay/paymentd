@@ -126,9 +126,9 @@ func (a *AdminAPI) PaymentMethodsRequest() http.Handler {
 			// set paymentMethod values
 			// get user id
 			auth := service.RequestContextAuth(r)
-			var pm payment_method.PaymentMethod
+			var pm payment_method.Method
 			// parse status value
-			pm.Status, err = payment_method.ParsePaymentMethodStatus(pmr.Status)
+			pm.Status, err = payment_method.ParseMethodStatus(pmr.Status)
 			pm.StatusChanged = time.Now()
 			pm.StatusCreatedBy = auth[AuthUserIDKey].(string)
 			if err != nil {

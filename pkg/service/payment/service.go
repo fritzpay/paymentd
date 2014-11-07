@@ -3,9 +3,14 @@ package payment
 import (
 	"database/sql"
 	"github.com/fritzpay/paymentd/pkg/paymentd/payment"
+	"github.com/fritzpay/paymentd/pkg/paymentd/payment_method"
+	"github.com/fritzpay/paymentd/pkg/paymentd/project"
+	"github.com/fritzpay/paymentd/pkg/server"
 	"github.com/fritzpay/paymentd/pkg/service"
+	"github.com/fritzpay/paymentd/pkg/service/payment/notification"
 	"github.com/go-sql-driver/mysql"
 	"gopkg.in/inconshreveable/log15.v2"
+	"net/http"
 	"time"
 )
 
@@ -19,6 +24,14 @@ func (e errorID) Error() string {
 		return "lock wait timeout"
 	case ErrDuplicateIdent:
 		return "duplicate ident in payment"
+	case ErrPaymentCallbackConfig:
+		return "callback config error"
+	case ErrPaymentMethodNotFound:
+		return "payment method not found"
+	case ErrPaymentMethodConflict:
+		return "payment method project mismatch"
+	case ErrPaymentMethodInactive:
+		return "payment method inactive"
 	case ErrInternal:
 		return "internal error"
 	default:
@@ -33,6 +46,14 @@ const (
 	ErrDBLockTimeout
 	// duplicate Ident in payment
 	ErrDuplicateIdent
+	// callback config error
+	ErrPaymentCallbackConfig
+	// payment method not found
+	ErrPaymentMethodNotFound
+	// payment method project mismatch
+	ErrPaymentMethodConflict
+	// payment method inactive
+	ErrPaymentMethodInactive
 	// internal error
 	ErrInternal
 )
@@ -47,6 +68,9 @@ type Service struct {
 	log log15.Logger
 
 	idCoder *payment.IDEncoder
+
+	tr *http.Transport
+	cl *http.Client
 }
 
 // NewService creates a new payment service
@@ -67,7 +91,30 @@ func NewService(ctx *service.Context) (*Service, error) {
 		return nil, err
 	}
 
+	s.tr = &http.Transport{}
+	s.cl = &http.Client{
+		Transport: s.tr,
+	}
+
+	go s.handleContext()
+
 	return s, nil
+}
+
+func (s *Service) handleContext() {
+	// if attached to a server, this will tell the server to wait with shutting down
+	// until the cleanup process is complete
+	server.Wait.Add(1)
+	defer server.Wait.Done()
+	for {
+		select {
+		case <-s.ctx.Done():
+			s.log.Info("service context closed", log15.Ctx{"err": s.ctx.Err()})
+			s.log.Info("closing idle connections...")
+			s.tr.CloseIdleConnections()
+			return
+		}
+	}
 }
 
 // EncodedPaymentID returns a payment id with the id part encoded
@@ -87,6 +134,25 @@ func (s *Service) CreatePayment(tx *sql.Tx, p *payment.Payment) error {
 	log := s.log.New(log15.Ctx{
 		"method": "CreatePayment",
 	})
+	if p.Config.HasCallback() {
+		callbackProjectKey, err := project.ProjectKeyByKeyTx(tx, p.Config.CallbackProjectKey.String)
+		if err != nil {
+			if err == project.ErrProjectKeyNotFound {
+				log.Error("callback project key not found", log15.Ctx{"callbackProjectKey": p.Config.CallbackProjectKey.String})
+				return ErrPaymentCallbackConfig
+			}
+			log.Error("error retrieving callback project key", log15.Ctx{"err": err})
+			return ErrDB
+		}
+		if callbackProjectKey.Project.ID != p.ProjectID() {
+			log.Error("callback project mismatch", log15.Ctx{
+				"callbackProjectKey": callbackProjectKey.Key,
+				"callbackProjectID":  callbackProjectKey.Project.ID,
+				"projectID":          p.ProjectID(),
+			})
+			return ErrPaymentCallbackConfig
+		}
+	}
 	err := payment.InsertPaymentTx(tx, p)
 	if err != nil {
 		if mysqlErr, ok := err.(*mysql.MySQLError); ok {
@@ -119,6 +185,31 @@ func (s *Service) CreatePayment(tx *sql.Tx, p *payment.Payment) error {
 
 func (s *Service) SetPaymentConfig(tx *sql.Tx, p *payment.Payment) error {
 	log := s.log.New(log15.Ctx{"method": "SetPaymentConfig"})
+	if p.Config.PaymentMethodID.Valid {
+		log = log.New(log15.Ctx{"paymentMethodID": p.Config.PaymentMethodID.Int64})
+		meth, err := payment_method.PaymentMethodByIDTx(tx, p.Config.PaymentMethodID.Int64)
+		if err != nil {
+			if mysqlErr, ok := err.(*mysql.MySQLError); ok {
+				if mysqlErr.Number == 1213 {
+					return ErrDBLockTimeout
+				}
+			}
+			if err == payment_method.ErrPaymentMethodNotFound {
+				log.Warn(ErrPaymentMethodNotFound.Error())
+				return ErrPaymentMethodNotFound
+			}
+			log.Error("error on select payment method", log15.Ctx{"err": err})
+			return ErrDB
+		}
+		if meth.ProjectID != p.ProjectID() {
+			log.Warn(ErrPaymentMethodConflict.Error())
+			return ErrPaymentMethodConflict
+		}
+		if meth.Status != payment_method.PaymentMethodStatusActive {
+			log.Warn(ErrPaymentMethodInactive.Error())
+			return ErrPaymentMethodInactive
+		}
+	}
 	err := payment.InsertPaymentConfigTx(tx, p)
 	if err != nil {
 		if mysqlErr, ok := err.(*mysql.MySQLError); ok {
@@ -151,26 +242,6 @@ func (s *Service) SetPaymentMetadata(tx *sql.Tx, p *payment.Payment) error {
 	return nil
 }
 
-func (s *Service) CreatePaymentToken(tx *sql.Tx, p *payment.Payment) (*payment.PaymentToken, error) {
-	log := s.log.New(log15.Ctx{"method": "CreatePaymentToken"})
-	token, err := payment.NewPaymentToken(p.PaymentID())
-	if err != nil {
-		log.Error("error creating payment token", log15.Ctx{"err": err})
-		return nil, ErrInternal
-	}
-	err = payment.InsertPaymentTokenTx(tx, token)
-	if err != nil {
-		if mysqlErr, ok := err.(*mysql.MySQLError); ok {
-			if mysqlErr.Number == 1213 {
-				return nil, ErrDBLockTimeout
-			}
-		}
-		log.Error("error saving payment token", log15.Ctx{"err": err})
-		return nil, ErrDB
-	}
-	return token, nil
-}
-
 // IsProcessablePayment returns true if the given payment is considered processable
 //
 // All required fields are present.
@@ -194,6 +265,65 @@ func (s *Service) IsProcessablePayment(p *payment.Payment) bool {
 // when there is at least one transaction present
 func (s *Service) IsInitialized(p *payment.Payment) bool {
 	return p.Status != payment.PaymentStatusNone
+}
+
+func (s *Service) SetPaymentTransaction(tx *sql.Tx, paymentTx *payment.PaymentTransaction) error {
+	log := s.log.New(log15.Ctx{"method": "SetPaymentTransaction"})
+	err := payment.InsertPaymentTransactionTx(tx, paymentTx)
+	if err != nil {
+		if mysqlErr, ok := err.(*mysql.MySQLError); ok {
+			if mysqlErr.Number == 1213 {
+				return ErrDBLockTimeout
+			}
+		}
+		log.Error("error saving payment transaction", log15.Ctx{"err": err})
+		return ErrDB
+	}
+	var callback notification.Callbacker
+	if notification.CanCallback(&paymentTx.Payment.Config) {
+		callback = &paymentTx.Payment.Config
+	} else {
+		pr, err := project.ProjectByIdTx(tx, paymentTx.Payment.ProjectID())
+		if err != nil {
+			if err == project.ErrProjectNotFound {
+				log.Crit("payment with invalid project", log15.Ctx{"projectID": paymentTx.Payment.ProjectID()})
+				return ErrInternal
+			}
+			log.Error("error retrieving project", log15.Ctx{"err": err})
+			return ErrDB
+		}
+		if notification.CanCallback(pr.Config) {
+			callback = pr.Config
+		}
+	}
+	if callback != nil {
+		notification.Notify(s.ctx, callback, paymentTx)
+	}
+	return nil
+}
+
+func (s *Service) PaymentTransaction(tx *sql.Tx, p *payment.Payment) (*payment.PaymentTransaction, error) {
+	return payment.PaymentTransactionCurrentTx(tx, p)
+}
+
+func (s *Service) CreatePaymentToken(tx *sql.Tx, p *payment.Payment) (*payment.PaymentToken, error) {
+	log := s.log.New(log15.Ctx{"method": "CreatePaymentToken"})
+	token, err := payment.NewPaymentToken(p.PaymentID())
+	if err != nil {
+		log.Error("error creating payment token", log15.Ctx{"err": err})
+		return nil, ErrInternal
+	}
+	err = payment.InsertPaymentTokenTx(tx, token)
+	if err != nil {
+		if mysqlErr, ok := err.(*mysql.MySQLError); ok {
+			if mysqlErr.Number == 1213 {
+				return nil, ErrDBLockTimeout
+			}
+		}
+		log.Error("error saving payment token", log15.Ctx{"err": err})
+		return nil, ErrDB
+	}
+	return token, nil
 }
 
 // TODO use token max age from config

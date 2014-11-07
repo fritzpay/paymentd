@@ -1,11 +1,11 @@
 package service
 
 import (
-	"code.google.com/p/go.net/context"
 	"database/sql"
 	"errors"
 	"fmt"
 	"github.com/fritzpay/paymentd/pkg/config"
+	"golang.org/x/net/context"
 	"gopkg.in/inconshreveable/log15.v2"
 )
 
@@ -35,6 +35,10 @@ func (ctx *Context) Value(key interface{}) interface{} {
 		return ctx.log
 	case "keychain":
 		return ctx.apiKeychain
+	case "paymentDB":
+		return ctx.paymentDBWrite
+	case "principalDB":
+		return ctx.principalDBWrite
 	default:
 		return ctx.Context.Value(key)
 	}

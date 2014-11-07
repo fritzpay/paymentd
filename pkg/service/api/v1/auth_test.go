@@ -43,8 +43,8 @@ func TestGetCredentialsWithBasicAuth(t *testing.T) {
 				r, err := http.NewRequest("GET", ServicePath+"/authorization", nil)
 				So(err, ShouldBeNil)
 
-				Convey("When the request method is PUT", func() {
-					r.Method = "PUT"
+				Convey("When the request method is POST", func() {
+					r.Method = "POST"
 
 					Convey("When the handler is called", func() {
 						w := testutil.NewResponseWriter()
@@ -99,7 +99,7 @@ func TestGetCredentialsWithBasicAuth(t *testing.T) {
 										})
 									})
 
-									Convey("Given the returned authorization container", func() {
+									Convey("Given the returned (correct) authorization container", func() {
 										m := make(map[string]string)
 										dec := json.NewDecoder(&w.Buf)
 										err := dec.Decode(&m)
@@ -123,6 +123,18 @@ func TestGetCredentialsWithBasicAuth(t *testing.T) {
 													})
 												})
 											})
+										})
+									})
+								})
+
+								Convey("Given cookie auth is allowed", func() {
+									ctx.Config().API.Cookie.AllowCookieAuth = true
+
+									Convey("When the handler is called", func() {
+										w := testutil.NewResponseWriter()
+										mx.ServeHTTP(w, r)
+										Convey("The handler should set a cookie", func() {
+											So(w.Header().Get("Set-Cookie"), ShouldNotBeEmpty)
 										})
 									})
 								})

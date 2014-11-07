@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"github.com/fritzpay/paymentd/pkg/service"
 	"github.com/fritzpay/paymentd/pkg/service/payment"
+	"github.com/fritzpay/paymentd/pkg/service/provider"
 	"github.com/gorilla/mux"
 	"gopkg.in/inconshreveable/log15.v2"
 	"net/http"
@@ -23,6 +24,8 @@ type Handler struct {
 	paymentService *payment.Service
 	templateDir    string
 	keyChain       *service.Keychain
+
+	providerService *provider.Service
 }
 
 func NewHandler(ctx *service.Context) (*Handler, error) {
@@ -39,6 +42,11 @@ func NewHandler(ctx *service.Context) (*Handler, error) {
 	cfg := h.ctx.Config()
 
 	h.paymentService, err = payment.NewService(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	h.providerService, err = provider.NewService(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -60,6 +68,12 @@ func NewHandler(ctx *service.Context) (*Handler, error) {
 	err = h.registerPublic()
 	if err != nil {
 		h.log.Error("error registering www public dir", log15.Ctx{"err": err})
+		return nil, err
+	}
+
+	err = h.providerService.AttachDrivers(h.router)
+	if err != nil {
+		h.log.Error("error attaching provider driver endpoints to web", log15.Ctx{"err": err})
 		return nil, err
 	}
 

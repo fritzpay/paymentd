@@ -57,7 +57,7 @@ func InsertProjectTx(db *sql.Tx, p *Project) error {
 
 const insertProjectConfig = `
 INSERT INTO project_config
-(project_id, timestamp, web_url, callback_url, callback_api_version, project_key, return_url)
+(project_id, timestamp, web_url, callback_url, callback_api_version, callback_project_key, return_url)
 VALUES
 (?, ?, ?, ?, ?, ?, ?)
 `
@@ -70,7 +70,7 @@ func execInsertProjectConfig(insert *sql.Stmt, p *Project) error {
 		p.Config.WebURL,
 		p.Config.CallbackURL,
 		p.Config.CallbackAPIVersion,
-		p.Config.ProjectKey,
+		p.Config.CallbackProjectKey,
 		p.Config.ReturnURL,
 	)
 	insert.Close()
@@ -110,7 +110,7 @@ SELECT
 	c.web_url,
 	c.callback_url,
 	c.callback_api_version,
-	c.project_key,
+	c.callback_project_key,
 	c.return_url
 FROM project AS p
 LEFT JOIN project_config AS c ON
@@ -150,7 +150,7 @@ func scanProject(row *sql.Row) (*Project, error) {
 		&p.Config.WebURL,
 		&p.Config.CallbackURL,
 		&p.Config.CallbackAPIVersion,
-		&p.Config.ProjectKey,
+		&p.Config.CallbackProjectKey,
 		&p.Config.ReturnURL,
 	)
 	if err != nil {
@@ -213,7 +213,7 @@ SELECT
 	c.web_url,
 	c.callback_url,
 	c.callback_api_version,
-	c.project_key,
+	c.callback_project_key,
 	c.return_url
 FROM project_key AS k
 INNER JOIN project AS p ON
@@ -257,7 +257,7 @@ func scanProjectKey(row *sql.Row) (*Projectkey, error) {
 		&pk.Project.Config.WebURL,
 		&pk.Project.Config.CallbackURL,
 		&pk.Project.Config.CallbackAPIVersion,
-		&pk.Project.Config.ProjectKey,
+		&pk.Project.Config.CallbackProjectKey,
 		&pk.Project.Config.ReturnURL,
 	)
 	if err != nil {
@@ -270,6 +270,12 @@ func scanProjectKey(row *sql.Row) (*Projectkey, error) {
 		pk.Project.Config.Timestamp = time.Unix(ts.Int64, 0)
 	}
 	return pk, nil
+}
+
+// ProjectKeyByKeyTx selects a project key by the given key
+func ProjectKeyByKeyTx(db *sql.Tx, key string) (*Projectkey, error) {
+	row := db.QueryRow(selectProjectKeyByKey, key)
+	return scanProjectKey(row)
 }
 
 // ProjectKeyByKeyDB selects a project key by the given key
