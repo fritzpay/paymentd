@@ -7,10 +7,11 @@ import (
 	"github.com/fritzpay/paymentd/pkg/paymentd/principal"
 	"github.com/fritzpay/paymentd/pkg/paymentd/project"
 	"github.com/fritzpay/paymentd/pkg/service"
+	"github.com/gorilla/mux"
 	"gopkg.in/inconshreveable/log15.v2"
 	"net/http"
-	"path"
 	"strconv"
+	"time"
 )
 
 type ProjectAdminAPIResponse struct {
@@ -66,20 +67,26 @@ func (a *AdminAPI) getProject(w http.ResponseWriter, r *http.Request) {
 
 	// parse request paramter
 	// project_id
-	urlpath, projectIdParam := path.Split(path.Clean(r.URL.Path))
-	if Debug {
-		log.Debug("request", log15.Ctx{"requestPath": urlpath, "projectID": projectIdParam})
-	}
-	projectId, err := strconv.ParseInt(projectIdParam, 10, 64)
+	vars := mux.Vars(r)
+	projectIDParam := vars["projectid"]
+	params := r.URL.Query()
+	principalIDParam := params.Get("principalid")
+	projectID, err := strconv.ParseInt(projectIDParam, 10, 64)
 	if err != nil {
-		log.Error("param conversion error", log15.Ctx{"err": err})
+		log.Error("param projectid conversion error", log15.Ctx{"err": err})
+		ErrReadParam.Write(w)
+		return
+	}
+	principalID, err := strconv.ParseInt(principalIDParam, 10, 64)
+	if err != nil {
+		log.Error("param principalid conversion error", log15.Ctx{"err": err})
 		ErrReadParam.Write(w)
 		return
 	}
 
 	// get project from database
 	db := a.ctx.PrincipalDB(service.ReadOnly)
-	pr, err := project.ProjectByIdDB(db, projectId)
+	pr, err := project.ProjectByPrincipalIDandIDDB(db, principalID, projectID)
 	if err == project.ErrProjectNotFound {
 		log.Warn("project not found", log15.Ctx{"err": err})
 		ErrNotFound.Write(w)
@@ -114,7 +121,9 @@ func (a *AdminAPI) getProject(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// add new project
 func (a *AdminAPI) putNewProject(w http.ResponseWriter, r *http.Request) {
+
 	log := a.log.New(log15.Ctx{"method": "putNewProject"})
 	auth, err := getAuthContainer(r)
 	if err != nil {
@@ -132,8 +141,13 @@ func (a *AdminAPI) putNewProject(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	r.Body.Close()
+
+	// created
+	pr.CreatedBy = auth[AuthUserIDKey].(string)
+	pr.Created = time.Now().UTC().Round(time.Second)
+
 	// validate fields
-	if pr.Name == "" {
+	if len(pr.Name) < 1 {
 		log.Warn("project without name")
 		ErrInval.Write(w)
 		return
@@ -143,7 +157,6 @@ func (a *AdminAPI) putNewProject(w http.ResponseWriter, r *http.Request) {
 		ErrInval.Write(w)
 		return
 	}
-	pr.CreatedBy = auth[AuthUserIDKey].(string)
 
 	log = log.New(log15.Ctx{"projectName": pr.Name, "principalID": pr.PrincipalID})
 
@@ -162,9 +175,10 @@ func (a *AdminAPI) putNewProject(w http.ResponseWriter, r *http.Request) {
 		commit = true
 		log.Crit("error on begin", log15.Ctx{"err": err})
 		ErrDatabase.Write(w)
+		return
 	}
 
-	// principal
+	// does principal exist
 	_, err = principal.PrincipalByIDTx(tx, pr.PrincipalID)
 	if err != nil {
 		if err == principal.ErrPrincipalNotFound {
@@ -179,9 +193,9 @@ func (a *AdminAPI) putNewProject(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	//check if this project already exist
-	_, err = project.ProjectByNameTx(tx, pr.PrincipalID, pr.Name)
+	_, err = project.ProjectByPrincipalIDandIDTx(tx, pr.PrincipalID, pr.ID)
 	if err != nil && err != project.ErrProjectNotFound {
-		log.Error("error retrieving project by name", log15.Ctx{"err": err})
+		log.Error("error retrieving project", log15.Ctx{"err": err})
 		ErrDatabase.Write(w)
 		return
 	}
@@ -191,6 +205,7 @@ func (a *AdminAPI) putNewProject(w http.ResponseWriter, r *http.Request) {
 		ErrConflict.Write(w)
 		return
 	}
+
 	// insert project from database
 	err = project.InsertProjectTx(tx, &pr)
 	if err != nil {
@@ -234,7 +249,9 @@ func (a *AdminAPI) putNewProject(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// add change project data
 func (a *AdminAPI) postChangeProject(w http.ResponseWriter, r *http.Request) {
+
 	log := a.log.New(log15.Ctx{"method": "postChangeProject"})
 
 	auth, err := getAuthContainer(r)
@@ -243,68 +260,87 @@ func (a *AdminAPI) postChangeProject(w http.ResponseWriter, r *http.Request) {
 		ErrSystem.Write(w)
 		return
 	}
-	// get Metadata from post variables
+
+	// get data from post variables
 	jd := json.NewDecoder(r.Body)
 	pr := &project.Project{}
 	err = jd.Decode(pr)
 	r.Body.Close()
 	if err != nil {
 		ErrReadJson.Write(w)
-		log.Error("json decode failed: ", log15.Ctx{"err": err})
+		log.Error("json decode failed", log15.Ctx{"err": err})
 		return
 	}
+
+	// created
 	pr.CreatedBy = auth[AuthUserIDKey].(string)
-	postedMetadata := pr.Metadata
+	pr.Created = time.Now().UTC().Round(time.Second)
 
-	// does project exist
-	db := a.ctx.PrincipalDB(service.ReadOnly)
-	var prdb *project.Project
+	// Rollback handling
+	var tx *sql.Tx
+	var commit bool
+	defer func() {
+		if tx != nil && !commit {
+			err = tx.Rollback()
+			if err != nil {
+				log.Crit("error on rollback", log15.Ctx{"err": err})
+			}
+		}
+	}()
 
-	prdb, err = project.ProjectByNameDB(db, pr.PrincipalID, pr.Name)
+	// adding the data
+	tx, err = a.ctx.PrincipalDB().Begin()
+	if err != nil {
+		commit = true
+		ErrDatabase.Write(w)
+		log.Error("error on begin", log15.Ctx{"err": err})
+	}
+
+	//does project exist
+	_, err = project.ProjectByPrincipalIDandIDTx(tx, pr.PrincipalID, pr.ID)
 	if err == project.ErrProjectNotFound {
+		log.Error("error retrieving project", log15.Ctx{"err": err})
 		ErrInval.Write(w)
-		log.Info("project does not exist: "+pr.Name, log15.Ctx{"err": err})
 		return
 	}
 	if err != nil {
-		ErrDatabase.Write(w)
-		log.Error("get project from DB failed: "+pr.Name, log15.Ctx{"err": err})
+		log.Warn("database error", log15.Ctx{"err": err})
+		ErrConflict.Write(w)
 		return
 	}
-	pr.ID = prdb.ID
 
-	// open transaction to add the posted metadata
-	tx, err := db.Begin()
-	if err != nil {
-		ErrDatabase.Write(w)
-		log.Error("Tx begin failed.", log15.Ctx{"err": err})
-	}
-	md := metadata.MetadataFromValues(postedMetadata, pr.CreatedBy)
-
+	// insert Metadata
+	md := metadata.MetadataFromValues(pr.Metadata, pr.CreatedBy)
 	err = metadata.InsertMetadataTx(tx, project.MetadataModel, pr.ID, md)
 	if err != nil {
-		tx.Rollback()
-		w.WriteHeader(http.StatusInternalServerError)
-		log.Error("insert metadata failed", log15.Ctx{"err": err})
+		log.Error("metadata insert failed", log15.Ctx{"err": err})
+		ErrDatabase.Write(w)
 		return
 	}
-	tx.Commit()
 
-	// get stored data from db
-	pr, err = project.ProjectByNameDB(db, pr.PrincipalID, pr.Name)
+	// get stored and added metadata from db
+	pr, err = project.ProjectByPrincipalIDandIDTx(tx, pr.PrincipalID, pr.ID)
 	if err != nil {
-		w.WriteHeader(http.StatusNotFound)
-		log.Error("DB get by name failed.", log15.Ctx{"err": err})
+		log.Error("get metadata failed", log15.Ctx{"err": err})
+		ErrDatabase.Write(w)
 		return
 	}
-	md, err = metadata.MetadataByPrimaryDB(db, project.MetadataModel, pr.ID)
-	if len(md) > 0 {
-		pr.Metadata = md.Values()
-	}
+	md, err = metadata.MetadataByPrimaryTx(tx, project.MetadataModel, pr.ID)
 	if err != nil {
-		log.Error("get metadata failed.", log15.Ctx{"err": err})
+		log.Error("get metadata failed", log15.Ctx{"err": err})
+		ErrDatabase.Write(w)
 		return
 	}
+	pr.Metadata = md.Values()
+
+	err = tx.Commit()
+	if err != nil {
+		ErrDatabase.Write(w)
+		log.Error("error on commit", log15.Ctx{"err": err})
+		return
+	}
+
+	commit = true
 
 	// create response
 	resp := ProjectAdminAPIResponse{}

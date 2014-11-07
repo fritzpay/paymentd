@@ -12,16 +12,18 @@ Create a new project
 
 	.. sourcecode:: http
 
-		PUT /project
+		PUT /project HTTP/1.1
 		Host: example.com
+		Content-Type: application/json
 		Accept: application/json
 		Authorization: MTQxNTA5NTI5MHxYaCVyOkp7RNaMujhp...
 
-	.. sourcecode:: http
-
 		{
 			"PrincipalID":"1",
-			"Name":"Roadrunnergame"
+			"Name":"Roadrunnergame",
+			"Metadata": {
+				"Version":"Singleplay"
+			}
 		}
 
 	**Example reponse**:
@@ -29,7 +31,6 @@ Create a new project
 	.. sourcecode:: http
 
 		HTTP/1.1 200 OK
-		Accept: application/json
 		Content-Type: application/json
 
 		{
@@ -41,7 +42,9 @@ Create a new project
 				"Name":"Roadrunnergame",
 				"CreatedBy":"John Doe",
 				"Created":"2014-10-17T14:12:11Z",
-				"Metadata":null
+				"Metadata":{
+					"Version":"Singleplay"
+				}
 			},
 			"Error": null
 		}
@@ -63,16 +66,19 @@ Change an existing project
 
 	.. sourcecode:: http
 
-		POST /project
+		POST /project HTTP/1.1
 		Host: example.com
+		Content-Type: application/json
 		Accept: application/json
-		Authorization: Basic cm9vdDpyb290
-
-	.. sourcecode:: http		
+		Authorization: MTQxNTA5NTI5MHxYaCVyOkp7RNaMujhp...
 	
 		{
 			"PrincipalID":"1",
-			"Name":"DifferentName",
+			"ID":"1",
+			"Metadata": {
+				"Type": "Game",
+				"Version":"1"
+			}
 		}
 
 	**Example reponse**:
@@ -90,15 +96,16 @@ Change an existing project
 			"Response": {	
 				"ID":1,
 				"PrincipalID":"1",
-				"Name":"DifferentName",
+				"Name":"Roadrunnergame",
 				"CreatedBy":"John Doe",
 				"Created":"2014-10-17T14:12:11Z",
-				"Metadata":null
+				"Metadata": {
+					"Type": "Game",
+					"Version":"1"
+				}
 			},
 			"Error": null
 		}
-
-	:reqheader Authorization: HTTP Basic Auth
 
 	:statuscode 200: No error, project data changed.
 	:statuscode 400: The request was malformed; the provided parameters could not be understood.
@@ -108,7 +115,7 @@ Change an existing project
 Informational
 -------------
 
-.. http:get:: /project/(id)
+.. http:get:: /project/(id)?principalid=(principalid)
 
 	Retrieve the project data with the given project id.
 
@@ -116,7 +123,7 @@ Informational
 
 	.. sourcecode:: http
 
-		GET /project/1
+		GET /project/1?principalid=1 HTTP/1.1
 		Host: example.com
 		Accept: application/json
 		Authorization: dEFFEFeddedeGGEGMceokr353521234
@@ -127,26 +134,35 @@ Informational
 
 		HTTP/1.1 200 OK
 		Accept: application/json
-		Authorization: Basic cm9vdDpyb290
 		Content-Type: application/json
 
 		{
+			"Version": "1.2",
 			"Status": "success",
-			"Info": "project Roadrunnergame created",
-			"Response": {	
-				"ID":1,
-				"PrincipalID":"1",
-				"Name":"Roadrunnergame",
-				"CreatedBy":"John Doe",
-				"Created":"2014-10-17T14:12:11Z",
-				"Metadata":null
+			"Info": "project Roadrunnergame found",
+			"Response": {
+				"ID": "1",
+				"PrincipalID": "1",
+				"Name": "Roadrunnergame",
+				"Created": "2014-10-17T14:12:11Z",
+				"CreatedBy": "John Doe",
+				"Config": {
+					"WebURL": null,
+					"CallbackURL": null,
+					"CallbackAPIVersion": null,
+					"ProjectKey": null,
+					"ReturnURL": null
+				},
+				"Metadata": {
+					"Type": "Game",
+					"Version": "1"
+				}
 			},
 			"Error": null
 		}
 
 	:param name: The project id
-
-	:reqheader Authorization: HTTP Basic Auth
+	:param name: The principal id
 	
 	:statuscode 200: No error, project data served.
 	:statuscode 400: The request was malformed; the provided id could not be understood.

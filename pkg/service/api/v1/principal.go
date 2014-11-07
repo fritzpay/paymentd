@@ -110,7 +110,7 @@ func (a *AdminAPI) putNewPrincipal(w http.ResponseWriter, r *http.Request) {
 	}
 	pr.CreatedBy = auth[AuthUserIDKey].(string)
 	// set created time
-	pr.Created = time.Now()
+	pr.Created = time.Now().UTC().Round(time.Second)
 
 	// insert pr if not exists
 	// start dbtx to save metadata and pr together
@@ -181,13 +181,14 @@ func (a *AdminAPI) postChangePrincipal(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	pr.CreatedBy = auth[AuthUserIDKey].(string)
+	pr.Created = time.Now().UTC().Round(time.Second)
 
 	log = log.New(log15.Ctx{"principalID": pr.ID})
 
 	// open transaction to add the posted metadata
 	tx, err := a.ctx.PrincipalDB().Begin()
 	if err != nil {
-		log.Crit("Tx begin failed.", log15.Ctx{"err": err})
+		log.Crit("Tx begin failed", log15.Ctx{"err": err})
 		ErrDatabase.Write(w)
 		return
 	}
@@ -215,7 +216,7 @@ func (a *AdminAPI) postChangePrincipal(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		tx.Rollback()
 		ErrDatabase.Write(w)
-		log.Error("metadata insert failed.", log15.Ctx{"err": err})
+		log.Error("metadata insert failed", log15.Ctx{"err": err})
 		return
 	}
 
@@ -223,7 +224,7 @@ func (a *AdminAPI) postChangePrincipal(w http.ResponseWriter, r *http.Request) {
 	md, err = metadata.MetadataByPrimaryTx(tx, principal.MetadataModel, pr.ID)
 	if err != nil {
 		tx.Rollback()
-		log.Error("get metadata failed.", log15.Ctx{"err": err})
+		log.Error("get metadata failed", log15.Ctx{"err": err})
 		ErrDatabase.Write(w)
 		return
 	}
