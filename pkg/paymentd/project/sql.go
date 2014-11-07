@@ -123,6 +123,11 @@ LEFT JOIN project_config AS c ON
 	)
 `
 
+const selectProjectById = selectProject + `
+WHERE
+
+	id = ?
+`
 const selectProjectByPrincipalIDAndId = selectProject + `
 WHERE
 	principal_id = ?
@@ -163,6 +168,22 @@ func scanProject(row *sql.Row) (*Project, error) {
 		p.Config.Timestamp = time.Unix(ts.Int64, 0)
 	}
 	return p, nil
+}
+
+// ProjectByIdDB selects a project by the given project id
+//
+// If no such project exists, it will return an empty project
+func ProjectByIDDB(db *sql.DB, projectId int64) (*Project, error) {
+	row := db.QueryRow(selectProjectById, projectId)
+	return scanProject(row)
+}
+
+// ProjectByIdTx selects a project by the given project id
+//
+// If no such project exists, it will return an empty project
+func ProjectByIDTx(db *sql.Tx, projectId int64) (*Project, error) {
+	row := db.QueryRow(selectProjectById, projectId)
+	return scanProject(row)
 }
 
 // ProjectByIdDB selects a project by the given project id
