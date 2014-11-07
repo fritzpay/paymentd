@@ -2,6 +2,7 @@ package payment
 
 import (
 	"database/sql"
+	"errors"
 	"github.com/fritzpay/paymentd/pkg/paymentd/payment"
 	"github.com/fritzpay/paymentd/pkg/paymentd/payment_method"
 	"github.com/fritzpay/paymentd/pkg/paymentd/project"
@@ -94,6 +95,19 @@ func NewService(ctx *service.Context) (*Service, error) {
 	s.tr = &http.Transport{}
 	s.cl = &http.Client{
 		Transport: s.tr,
+		CheckRedirect: func(req *http.Request, via []*http.Request) error {
+			if len(via) > 10 {
+				return errors.New("too many redirects")
+			}
+			// keep user-agent
+			if len(via) > 0 {
+				lastReq := via[len(via)-1]
+				if lastReq.Header.Get("User-Agent") != "" {
+					req.Header.Set("User-Agent", lastReq.Header.Get("User-Agent"))
+				}
+			}
+			return nil
+		},
 	}
 
 	go s.handleContext()
@@ -135,7 +149,7 @@ func (s *Service) CreatePayment(tx *sql.Tx, p *payment.Payment) error {
 		"method": "CreatePayment",
 	})
 	if p.Config.HasCallback() {
-		callbackProjectKey, err := project.ProjectKeyByKeyTx(tx, p.Config.CallbackProjectKey.String)
+		callbackProjectKey, err := project.ProjectKeyByKeyDB(s.ctx.PrincipalDB(service.ReadOnly), p.Config.CallbackProjectKey.String)
 		if err != nil {
 			if err == project.ErrProjectKeyNotFound {
 				log.Error("callback project key not found", log15.Ctx{"callbackProjectKey": p.Config.CallbackProjectKey.String})
@@ -304,7 +318,7 @@ func (s *Service) CallbackPaymentTransaction(tx *sql.Tx, paymentTx *payment.Paym
 	if CanCallback(&paymentTx.Payment.Config) {
 		callback = &paymentTx.Payment.Config
 	} else {
-		pr, err := project.ProjectByIDTx(tx, paymentTx.Payment.ProjectID())
+		pr, err := project.ProjectByIDDB(s.ctx.PrincipalDB(service.ReadOnly), paymentTx.Payment.ProjectID())
 		if err != nil {
 			if err == project.ErrProjectNotFound {
 				log.Crit("payment with invalid project", log15.Ctx{"projectID": paymentTx.Payment.ProjectID()})

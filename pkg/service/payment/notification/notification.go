@@ -5,6 +5,7 @@ import (
 	"github.com/fritzpay/paymentd/pkg/paymentd/payment"
 	"github.com/fritzpay/paymentd/pkg/service"
 	notificationV2 "github.com/fritzpay/paymentd/pkg/service/payment/notification/v2"
+	"io"
 	"time"
 )
 
@@ -18,6 +19,8 @@ type Notification interface {
 	service.Signable
 	SetTransactions(payment.PaymentTransactionList)
 	Sign(time.Time, string, []byte) error
+	Reader() io.ReadCloser
+	Identification() string
 }
 
 func NotificationByVersion(ver string) (NewNotificationFunc, error) {

@@ -4,11 +4,13 @@ import (
 	"bytes"
 	"crypto/sha256"
 	"encoding/hex"
+	"encoding/json"
 	"fmt"
 	"github.com/fritzpay/paymentd/pkg/maputil"
 	"github.com/fritzpay/paymentd/pkg/paymentd/payment"
 	"github.com/fritzpay/paymentd/pkg/service"
 	"hash"
+	"io"
 	"strconv"
 	"time"
 )
@@ -67,6 +69,10 @@ func New(encodedPaymentID payment.PaymentID, p *payment.Payment) (*Notification,
 		n.Locale = p.Config.Locale.String
 	}
 	return n, nil
+}
+
+func (n *Notification) Identification() string {
+	return fmt.Sprintf("payment notification %s", n.Version)
 }
 
 func (n *Notification) SetTransactions(tl payment.PaymentTransactionList) {
@@ -169,4 +175,19 @@ func (n *Notification) Message() ([]byte, error) {
 
 func (n *Notification) HashFunc() func() hash.Hash {
 	return sha256.New
+}
+
+func (n *Notification) Reader() io.ReadCloser {
+	r, w := io.Pipe()
+	go func() {
+		enc := json.NewEncoder(w)
+		err := enc.Encode(n)
+		if err != nil {
+			r.CloseWithError(err)
+			w.CloseWithError(err)
+			return
+		}
+		w.Close()
+	}()
+	return r
 }
