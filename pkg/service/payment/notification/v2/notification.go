@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"github.com/fritzpay/paymentd/pkg/maputil"
 	"github.com/fritzpay/paymentd/pkg/paymentd/payment"
-	paymentService "github.com/fritzpay/paymentd/pkg/service/payment"
 	"hash"
 	"strconv"
 )
@@ -17,7 +16,7 @@ const (
 
 // PaymentNotification represents a notification for connected systems about
 // the state of a payment
-type PaymentNotification struct {
+type Notification struct {
 	Version              string
 	PaymentId            payment.PaymentID
 	Ident                string
@@ -37,10 +36,10 @@ type PaymentNotification struct {
 	Signature            string            `json:",omitempty"`
 }
 
-func NewPaymentNotification(srv *paymentService.Service, p *payment.Payment) (*PaymentNotification, error) {
-	n := &PaymentNotification{
+func New(encodedPaymentID payment.PaymentID, p *payment.Payment) (*Notification, error) {
+	n := &Notification{
 		Version:       PaymentNotificationVersion,
-		PaymentId:     srv.EncodedPaymentID(p.PaymentID()),
+		PaymentId:     encodedPaymentID,
 		Ident:         p.Ident,
 		Amount:        p.Amount,
 		Subunits:      p.Subunits,
@@ -67,7 +66,7 @@ func NewPaymentNotification(srv *paymentService.Service, p *payment.Payment) (*P
 	return n, nil
 }
 
-func (n *PaymentNotification) Message() ([]byte, error) {
+func (n *Notification) Message() ([]byte, error) {
 	var err error
 	buf := bytes.NewBuffer(nil)
 	_, err = buf.WriteString(n.Version)
@@ -150,6 +149,6 @@ func (n *PaymentNotification) Message() ([]byte, error) {
 	return buf.Bytes(), nil
 }
 
-func (n *PaymentNotification) HashFunc() func() hash.Hash {
+func (n *Notification) HashFunc() func() hash.Hash {
 	return sha256.New
 }

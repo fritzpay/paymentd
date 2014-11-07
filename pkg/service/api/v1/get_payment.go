@@ -168,8 +168,8 @@ func (a *PaymentAPI) GetPayment() http.Handler {
 		}
 
 		// create notification
-		var not *notification.PaymentNotification
-		not, err = notification.NewPaymentNotification(a.paymentService, p)
+		var not *notification.Notification
+		not, err = notification.New(a.paymentService.EncodedPaymentID(p.PaymentID()), p)
 		if err != nil {
 			log.Error("error creating response notification", log15.Ctx{"err": err})
 			ErrSystem.Write(w)

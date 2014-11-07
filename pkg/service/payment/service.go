@@ -7,7 +7,6 @@ import (
 	"github.com/fritzpay/paymentd/pkg/paymentd/project"
 	"github.com/fritzpay/paymentd/pkg/server"
 	"github.com/fritzpay/paymentd/pkg/service"
-	"github.com/fritzpay/paymentd/pkg/service/payment/notification"
 	"github.com/go-sql-driver/mysql"
 	"gopkg.in/inconshreveable/log15.v2"
 	"net/http"
@@ -279,8 +278,8 @@ func (s *Service) SetPaymentTransaction(tx *sql.Tx, paymentTx *payment.PaymentTr
 		log.Error("error saving payment transaction", log15.Ctx{"err": err})
 		return ErrDB
 	}
-	var callback notification.Callbacker
-	if notification.CanCallback(&paymentTx.Payment.Config) {
+	var callback Callbacker
+	if CanCallback(&paymentTx.Payment.Config) {
 		callback = &paymentTx.Payment.Config
 	} else {
 		pr, err := project.ProjectByIdTx(tx, paymentTx.Payment.ProjectID())
@@ -292,12 +291,12 @@ func (s *Service) SetPaymentTransaction(tx *sql.Tx, paymentTx *payment.PaymentTr
 			log.Error("error retrieving project", log15.Ctx{"err": err})
 			return ErrDB
 		}
-		if notification.CanCallback(pr.Config) {
+		if CanCallback(pr.Config) {
 			callback = pr.Config
 		}
 	}
 	if callback != nil {
-		notification.Notify(s.ctx, callback, paymentTx)
+		s.Notify(callback, paymentTx)
 	}
 	return nil
 }
