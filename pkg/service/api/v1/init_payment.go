@@ -29,16 +29,19 @@ import (
 
 // InitPaymentRequest is the request JSON struct for POST /payment
 type InitPaymentRequest struct {
-	ProjectKey      string
-	Ident           string
-	Amount          jsonutil.RequiredInt64
-	Subunits        jsonutil.RequiredInt8
-	Currency        string
-	Country         string
-	PaymentMethodID int64  `json:"PaymentMethodId,string"`
-	Locale          string `json:",omitempty"`
-	CallbackURL     string `json:",omitempty"`
-	ReturnURL       string `json:",omitempty"`
+	ProjectKey string
+	Ident      string
+	Amount     jsonutil.RequiredInt64
+	Subunits   jsonutil.RequiredInt8
+	Currency   string
+	Country    string
+
+	PaymentMethodID    int64  `json:"PaymentMethodId,string"`
+	Locale             string `json:",omitempty"`
+	CallbackURL        string `json:",omitempty"`
+	CallbackAPIVersion string `json:",omitempty"`
+	CallbackProjectKey string `json:",omitempty"`
+	ReturnURL          string `json:",omitempty"`
 
 	Metadata map[string]string
 
@@ -172,6 +175,18 @@ func (r *InitPaymentRequest) Message() ([]byte, error) {
 			return nil, fmt.Errorf("buffer error: %v", err)
 		}
 	}
+	if r.CallbackAPIVersion != "" {
+		_, err = buf.WriteString(r.CallbackAPIVersion)
+		if err != nil {
+			return nil, fmt.Errorf("buffer error: %v", err)
+		}
+	}
+	if r.CallbackProjectKey != "" {
+		_, err = buf.WriteString(r.CallbackProjectKey)
+		if err != nil {
+			return nil, fmt.Errorf("buffer error: %v", err)
+		}
+	}
 	if r.ReturnURL != "" {
 		_, err = buf.WriteString(r.ReturnURL)
 		if err != nil {
@@ -227,6 +242,12 @@ func (r *InitPaymentRequest) PopulatePaymentFields(p *payment.Payment) {
 	if r.CallbackURL != "" {
 		p.Config.SetCallbackURL(r.CallbackURL)
 	}
+	if r.CallbackAPIVersion != "" {
+		p.Config.SetCallbackAPIVersion(r.CallbackAPIVersion)
+	}
+	if r.CallbackProjectKey != "" {
+		p.Config.SetCallbackProjectKey(r.CallbackProjectKey)
+	}
 	if r.ReturnURL != "" {
 		p.Config.SetReturnURL(r.ReturnURL)
 	}
@@ -238,16 +259,19 @@ func (r *InitPaymentRequest) PopulatePaymentFields(p *payment.Payment) {
 // InitPaymentResponse is the JSON response struct for POST /payment
 type InitPaymentResponse struct {
 	Confirmation struct {
-		Ident           string
-		Amount          int64 `json:",string"`
-		Subunits        int8  `json:",string"`
-		Currency        string
-		Country         string
-		PaymentMethodID int64             `json:"PaymentMethodId,string,omitempty"`
-		Locale          string            `json:",omitempty"`
-		CallbackURL     string            `json:",omitempty"`
-		ReturnURL       string            `json:",omitempty"`
-		Metadata        map[string]string `json:",omitempty"`
+		Ident    string
+		Amount   int64 `json:",string"`
+		Subunits int8  `json:",string"`
+		Currency string
+		Country  string
+
+		PaymentMethodID    int64             `json:"PaymentMethodId,string,omitempty"`
+		Locale             string            `json:",omitempty"`
+		CallbackURL        string            `json:",omitempty"`
+		CallbackAPIVersion string            `json:",omitempty"`
+		CallbackProjectKey string            `json:",omitempty"`
+		ReturnURL          string            `json:",omitempty"`
+		Metadata           map[string]string `json:",omitempty"`
 	}
 	Payment struct {
 		PaymentId payment.PaymentID
@@ -280,6 +304,12 @@ func (r *InitPaymentResponse) ConfirmationFromPayment(p *payment.Payment) {
 	}
 	if p.Config.CallbackURL.Valid {
 		r.Confirmation.CallbackURL = p.Config.CallbackURL.String
+	}
+	if p.Config.CallbackAPIVersion.Valid {
+		r.Confirmation.CallbackAPIVersion = p.Config.CallbackAPIVersion.String
+	}
+	if p.Config.CallbackProjectKey.Valid {
+		r.Confirmation.CallbackProjectKey = p.Config.CallbackProjectKey.String
 	}
 	if p.Config.ReturnURL.Valid {
 		r.Confirmation.ReturnURL = p.Config.ReturnURL.String
@@ -334,6 +364,18 @@ func (r *InitPaymentResponse) Message() ([]byte, error) {
 	}
 	if r.Confirmation.CallbackURL != "" {
 		_, err = buf.WriteString(r.Confirmation.CallbackURL)
+		if err != nil {
+			return nil, fmt.Errorf("buffer error: %v", err)
+		}
+	}
+	if r.Confirmation.CallbackAPIVersion != "" {
+		_, err = buf.WriteString(r.Confirmation.CallbackAPIVersion)
+		if err != nil {
+			return nil, fmt.Errorf("buffer error: %v", err)
+		}
+	}
+	if r.Confirmation.CallbackProjectKey != "" {
+		_, err = buf.WriteString(r.Confirmation.CallbackProjectKey)
 		if err != nil {
 			return nil, fmt.Errorf("buffer error: %v", err)
 		}
@@ -458,6 +500,15 @@ func (a *PaymentAPI) InitPayment() http.Handler {
 		}
 		req.PopulatePaymentFields(p)
 
+		// callback config
+		if p.Config.HasCallback() {
+			if !p.Config.CallbackURL.Valid || !p.Config.CallbackAPIVersion.Valid || !p.Config.CallbackProjectKey.Valid {
+				resp = ErrInval
+				resp.Info = "incomplete callback config"
+				return
+			}
+		}
+
 		// DB
 		var tx *sql.Tx
 		var commit bool
@@ -512,6 +563,11 @@ func (a *PaymentAPI) InitPayment() http.Handler {
 				retries++
 				time.Sleep(time.Second)
 				goto beginTx
+			}
+			if err == paymentService.ErrPaymentCallbackConfig {
+				resp = ErrInval
+				resp.Info = "callback config error"
+				return
 			}
 			handlePaymentServiceErr(err)
 			return

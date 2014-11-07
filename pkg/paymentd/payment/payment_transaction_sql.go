@@ -63,6 +63,11 @@ WHERE
 	)
 `
 
+// PaymentTransactionCurrentTx reads the current payment transaction into the given payment
+// (i.e. it sets the TransactionTimestamp and Status fields) and returns the full
+// PaymentTransaction type
+//
+// If no payment transaction exists, it will return an ErrPaymentTransactionNotFound
 func PaymentTransactionCurrentTx(db *sql.Tx, p *Payment) (*PaymentTransaction, error) {
 	paymentTx := &PaymentTransaction{
 		Payment: p,
@@ -84,5 +89,7 @@ func PaymentTransactionCurrentTx(db *sql.Tx, p *Payment) (*PaymentTransaction, e
 		return paymentTx, err
 	}
 	paymentTx.Timestamp = time.Unix(0, ts)
+	p.TransactionTimestamp = paymentTx.Timestamp
+	p.Status = paymentTx.Status
 	return paymentTx, nil
 }

@@ -4,9 +4,13 @@ import (
 	"database/sql"
 	"github.com/fritzpay/paymentd/pkg/paymentd/payment"
 	"github.com/fritzpay/paymentd/pkg/paymentd/payment_method"
+	"github.com/fritzpay/paymentd/pkg/paymentd/project"
+	"github.com/fritzpay/paymentd/pkg/server"
 	"github.com/fritzpay/paymentd/pkg/service"
+	"github.com/fritzpay/paymentd/pkg/service/payment/notification"
 	"github.com/go-sql-driver/mysql"
 	"gopkg.in/inconshreveable/log15.v2"
+	"net/http"
 	"time"
 )
 
@@ -20,6 +24,8 @@ func (e errorID) Error() string {
 		return "lock wait timeout"
 	case ErrDuplicateIdent:
 		return "duplicate ident in payment"
+	case ErrPaymentCallbackConfig:
+		return "callback config error"
 	case ErrPaymentMethodNotFound:
 		return "payment method not found"
 	case ErrPaymentMethodConflict:
@@ -40,6 +46,8 @@ const (
 	ErrDBLockTimeout
 	// duplicate Ident in payment
 	ErrDuplicateIdent
+	// callback config error
+	ErrPaymentCallbackConfig
 	// payment method not found
 	ErrPaymentMethodNotFound
 	// payment method project mismatch
@@ -60,6 +68,9 @@ type Service struct {
 	log log15.Logger
 
 	idCoder *payment.IDEncoder
+
+	tr *http.Transport
+	cl *http.Client
 }
 
 // NewService creates a new payment service
@@ -80,7 +91,30 @@ func NewService(ctx *service.Context) (*Service, error) {
 		return nil, err
 	}
 
+	s.tr = &http.Transport{}
+	s.cl = &http.Client{
+		Transport: s.tr,
+	}
+
+	go s.handleContext()
+
 	return s, nil
+}
+
+func (s *Service) handleContext() {
+	// if attached to a server, this will tell the server to wait with shutting down
+	// until the cleanup process is complete
+	server.Wait.Add(1)
+	defer server.Wait.Done()
+	for {
+		select {
+		case <-s.ctx.Done():
+			s.log.Info("service context closed", log15.Ctx{"err": s.ctx.Err()})
+			s.log.Info("closing idle connections...")
+			s.tr.CloseIdleConnections()
+			return
+		}
+	}
 }
 
 // EncodedPaymentID returns a payment id with the id part encoded
@@ -100,6 +134,25 @@ func (s *Service) CreatePayment(tx *sql.Tx, p *payment.Payment) error {
 	log := s.log.New(log15.Ctx{
 		"method": "CreatePayment",
 	})
+	if p.Config.HasCallback() {
+		callbackProjectKey, err := project.ProjectKeyByKeyTx(tx, p.Config.CallbackProjectKey.String)
+		if err != nil {
+			if err == project.ErrProjectKeyNotFound {
+				log.Error("callback project key not found", log15.Ctx{"callbackProjectKey": p.Config.CallbackProjectKey.String})
+				return ErrPaymentCallbackConfig
+			}
+			log.Error("error retrieving callback project key", log15.Ctx{"err": err})
+			return ErrDB
+		}
+		if callbackProjectKey.Project.ID != p.ProjectID() {
+			log.Error("callback project mismatch", log15.Ctx{
+				"callbackProjectKey": callbackProjectKey.Key,
+				"callbackProjectID":  callbackProjectKey.Project.ID,
+				"projectID":          p.ProjectID(),
+			})
+			return ErrPaymentCallbackConfig
+		}
+	}
 	err := payment.InsertPaymentTx(tx, p)
 	if err != nil {
 		if mysqlErr, ok := err.(*mysql.MySQLError); ok {
@@ -225,6 +278,26 @@ func (s *Service) SetPaymentTransaction(tx *sql.Tx, paymentTx *payment.PaymentTr
 		}
 		log.Error("error saving payment transaction", log15.Ctx{"err": err})
 		return ErrDB
+	}
+	var callback notification.Callbacker
+	if notification.CanCallback(&paymentTx.Payment.Config) {
+		callback = &paymentTx.Payment.Config
+	} else {
+		pr, err := project.ProjectByIdTx(tx, paymentTx.Payment.ProjectID())
+		if err != nil {
+			if err == project.ErrProjectNotFound {
+				log.Crit("payment with invalid project", log15.Ctx{"projectID": paymentTx.Payment.ProjectID()})
+				return ErrInternal
+			}
+			log.Error("error retrieving project", log15.Ctx{"err": err})
+			return ErrDB
+		}
+		if notification.CanCallback(pr.Config) {
+			callback = pr.Config
+		}
+	}
+	if callback != nil {
+		notification.Notify(s.ctx, callback, paymentTx)
 	}
 	return nil
 }
