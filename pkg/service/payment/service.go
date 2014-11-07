@@ -295,7 +295,11 @@ func (s *Service) SetPaymentTransaction(tx *sql.Tx, paymentTx *payment.PaymentTr
 // CallbackPaymentTransaction performs a callback notification if the payment/project has
 // a callback configured
 func (s *Service) CallbackPaymentTransaction(tx *sql.Tx, paymentTx *payment.PaymentTransaction) error {
-	log := s.log.New(log15.Ctx{"method": "CallbackPaymentTransaction"})
+	log := s.log.New(log15.Ctx{
+		"method":    "CallbackPaymentTransaction",
+		"projectID": paymentTx.Payment.ProjectID(),
+		"paymentID": paymentTx.Payment.ID(),
+	})
 	var callback Callbacker
 	if CanCallback(&paymentTx.Payment.Config) {
 		callback = &paymentTx.Payment.Config
@@ -315,6 +319,8 @@ func (s *Service) CallbackPaymentTransaction(tx *sql.Tx, paymentTx *payment.Paym
 	}
 	if callback != nil {
 		s.Notify(callback, paymentTx)
+	} else {
+		log.Warn("payment without configured callback")
 	}
 	return nil
 }
