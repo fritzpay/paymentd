@@ -131,7 +131,7 @@ func scanSingleRow(row *sql.Row) (*Payment, error) {
 		p.Config.Timestamp = time.Unix(0, ts.Int64)
 	}
 	if txTs.Valid {
-		p.TransactionTimestamp = time.Unix(0, ts.Int64)
+		p.TransactionTimestamp = time.Unix(0, txTs.Int64)
 	}
 	return p, nil
 }
