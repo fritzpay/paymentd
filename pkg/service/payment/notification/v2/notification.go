@@ -66,6 +66,10 @@ func New(encodedPaymentID payment.PaymentID, p *payment.Payment) (*Notification,
 	return n, nil
 }
 
+func (n *Notification) SetTransactions(tl payment.PaymentTransactionList) {
+	n.Balance = tl.Balance()
+}
+
 func (n *Notification) Message() ([]byte, error) {
 	var err error
 	buf := bytes.NewBuffer(nil)

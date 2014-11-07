@@ -15,6 +15,7 @@ type NewNotificationFunc func(encPaymentID payment.PaymentID, p *payment.Payment
 
 type Notification interface {
 	service.Signable
+	SetTransactions(payment.PaymentTransactionList)
 }
 
 func NotificationByVersion(ver string) (NewNotificationFunc, error) {

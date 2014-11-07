@@ -34,6 +34,10 @@ func (s PaymentTransactionStatus) Value() (driver.Value, error) {
 	return driver.Value(s.String()), nil
 }
 
+func (s PaymentTransactionStatus) Valid() bool {
+	return string(s) != ""
+}
+
 func (s PaymentTransactionStatus) String() string {
 	return string(s)
 }

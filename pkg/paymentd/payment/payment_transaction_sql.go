@@ -63,6 +63,24 @@ WHERE
 	)
 `
 
+type resultScanner interface {
+	Scan(...interface{}) error
+}
+
+func scanPaymentTx(r resultScanner, paymentTx *PaymentTransaction) error {
+	var ts int64
+	err := r.Scan(
+		&ts,
+		&paymentTx.Amount,
+		&paymentTx.Subunits,
+		&paymentTx.Currency,
+		&paymentTx.Status,
+		&paymentTx.Comment,
+	)
+	paymentTx.Timestamp = time.Unix(0, ts)
+	return err
+}
+
 // PaymentTransactionCurrentTx reads the current payment transaction into the given payment
 // (i.e. it sets the TransactionTimestamp and Status fields) and returns the full
 // PaymentTransaction type
@@ -72,24 +90,60 @@ func PaymentTransactionCurrentTx(db *sql.Tx, p *Payment) (*PaymentTransaction, e
 	paymentTx := &PaymentTransaction{
 		Payment: p,
 	}
-	var ts int64
 	row := db.QueryRow(selectCurrentPaymentTransaction, p.ProjectID(), p.ID())
-	err := row.Scan(
-		&ts,
-		&paymentTx.Amount,
-		&paymentTx.Subunits,
-		&paymentTx.Currency,
-		&paymentTx.Status,
-		&paymentTx.Comment,
-	)
+	err := scanPaymentTx(row, paymentTx)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return paymentTx, ErrPaymentTransactionNotFound
 		}
 		return paymentTx, err
 	}
-	paymentTx.Timestamp = time.Unix(0, ts)
 	p.TransactionTimestamp = paymentTx.Timestamp
 	p.Status = paymentTx.Status
 	return paymentTx, nil
+}
+
+const selectPaymentTransactionsBefore = selectPaymentTransaction + `
+WHERE
+	tx.project_id = ?
+	AND
+	tx.payment_id = ?
+	AND
+	tx.timestamp <= ?
+ORDER BY tx.timestamp ASC
+`
+
+// PaymentTransactionsBeforeDB returns a PaymentTransactionList with all transactions
+// before and including the given payment transaction.
+//
+// The list will be sorted by the earliest tx first.
+func PaymentTransactionsBeforeDB(db *sql.DB, paymentTx *PaymentTransaction) (PaymentTransactionList, error) {
+	query, err := db.Query(
+		selectPaymentTransactionsBefore,
+		paymentTx.Payment.ProjectID(),
+		paymentTx.Payment.ID(),
+		paymentTx.Timestamp.UnixNano(),
+	)
+	if err != nil {
+		return nil, err
+	}
+	txs := make([]*PaymentTransaction, 0, 1)
+	for query.Next() {
+		tx := &PaymentTransaction{Payment: paymentTx.Payment}
+		err = scanPaymentTx(query, tx)
+		if err != nil {
+			query.Close()
+			return nil, err
+		}
+		txs = append(txs, tx)
+	}
+	err = query.Err()
+	query.Close()
+	if err != nil {
+		return nil, err
+	}
+	if len(txs) == 0 {
+		return nil, ErrPaymentTransactionNotFound
+	}
+	return PaymentTransactionList(txs), nil
 }

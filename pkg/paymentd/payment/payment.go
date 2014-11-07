@@ -74,6 +74,20 @@ func (p *Payment) Decimal() *decimal.Decimal {
 	return &decimal.Decimal{Dec: *d}
 }
 
+func (p *Payment) CurrentTransaction() *PaymentTransaction {
+	if p.TransactionTimestamp.IsZero() {
+		return nil
+	}
+	if !p.Status.Valid() {
+		return nil
+	}
+	return &PaymentTransaction{
+		Payment:   p,
+		Timestamp: p.TransactionTimestamp,
+		Status:    p.Status,
+	}
+}
+
 // NewTransaction creates a new payment transaction for this payment
 //
 // Its transaction fields will be populated with the copied values from the payment
