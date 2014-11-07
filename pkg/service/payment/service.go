@@ -278,6 +278,15 @@ func (s *Service) SetPaymentTransaction(tx *sql.Tx, paymentTx *payment.PaymentTr
 		log.Error("error saving payment transaction", log15.Ctx{"err": err})
 		return ErrDB
 	}
+	err = s.CallbackPaymentTransaction(tx, paymentTx)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func (s *Service) CallbackPaymentTransaction(tx *sql.Tx, paymentTx *payment.PaymentTransaction) error {
+	log := s.log.New(log15.Ctx{"method": "CallbackPaymentTransaction"})
 	var callback Callbacker
 	if CanCallback(&paymentTx.Payment.Config) {
 		callback = &paymentTx.Payment.Config
