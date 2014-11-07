@@ -4,6 +4,7 @@ import (
 	"code.google.com/p/godec/dec"
 	"database/sql"
 	"database/sql/driver"
+	"encoding/json"
 	"fmt"
 	"github.com/fritzpay/paymentd/pkg/decimal"
 	"time"
@@ -89,6 +90,10 @@ func (b Balance) FlatMap() map[string]string {
 		flat[curr] = dec.String()
 	}
 	return flat
+}
+
+func (b Balance) MarshalJSON() ([]byte, error) {
+	return json.Marshal(b.FlatMap())
 }
 
 type PaymentTransactionList []*PaymentTransaction
