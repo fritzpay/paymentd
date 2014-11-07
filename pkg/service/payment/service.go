@@ -283,7 +283,7 @@ func (s *Service) SetPaymentTransaction(tx *sql.Tx, paymentTx *payment.PaymentTr
 	if notification.CanCallback(&paymentTx.Payment.Config) {
 		callback = &paymentTx.Payment.Config
 	} else {
-		pr, err := project.ProjectByIdTx(tx, paymentTx.Payment.ProjectID())
+		pr, err := project.ProjectByIDTx(tx, paymentTx.Payment.ProjectID())
 		if err != nil {
 			if err == project.ErrProjectNotFound {
 				log.Crit("payment with invalid project", log15.Ctx{"projectID": paymentTx.Payment.ProjectID()})

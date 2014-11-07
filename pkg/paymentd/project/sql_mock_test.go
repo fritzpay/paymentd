@@ -24,7 +24,7 @@ func TestProjectSQLMapping(t *testing.T) {
 		So(err, ShouldBeNil)
 
 		Convey("When requesting a nonexistent project", func() {
-			project, err := ProjectByProjectIdDB(db, 1, "nonexistent")
+			project, err := ProjectByPrincipalIDNameDB(db, 1, "nonexistent")
 
 			Convey("It should return an empty project", func() {
 				So(project.Empty(), ShouldBeTrue)
