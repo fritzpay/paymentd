@@ -113,6 +113,29 @@ WHERE
 ORDER BY tx.timestamp ASC
 `
 
+func scanTransactions(rows *sql.Rows, p *Payment) (PaymentTransactionList, error) {
+	var err error
+	txs := make([]*PaymentTransaction, 0, 1)
+	for rows.Next() {
+		tx := &PaymentTransaction{Payment: p}
+		err = scanPaymentTx(rows, tx)
+		if err != nil {
+			rows.Close()
+			return nil, err
+		}
+		txs = append(txs, tx)
+	}
+	err = rows.Err()
+	rows.Close()
+	if err != nil {
+		return nil, err
+	}
+	if len(txs) == 0 {
+		return nil, ErrPaymentTransactionNotFound
+	}
+	return PaymentTransactionList(txs), nil
+}
+
 // PaymentTransactionsBeforeDB returns a PaymentTransactionList with all transactions
 // before and including the given payment transaction.
 //
@@ -127,23 +150,22 @@ func PaymentTransactionsBeforeDB(db *sql.DB, paymentTx *PaymentTransaction) (Pay
 	if err != nil {
 		return nil, err
 	}
-	txs := make([]*PaymentTransaction, 0, 1)
-	for query.Next() {
-		tx := &PaymentTransaction{Payment: paymentTx.Payment}
-		err = scanPaymentTx(query, tx)
-		if err != nil {
-			query.Close()
-			return nil, err
-		}
-		txs = append(txs, tx)
-	}
-	err = query.Err()
-	query.Close()
+	return scanTransactions(query, paymentTx.Payment)
+}
+
+// PaymentTransactionsBeforeDB returns a PaymentTransactionList with all transactions
+// before and including the given payment transaction.
+//
+// The list will be sorted by the earliest tx first.
+func PaymentTransactionsBeforeTimestampDB(db *sql.DB, p *Payment, transactionTimestamp time.Time) (PaymentTransactionList, error) {
+	query, err := db.Query(
+		selectPaymentTransactionsBefore,
+		p.ProjectID(),
+		p.ID(),
+		transactionTimestamp.UnixNano(),
+	)
 	if err != nil {
 		return nil, err
 	}
-	if len(txs) == 0 {
-		return nil, ErrPaymentTransactionNotFound
-	}
-	return PaymentTransactionList(txs), nil
+	return scanTransactions(query, p)
 }

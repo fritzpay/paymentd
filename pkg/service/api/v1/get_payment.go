@@ -176,8 +176,8 @@ func (a *PaymentAPI) GetPayment() http.Handler {
 			return
 		}
 		// balance/transaction list
-		if currentTx := p.CurrentTransaction(); currentTx != nil {
-			tl, err := payment.PaymentTransactionsBeforeDB(a.ctx.PaymentDB(service.ReadOnly), currentTx)
+		if p.HasTransaction() {
+			tl, err := payment.PaymentTransactionsBeforeTimestampDB(a.ctx.PaymentDB(service.ReadOnly), p, p.TransactionTimestamp)
 			if err != nil && err != payment.ErrPaymentTransactionNotFound {
 				log.Error("error retrieving payment transactions", log15.Ctx{"err": err})
 				ErrDatabase.Write(w)

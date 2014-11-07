@@ -74,18 +74,15 @@ func (p *Payment) Decimal() *decimal.Decimal {
 	return &decimal.Decimal{Dec: *d}
 }
 
-func (p *Payment) CurrentTransaction() *PaymentTransaction {
+// HasTransaction returns true if the payment has a payment transaction entry
+func (p *Payment) HasTransaction() bool {
 	if p.TransactionTimestamp.IsZero() {
-		return nil
+		return false
 	}
 	if !p.Status.Valid() {
-		return nil
+		return false
 	}
-	return &PaymentTransaction{
-		Payment:   p,
-		Timestamp: p.TransactionTimestamp,
-		Status:    p.Status,
-	}
+	return true
 }
 
 // NewTransaction creates a new payment transaction for this payment
