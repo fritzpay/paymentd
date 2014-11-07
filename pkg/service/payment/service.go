@@ -58,6 +58,7 @@ const (
 )
 
 const (
+	// PaymentTokenMaxAgeDefault is the default maximum age of payment tokens
 	PaymentTokenMaxAgeDefault = time.Minute * 15
 )
 
@@ -182,6 +183,7 @@ func (s *Service) CreatePayment(tx *sql.Tx, p *payment.Payment) error {
 	return nil
 }
 
+// SetPaymentConfig sets/updates the payment configuration
 func (s *Service) SetPaymentConfig(tx *sql.Tx, p *payment.Payment) error {
 	log := s.log.New(log15.Ctx{"method": "SetPaymentConfig"})
 	if p.Config.PaymentMethodID.Valid {
@@ -222,6 +224,7 @@ func (s *Service) SetPaymentConfig(tx *sql.Tx, p *payment.Payment) error {
 	return nil
 }
 
+// SetPaymentMetadata sets/updates the payment metadata
 func (s *Service) SetPaymentMetadata(tx *sql.Tx, p *payment.Payment) error {
 	log := s.log.New(log15.Ctx{"method": "SetPaymentMetadata"})
 	// payment metadata
@@ -266,6 +269,10 @@ func (s *Service) IsInitialized(p *payment.Payment) bool {
 	return p.Status != payment.PaymentStatusNone
 }
 
+// SetPaymentTransaction adds a new payment transaction
+//
+// If a callback method is configured for this payment/project, it will send a callback
+// notification
 func (s *Service) SetPaymentTransaction(tx *sql.Tx, paymentTx *payment.PaymentTransaction) error {
 	log := s.log.New(log15.Ctx{"method": "SetPaymentTransaction"})
 	err := payment.InsertPaymentTransactionTx(tx, paymentTx)
@@ -285,6 +292,8 @@ func (s *Service) SetPaymentTransaction(tx *sql.Tx, paymentTx *payment.PaymentTr
 	return nil
 }
 
+// CallbackPaymentTransaction performs a callback notification if the payment/project has
+// a callback configured
 func (s *Service) CallbackPaymentTransaction(tx *sql.Tx, paymentTx *payment.PaymentTransaction) error {
 	log := s.log.New(log15.Ctx{"method": "CallbackPaymentTransaction"})
 	var callback Callbacker
@@ -310,10 +319,15 @@ func (s *Service) CallbackPaymentTransaction(tx *sql.Tx, paymentTx *payment.Paym
 	return nil
 }
 
+// PaymentTransaction returns the current payment transaction for the given payment
+//
+// PaymentTransaction will return a payment.ErrPaymentTransactionNotFound if no such
+// transaction exists (i.e. the payment is uninitialized)
 func (s *Service) PaymentTransaction(tx *sql.Tx, p *payment.Payment) (*payment.PaymentTransaction, error) {
 	return payment.PaymentTransactionCurrentTx(tx, p)
 }
 
+// CreatePaymentToken creates a new random payment token
 func (s *Service) CreatePaymentToken(tx *sql.Tx, p *payment.Payment) (*payment.PaymentToken, error) {
 	log := s.log.New(log15.Ctx{"method": "CreatePaymentToken"})
 	token, err := payment.NewPaymentToken(p.PaymentID())
@@ -334,12 +348,15 @@ func (s *Service) CreatePaymentToken(tx *sql.Tx, p *payment.Payment) (*payment.P
 	return token, nil
 }
 
+// PaymentByToken returns the payment associated with the given payment token
+//
 // TODO use token max age from config
 func (s *Service) PaymentByToken(tx *sql.Tx, token string) (*payment.Payment, error) {
 	tokenMaxAge := PaymentTokenMaxAgeDefault
 	return payment.PaymentByTokenTx(tx, token, tokenMaxAge)
 }
 
+// DeletePaymentToken deletes/invalidates the given payment token
 func (s *Service) DeletePaymentToken(tx *sql.Tx, token string) error {
 	log := s.log.New(log15.Ctx{"method": "DeletePaymentToken"})
 	err := payment.DeletePaymentTokenTx(tx, token)
