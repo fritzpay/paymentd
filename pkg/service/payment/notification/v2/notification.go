@@ -3,11 +3,14 @@ package notification
 import (
 	"bytes"
 	"crypto/sha256"
+	"encoding/hex"
 	"fmt"
 	"github.com/fritzpay/paymentd/pkg/maputil"
 	"github.com/fritzpay/paymentd/pkg/paymentd/payment"
+	"github.com/fritzpay/paymentd/pkg/service"
 	"hash"
 	"strconv"
+	"time"
 )
 
 const (
@@ -68,6 +71,17 @@ func New(encodedPaymentID payment.PaymentID, p *payment.Payment) (*Notification,
 
 func (n *Notification) SetTransactions(tl payment.PaymentTransactionList) {
 	n.Balance = tl.Balance()
+}
+
+func (n *Notification) Sign(timestamp time.Time, nonce string, secret []byte) error {
+	n.Timestamp = timestamp.Unix()
+	n.Nonce = nonce
+	sig, err := service.Sign(n, secret)
+	if err != nil {
+		return err
+	}
+	n.Signature = hex.EncodeToString(sig)
+	return nil
 }
 
 func (n *Notification) Message() ([]byte, error) {

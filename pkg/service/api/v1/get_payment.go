@@ -186,27 +186,24 @@ func (a *PaymentAPI) GetPayment() http.Handler {
 			not.SetTransactions(tl)
 		}
 		// notification signing
-		not.Timestamp = time.Now().Unix()
 		non, err := nonce.New()
 		if err != nil {
 			log.Error("error creating nonce", log15.Ctx{"err": err})
 			ErrSystem.Write(w)
 			return
 		}
-		not.Nonce = non.Nonce
 		secret, err := projectKey.SecretBytes()
 		if err != nil {
 			log.Error("error retrieving project secret", log15.Ctx{"err": err})
 			ErrSystem.Write(w)
 			return
 		}
-		sig, err := service.Sign(not, secret)
+		err = not.Sign(time.Now(), non.Nonce, secret)
 		if err != nil {
 			log.Error("error signing", log15.Ctx{"err": err})
 			ErrSystem.Write(w)
 			return
 		}
-		not.Signature = hex.EncodeToString(sig)
 
 		resp := ServiceResponse{}
 		resp.Status = StatusSuccess
