@@ -17,7 +17,7 @@ const (
 // It has its payment methodes and can be used to separate
 // different business units of one principle
 type Project struct {
-	ID          int64
+	ID          int64 `json:",string"`
 	PrincipalID int64 `json:",string"`
 	Name        string
 	Created     time.Time

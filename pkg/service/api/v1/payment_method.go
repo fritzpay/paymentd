@@ -31,8 +31,15 @@ func (a *AdminAPI) PaymentMethodsGetRequest() http.Handler {
 		log := a.log.New(log15.Ctx{"method": "Project payment methods GET"})
 
 		vars := mux.Vars(r)
-		projectIdParam := vars["projectid"]
-		projectId, err := strconv.ParseInt(projectIdParam, 10, 64)
+		projectIDParam := vars["projectid"]
+		principalIDParam := vars["principalid"]
+		projectID, err := strconv.ParseInt(projectIDParam, 10, 64)
+		if err != nil {
+			ErrReadParam.Write(w)
+			log.Error("param conversion error", log15.Ctx{"err": err})
+			return
+		}
+		principalID, err := strconv.ParseInt(principalIDParam, 10, 64)
 		if err != nil {
 			ErrReadParam.Write(w)
 			log.Error("param conversion error", log15.Ctx{"err": err})
@@ -42,7 +49,7 @@ func (a *AdminAPI) PaymentMethodsGetRequest() http.Handler {
 		// does project exist
 		db := a.ctx.PrincipalDB(service.ReadOnly)
 		var prdb *project.Project
-		prdb, err = project.ProjectByIdDB(db, projectId)
+		prdb, err = project.ProjectByPrincipalIDandIDDB(db, principalID, projectID)
 		if err != nil {
 			ErrDatabase.Write(w)
 			log.Error("database error", log15.Ctx{"err": err})
@@ -74,16 +81,23 @@ func (a *AdminAPI) PaymentMethodsRequest() http.Handler {
 			// projectid and methodname
 			// check parameters exits in db
 			vars := mux.Vars(r)
-			projectIdParam := vars["projectid"]
+			projectIDParam := vars["projectid"]
+			principalIDParam := vars["principalid"]
 
-			projectId, err := strconv.ParseInt(projectIdParam, 10, 64)
+			projectID, err := strconv.ParseInt(projectIDParam, 10, 64)
 			if err != nil {
 				ErrReadParam.Write(w)
-				log.Info("malformed param", log15.Ctx{"projectIdParam": projectIdParam})
+				log.Info("malformed param", log15.Ctx{"projectIdParam": projectIDParam})
+				return
+			}
+			principalID, err := strconv.ParseInt(principalIDParam, 10, 64)
+			if err != nil {
+				ErrReadParam.Write(w)
+				log.Info("malformed param", log15.Ctx{"projectIdParam": projectIDParam})
 				return
 			}
 			db := a.ctx.PrincipalDB()
-			proj, err := project.ProjectByIdDB(db, projectId)
+			proj, err := project.ProjectByPrincipalIDandIDDB(db, principalID, projectID)
 			if err != nil {
 				ErrDatabase.Write(w)
 				log.Error("database request failed", log15.Ctx{"err": err})
