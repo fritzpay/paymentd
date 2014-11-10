@@ -3,6 +3,9 @@ package payment
 import (
 	"database/sql"
 	"errors"
+	"net/http"
+	"time"
+
 	"github.com/fritzpay/paymentd/pkg/paymentd/payment"
 	"github.com/fritzpay/paymentd/pkg/paymentd/payment_method"
 	"github.com/fritzpay/paymentd/pkg/paymentd/project"
@@ -10,8 +13,6 @@ import (
 	"github.com/fritzpay/paymentd/pkg/service"
 	"github.com/go-sql-driver/mysql"
 	"gopkg.in/inconshreveable/log15.v2"
-	"net/http"
-	"time"
 )
 
 type errorID int

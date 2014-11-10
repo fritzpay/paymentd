@@ -2,8 +2,9 @@ package payment
 
 import (
 	"database/sql"
-	"github.com/go-sql-driver/mysql"
 	"time"
+
+	"github.com/go-sql-driver/mysql"
 )
 
 func InsertPaymentTokenTx(tx *sql.Tx, t *PaymentToken) error {

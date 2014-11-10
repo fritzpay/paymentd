@@ -2,10 +2,11 @@ package principal
 
 import (
 	"database/sql"
-	"github.com/fritzpay/paymentd/pkg/testutil"
-	. "github.com/smartystreets/goconvey/convey"
 	"testing"
 	"time"
+
+	"github.com/fritzpay/paymentd/pkg/testutil"
+	. "github.com/smartystreets/goconvey/convey"
 )
 
 func WithPrincipal(db *sql.DB, f func(pr *Principal)) func() {

@@ -2,12 +2,13 @@ package payment_test
 
 import (
 	"database/sql"
+	"testing"
+	"time"
+
 	. "github.com/fritzpay/paymentd/pkg/paymentd/payment"
 	"github.com/fritzpay/paymentd/pkg/paymentd/project"
 	"github.com/fritzpay/paymentd/pkg/testutil"
 	. "github.com/smartystreets/goconvey/convey"
-	"testing"
-	"time"
 )
 
 func TestPaymentTokenGenerationSQL(t *testing.T) {

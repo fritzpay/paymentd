@@ -4,6 +4,13 @@ import (
 	"crypto/sha256"
 	"database/sql"
 	"fmt"
+	"hash"
+	"io"
+	"net/http"
+	"strconv"
+	"strings"
+	"time"
+
 	"github.com/fritzpay/paymentd/pkg/paymentd/payment"
 	"github.com/fritzpay/paymentd/pkg/paymentd/payment_method"
 	"github.com/fritzpay/paymentd/pkg/service"
@@ -11,12 +18,6 @@ import (
 	"github.com/go-sql-driver/mysql"
 	"golang.org/x/text/language"
 	"gopkg.in/inconshreveable/log15.v2"
-	"hash"
-	"io"
-	"net/http"
-	"strconv"
-	"strings"
-	"time"
 )
 
 const (

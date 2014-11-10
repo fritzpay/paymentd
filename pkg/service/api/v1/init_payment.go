@@ -7,6 +7,14 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"hash"
+	"io"
+	"net/http"
+	"net/url"
+	"strconv"
+	"time"
+	"unicode/utf8"
+
 	jsonutil "github.com/fritzpay/paymentd/pkg/json"
 	"github.com/fritzpay/paymentd/pkg/maputil"
 	"github.com/fritzpay/paymentd/pkg/paymentd/currency"
@@ -18,13 +26,6 @@ import (
 	"github.com/go-sql-driver/mysql"
 	"golang.org/x/text/language"
 	"gopkg.in/inconshreveable/log15.v2"
-	"hash"
-	"io"
-	"net/http"
-	"net/url"
-	"strconv"
-	"time"
-	"unicode/utf8"
 )
 
 // InitPaymentRequest is the request JSON struct for POST /payment

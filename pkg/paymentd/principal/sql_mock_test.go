@@ -5,9 +5,10 @@ package principal
 
 import (
 	"database/sql"
+	"testing"
+
 	"github.com/DATA-DOG/go-sqlmock"
 	. "github.com/smartystreets/goconvey/convey"
-	"testing"
 )
 
 func TestPrincipalSQLMapping(t *testing.T) {

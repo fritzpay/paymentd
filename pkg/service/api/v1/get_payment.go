@@ -6,6 +6,11 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"hash"
+	"net/http"
+	"strconv"
+	"time"
+
 	"github.com/fritzpay/paymentd/pkg/paymentd/nonce"
 	"github.com/fritzpay/paymentd/pkg/paymentd/payment"
 	"github.com/fritzpay/paymentd/pkg/paymentd/project"
@@ -13,10 +18,6 @@ import (
 	notification "github.com/fritzpay/paymentd/pkg/service/payment/notification/v2"
 	"github.com/gorilla/mux"
 	"gopkg.in/inconshreveable/log15.v2"
-	"hash"
-	"net/http"
-	"strconv"
-	"time"
 )
 
 // GetPaymentRequest represents a get payment request

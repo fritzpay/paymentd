@@ -10,12 +10,13 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"errors"
-	"golang.org/x/crypto/pbkdf2"
 	"hash"
 	"io"
 	"io/ioutil"
 	"strconv"
 	"time"
+
+	"golang.org/x/crypto/pbkdf2"
 )
 
 const (

@@ -1,9 +1,10 @@
 package payment
 
 import (
-	. "github.com/smartystreets/goconvey/convey"
 	"math/rand"
 	"testing"
+
+	. "github.com/smartystreets/goconvey/convey"
 )
 
 func TestPaymentID(t *testing.T) {

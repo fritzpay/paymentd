@@ -1,14 +1,15 @@
 package payment
 
 import (
+	"net/http"
+	"time"
+
 	"github.com/fritzpay/paymentd/pkg/paymentd/nonce"
 	"github.com/fritzpay/paymentd/pkg/paymentd/payment"
 	"github.com/fritzpay/paymentd/pkg/paymentd/project"
 	"github.com/fritzpay/paymentd/pkg/service"
 	"github.com/fritzpay/paymentd/pkg/service/payment/notification"
 	"gopkg.in/inconshreveable/log15.v2"
-	"net/http"
-	"time"
 )
 
 // Callbacker describes a type that can provide information about callbacks to be made

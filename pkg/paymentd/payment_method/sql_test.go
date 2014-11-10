@@ -2,12 +2,13 @@ package payment_method
 
 import (
 	"database/sql"
+	"testing"
+
 	"github.com/fritzpay/paymentd/pkg/paymentd/principal"
 	"github.com/fritzpay/paymentd/pkg/paymentd/project"
 	"github.com/fritzpay/paymentd/pkg/paymentd/provider"
 	"github.com/fritzpay/paymentd/pkg/testutil"
 	. "github.com/smartystreets/goconvey/convey"
-	"testing"
 )
 
 func TestPaymentMethodSQL(t *testing.T) {

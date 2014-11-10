@@ -1,12 +1,13 @@
 package payment
 
 import (
-	"code.google.com/p/godec/dec"
 	"database/sql"
 	"fmt"
+	"time"
+
+	"code.google.com/p/godec/dec"
 	"github.com/fritzpay/paymentd/pkg/decimal"
 	"github.com/fritzpay/paymentd/pkg/paymentd/project"
-	"time"
 )
 
 const (

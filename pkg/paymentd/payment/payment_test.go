@@ -2,12 +2,13 @@ package payment_test
 
 import (
 	"database/sql"
+	"testing"
+	"time"
+
 	. "github.com/fritzpay/paymentd/pkg/paymentd/payment"
 	"github.com/fritzpay/paymentd/pkg/paymentd/principal"
 	"github.com/fritzpay/paymentd/pkg/paymentd/project"
 	. "github.com/smartystreets/goconvey/convey"
-	"testing"
-	"time"
 )
 
 func WithTestProject(db, prDB *sql.DB, f func(pr project.Project)) func() {

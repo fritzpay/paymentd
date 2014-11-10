@@ -1,8 +1,9 @@
 package decimal
 
 import (
-	"code.google.com/p/godec/dec"
 	"strings"
+
+	"code.google.com/p/godec/dec"
 )
 
 type Decimal struct {

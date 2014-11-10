@@ -1,9 +1,10 @@
 package service
 
 import (
-	"golang.org/x/net/context"
 	"net/http"
 	"sync"
+
+	"golang.org/x/net/context"
 )
 
 const (

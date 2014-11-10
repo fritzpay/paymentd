@@ -4,16 +4,17 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"net/http"
+	"os"
+	"path"
+	"time"
+
 	"github.com/fritzpay/paymentd/pkg/paymentd/payment"
 	"github.com/fritzpay/paymentd/pkg/paymentd/payment_method"
 	"github.com/fritzpay/paymentd/pkg/service"
 	paymentService "github.com/fritzpay/paymentd/pkg/service/payment"
 	"github.com/gorilla/mux"
 	"gopkg.in/inconshreveable/log15.v2"
-	"net/http"
-	"os"
-	"path"
-	"time"
 )
 
 const (

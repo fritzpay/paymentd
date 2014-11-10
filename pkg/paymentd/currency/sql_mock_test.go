@@ -5,9 +5,10 @@ package currency
 
 import (
 	"database/sql"
+	"testing"
+
 	"github.com/DATA-DOG/go-sqlmock"
 	. "github.com/smartystreets/goconvey/convey"
-	"testing"
 )
 
 func TestProjectSQLMapping(t *testing.T) {

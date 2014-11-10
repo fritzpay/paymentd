@@ -1,8 +1,9 @@
 package payment_method
 
 import (
-	. "github.com/smartystreets/goconvey/convey"
 	"testing"
+
+	. "github.com/smartystreets/goconvey/convey"
 )
 
 func TestPaymentMethodStatus(t *testing.T) {

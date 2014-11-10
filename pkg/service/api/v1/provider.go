@@ -1,12 +1,13 @@
 package v1
 
 import (
+	"net/http"
+	"strconv"
+
 	"github.com/fritzpay/paymentd/pkg/paymentd/provider"
 	"github.com/fritzpay/paymentd/pkg/service"
 	"github.com/gorilla/mux"
 	"gopkg.in/inconshreveable/log15.v2"
-	"net/http"
-	"strconv"
 )
 
 type ProviderAdminAPIResponse struct {

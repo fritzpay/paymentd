@@ -1,9 +1,10 @@
 package payment_test
 
 import (
+	"testing"
+
 	"github.com/fritzpay/paymentd/pkg/paymentd/payment"
 	. "github.com/smartystreets/goconvey/convey"
-	"testing"
 )
 
 func TestTransactionListBalance(t *testing.T) {

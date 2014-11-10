@@ -2,8 +2,9 @@ package currency
 
 import (
 	"encoding/json"
-	. "github.com/smartystreets/goconvey/convey"
 	"testing"
+
+	. "github.com/smartystreets/goconvey/convey"
 )
 
 func TestCurrencyJSONMarshalling(t *testing.T) {

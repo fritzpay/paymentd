@@ -3,10 +3,6 @@ package server
 import (
 	"errors"
 	"fmt"
-	"github.com/facebookgo/grace"
-	"github.com/fritzpay/paymentd/pkg/config"
-	"golang.org/x/net/context"
-	"gopkg.in/inconshreveable/log15.v2"
 	"net"
 	"net/http"
 	"os"
@@ -14,6 +10,11 @@ import (
 	"sync"
 	"syscall"
 	"time"
+
+	"github.com/facebookgo/grace"
+	"github.com/fritzpay/paymentd/pkg/config"
+	"golang.org/x/net/context"
+	"gopkg.in/inconshreveable/log15.v2"
 )
 
 const (

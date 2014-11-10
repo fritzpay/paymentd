@@ -1,9 +1,10 @@
 package v1
 
 import (
-	. "github.com/smartystreets/goconvey/convey"
 	"strings"
 	"testing"
+
+	. "github.com/smartystreets/goconvey/convey"
 )
 
 func TestInitPaymentRequest(t *testing.T) {
