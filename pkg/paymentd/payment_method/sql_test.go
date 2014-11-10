@@ -21,31 +21,14 @@ func TestPaymentMethodSQL(t *testing.T) {
 				prDB.Close()
 			})
 			Convey("Given a test principal", func() {
-				princ := principal.Principal{}
-				princ.Name = "payment_method_testprincipal"
-				princ.CreatedBy = "test"
-				err := principal.InsertPrincipalDB(prDB, &princ)
+				princ, err := principal.PrincipalByNameDB(prDB, "testprincipal")
 				So(err, ShouldBeNil)
 				So(princ.ID, ShouldNotEqual, 0)
 				So(princ.Empty(), ShouldBeFalse)
 
-				Reset(func() {
-					_, err = prDB.Exec("delete from principal where name = 'payment_method_testprincipal'")
-					So(err, ShouldBeNil)
-				})
-
 				Convey("Given a test project", func() {
-					proj := project.Project{}
-					proj.PrincipalID = princ.ID
-					proj.Name = "payment_method_testproject"
-					proj.CreatedBy = "test"
-					err := project.InsertProjectDB(prDB, &proj)
+					proj, err := project.ProjectByPrincipalIDNameDB(prDB, princ.ID, "testproject")
 					So(err, ShouldBeNil)
-
-					Reset(func() {
-						_, err = prDB.Exec("delete from project where name = 'payment_method_testproject'")
-						So(err, ShouldBeNil)
-					})
 
 					Convey("Given a transaction", func() {
 						tx, err := db.Begin()
