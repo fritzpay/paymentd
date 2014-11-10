@@ -472,7 +472,7 @@ func (h *Handler) determinePaymentMethodID(tx *sql.Tx, p *payment.Payment, w htt
 		p.Config.SetPaymentMethodID(meth.ID)
 		*configChanged = true
 	}
-	return &meth, nil
+	return meth, nil
 }
 
 func (h *Handler) servePaymentHandler(p *payment.Payment, method *payment_method.Method) http.Handler {

@@ -126,7 +126,7 @@ func (a *AdminAPI) PaymentMethodsRequest() http.Handler {
 			// set paymentMethod values
 			// get user id
 			auth := service.RequestContextAuth(r)
-			var pm payment_method.Method
+			pm := &payment_method.Method{}
 			// parse status value
 			pm.Status, err = payment_method.ParseMethodStatus(pmr.Status)
 			pm.StatusChanged = time.Now()
@@ -152,14 +152,13 @@ func (a *AdminAPI) PaymentMethodsRequest() http.Handler {
 					ErrDatabase.Write(w)
 					log.Error("database error", log15.Ctx{"err": err})
 				}
-				paymentMethodId, err := payment_method.InsertPaymentMethodTx(tx, pm)
+				err = payment_method.InsertPaymentMethodTx(tx, pm)
 				if err != nil {
 					tx.Rollback()
 					ErrDatabase.Write(w)
 					log.Error("database error", log15.Ctx{"err": err})
 					return
 				}
-				pm.ID = paymentMethodId
 
 				// save method metadata
 				md := metadata.MetadataFromValues(pm.Metadata, pm.CreatedBy)
