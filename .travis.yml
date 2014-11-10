@@ -27,3 +27,4 @@ before_script:
   - mysql -u root -e "create database if not exists paymentd_test_payment_$TT;"
   - mysql -u root -D paymentd_test_principal_$TT < ./resources/mysql/paymentd.test.principal.sql
   - mysql -u root -D paymentd_test_payment_$TT < ./resources/mysql/paymentd.test.payment.sql
+  - mysql -u root -D paymentd_test_principal_$TT < ./resources/mysql/paymentd.test.principal.data.sql

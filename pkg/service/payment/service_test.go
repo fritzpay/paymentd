@@ -1,0 +1,137 @@
+package payment_test
+
+import (
+	"database/sql"
+	"github.com/fritzpay/paymentd/pkg/paymentd/payment"
+	"github.com/fritzpay/paymentd/pkg/paymentd/payment_method"
+	"github.com/fritzpay/paymentd/pkg/paymentd/project"
+	"github.com/fritzpay/paymentd/pkg/paymentd/provider"
+	"github.com/fritzpay/paymentd/pkg/service"
+	paymentService "github.com/fritzpay/paymentd/pkg/service/payment"
+	"github.com/fritzpay/paymentd/pkg/testutil"
+	. "github.com/smartystreets/goconvey/convey"
+	"gopkg.in/inconshreveable/log15.v2"
+	"net/http"
+	"net/http/httptest"
+	"testing"
+	"time"
+)
+
+func WithService(ctx *service.Context, f func(s *paymentService.Service)) func() {
+	return func() {
+		s, err := paymentService.NewService(ctx)
+		So(err, ShouldBeNil)
+
+		f(s)
+	}
+}
+
+func WithPayment(tx *sql.Tx, f func(p *payment.Payment)) func() {
+	return func() {
+		pr := &project.Project{
+			ID:          1,
+			PrincipalID: 1,
+		}
+		method := &payment_method.Method{
+			ProjectID: 1,
+			Provider: provider.Provider{
+				ID:   1,
+				Name: "test",
+			},
+			MethodKey: "test",
+			Created:   time.Now(),
+			CreatedBy: "test",
+			Status:    payment_method.PaymentMethodStatusActive,
+		}
+		err := payment_method.InsertPaymentMethodTx(tx, method)
+		So(err, ShouldBeNil)
+		So(method.Active(), ShouldBeTrue)
+		So(method.ID, ShouldNotEqual, 0)
+
+		err = payment_method.InsertPaymentMethodStatusTx(tx, method)
+		So(err, ShouldBeNil)
+
+		p := &payment.Payment{
+			Created:  time.Now(),
+			Ident:    "test001",
+			Amount:   1234,
+			Subunits: 2,
+			Currency: "EUR",
+		}
+		err = p.SetProject(pr)
+		So(err, ShouldBeNil)
+		p.Config.SetCountry("DE")
+		p.Config.SetLocale("en-US")
+		p.Config.SetPaymentMethodID(method.ID)
+
+		err = payment.InsertPaymentTx(tx, p)
+		So(err, ShouldBeNil)
+		err = payment.InsertPaymentConfigTx(tx, p)
+		So(err, ShouldBeNil)
+
+		p, err = payment.PaymentByIDTx(tx, p.PaymentID())
+		So(err, ShouldBeNil)
+
+		f(p)
+	}
+}
+
+func TestPaymentNotification(t *testing.T) {
+	Convey("Given a payment db connection", t, testutil.WithPaymentDB(t, func(db *sql.DB) {
+		Convey("Given a principal db connection", testutil.WithPrincipalDB(t, func(principalDB *sql.DB) {
+			Convey("Given a transaction", func() {
+				tx, err := db.Begin()
+				So(err, ShouldBeNil)
+				Reset(func() {
+					err = tx.Rollback()
+					So(err, ShouldBeNil)
+				})
+
+				Convey("Given a service context", testutil.WithContext(func(ctx *service.Context, logs <-chan *log15.Record) {
+					ctx.SetPaymentDB(db, nil)
+					ctx.SetPrincipalDB(principalDB, nil)
+
+					Convey("Given a payment service", WithService(ctx, func(s *paymentService.Service) {
+
+						Convey("Given a payment", WithPayment(tx, func(p *payment.Payment) {
+
+							Convey("Given a test HTTP server", func() {
+								testSrv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+
+								}))
+
+								Reset(func() {
+									testSrv.Close()
+								})
+
+								So(paymentService.CanCallback(&p.Config), ShouldBeTrue)
+
+								Convey("When the payment has no transaction", func() {
+									paymentTx, err := s.PaymentTransaction(tx, p)
+									So(err, ShouldEqual, payment.ErrPaymentTransactionNotFound)
+									So(paymentTx.Status.Valid(), ShouldBeFalse)
+
+									Convey("When creating a transaction", func() {
+										So(s.IsProcessablePayment(p), ShouldBeTrue)
+										paymentTx = p.NewTransaction(payment.PaymentStatusOpen)
+										err = s.SetPaymentTransaction(tx, paymentTx)
+
+										Convey("It should succeed", func() {
+											So(err, ShouldBeNil)
+										})
+
+										Convey("A notification should be sent", nil)
+
+										Convey("The notification should contain the transaction", nil)
+
+									})
+								})
+
+							})
+						}))
+					}))
+				}))
+			})
+		}))
+	}))
+}
