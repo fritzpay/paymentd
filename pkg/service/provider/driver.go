@@ -10,7 +10,8 @@ import (
 )
 
 const (
-	driverFritzpay int64 = 1
+	driverFritzpay   int64 = 1
+	driverPaypalREST       = 2
 )
 
 type Driver interface {

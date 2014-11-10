@@ -298,6 +298,7 @@ SET UNIQUE_CHECKS=@OLD_UNIQUE_CHECKS;
 -- -----------------------------------------------------
 START TRANSACTION;
 INSERT INTO `provider` (`id`, `name`) VALUES (1, 'fritzpay');
+INSERT INTO `provider` (`id`, `name`) VALUES (2, 'paypal_rest');
 INSERT INTO `currency` (`code_iso_4217`) VALUES ('EUR');
 
 COMMIT;
