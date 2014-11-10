@@ -1,6 +1,7 @@
 package fritzpay
 
 import (
+	"database/sql"
 	"errors"
 	"fmt"
 	"github.com/fritzpay/paymentd/pkg/paymentd/payment"
@@ -20,8 +21,9 @@ const (
 )
 
 const (
-	defaultLocale          = "en_US"
-	fritzpayDefaultTimeout = 30 * time.Second
+	providerIDFritzpay     int64 = 1
+	defaultLocale                = "en_US"
+	fritzpayDefaultTimeout       = 30 * time.Second
 )
 
 var (
@@ -149,6 +151,89 @@ func (d *Driver) Callback(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		log.Error("error retrieving payment method", log15.Ctx{"err": err})
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+	if !method.Active() {
+		log.Warn("inactive payment method")
+		w.WriteHeader(http.StatusOK)
+		return
+	}
+	if method.Provider.ID != providerIDFritzpay {
+		log.Warn("invalid payment method provider", log15.Ctx{"providerID": method.Provider.ID})
+		w.WriteHeader(http.StatusOK)
+		return
+	}
+	log = log.New(log15.Ctx{
+		"paymentMethodID": method.ID,
+		"methodKey":       method.MethodKey,
+	})
+
+	var tx *sql.Tx
+	var commit bool
+	defer func() {
+		if tx != nil && !commit {
+			err = tx.Rollback()
+			if err != nil {
+				log.Crit("error on rollback", log15.Ctx{"err": err})
+			}
+		}
+	}()
+	tx, err = d.ctx.PaymentDB().Begin()
+	if err != nil {
+		commit = true
+		log.Crit("error on begin tx", log15.Ctx{"err": err})
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+	fritzpayP, err := PaymentByPaymentIDTx(tx, p.PaymentID())
+	if err != nil {
+		if err == ErrPaymentNotFound {
+			log.Warn("callback on unknown payment")
+			w.WriteHeader(http.StatusOK)
+			return
+		}
+		log.Error("error retrieving payment", log15.Ctx{"err": err})
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+	currentTx, err := PaymentTransactionCurrentByPaymentIDTx(tx, fritzpayP.ID)
+	if err != nil && err != ErrTransactionNotFound {
+		log.Error("error retrieving payment tx", log15.Ctx{"err": err})
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+	fritzpayTx := PaymentTransaction{
+		FritzpayPaymentID: fritzpayP.ID,
+		Timestamp:         time.Now(),
+	}
+	if r.URL.Query().Get("fritzpayID") != "" {
+		fritzpayTx.FritzpayID.String, fritzpayTx.FritzpayID.Valid = r.URL.Query().Get("fritzpayID"), true
+	}
+	switch r.URL.Query().Get("status") {
+	case TransactionPSPInit:
+		if currentTx.Status == TransactionOpen {
+			// noop
+			w.WriteHeader(http.StatusOK)
+			return
+		}
+		fritzpayTx.Status = TransactionOpen
+	default:
+		log.Warn("invalid status", log15.Ctx{"status": r.URL.Query().Get("status")})
+		w.WriteHeader(http.StatusOK)
+		return
+	}
+	err = InsertPaymentTransactionTx(tx, fritzpayTx)
+	if err != nil {
+		log.Error("error on insert payment tx", log15.Ctx{"err": err})
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	commit = true
+	err = tx.Commit()
+	if err != nil {
+		log.Crit("error on commit", log15.Ctx{"err": err})
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
