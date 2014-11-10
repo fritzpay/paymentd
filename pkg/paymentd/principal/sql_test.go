@@ -9,21 +9,16 @@ import (
 	. "github.com/smartystreets/goconvey/convey"
 )
 
-func WithPrincipal(db *sql.DB, f func(pr *Principal)) func() {
+func WithPrincipal(db *sql.Tx, f func(pr *Principal)) func() {
 	return func() {
 		pr := &Principal{
 			Created:   time.Now(),
 			CreatedBy: "test",
 			Name:      "test_principal",
 		}
-		err := InsertPrincipalDB(db, pr)
+		err := InsertPrincipalTx(db, pr)
 		So(err, ShouldBeNil)
 		So(pr.Empty(), ShouldBeFalse)
-
-		Reset(func() {
-			_, err := db.Exec("delete from principal where name = 'test_principal'")
-			So(err, ShouldBeNil)
-		})
 
 		f(pr)
 	}
@@ -45,20 +40,29 @@ func TestPrincipalSQL(t *testing.T) {
 			})
 		})
 
-		Convey("Given a principal", WithPrincipal(db, func(pr *Principal) {
+		Convey("Given a db transaction", func() {
+			tx, err := db.Begin()
+			So(err, ShouldBeNil)
+			Reset(func() {
+				err = tx.Rollback()
+				So(err, ShouldBeNil)
+			})
 
-			Convey("When selecting a principal by name", func() {
-				selPr, err := PrincipalByNameDB(db, pr.Name)
+			Convey("Given a principal", WithPrincipal(tx, func(pr *Principal) {
 
-				Convey("It should succeed", func() {
-					So(err, ShouldBeNil)
-					So(selPr.Empty(), ShouldBeFalse)
-					Convey("It should match", func() {
-						So(selPr.ID, ShouldEqual, pr.ID)
+				Convey("When selecting a principal by name", func() {
+					selPr, err := PrincipalByNameTx(tx, pr.Name)
+
+					Convey("It should succeed", func() {
+						So(err, ShouldBeNil)
+						So(selPr.Empty(), ShouldBeFalse)
+						Convey("It should match", func() {
+							So(selPr.ID, ShouldEqual, pr.ID)
+						})
 					})
 				})
-			})
-		}))
+			}))
+		})
 	}))
 }
 

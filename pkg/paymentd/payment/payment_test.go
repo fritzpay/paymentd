@@ -11,38 +11,24 @@ import (
 	. "github.com/smartystreets/goconvey/convey"
 )
 
-func WithTestProject(db, prDB *sql.DB, f func(pr project.Project)) func() {
+func WithTestProject(db, prDB *sql.DB, f func(pr *project.Project)) func() {
 	return func() {
-		princ := principal.Principal{}
-		princ.Name = "payment_testprincipal"
-		princ.CreatedBy = "test"
-		err := principal.InsertPrincipalDB(prDB, &princ)
+		princ, err := principal.PrincipalByNameDB(prDB, "testprincipal")
 		So(err, ShouldBeNil)
 		So(princ.ID, ShouldNotEqual, 0)
 		So(princ.Empty(), ShouldBeFalse)
 
-		proj := project.Project{}
-		proj.PrincipalID = princ.ID
-		proj.Name = "payment_testproject"
-		proj.CreatedBy = "test"
-		err = project.InsertProjectDB(prDB, &proj)
+		proj, err := project.ProjectByPrincipalIDNameDB(prDB, princ.ID, "testproject")
 		So(err, ShouldBeNil)
-
-		Reset(func() {
-			_, err = prDB.Exec("delete from project where name = 'payment_testproject'")
-			So(err, ShouldBeNil)
-			_, err = prDB.Exec("delete from principal where name = 'payment_testprincipal'")
-			So(err, ShouldBeNil)
-		})
 
 		f(proj)
 	}
 }
 
-func WithTestPayment(tx *sql.Tx, pr project.Project, f func(p Payment)) func() {
+func WithTestPayment(tx *sql.Tx, pr *project.Project, f func(p *Payment)) func() {
 	return func() {
 		p := &Payment{}
-		err := p.SetProject(&pr)
+		err := p.SetProject(pr)
 		So(err, ShouldBeNil)
 
 		p.Amount = 1234
@@ -53,7 +39,7 @@ func WithTestPayment(tx *sql.Tx, pr project.Project, f func(p Payment)) func() {
 		err = InsertPaymentTx(tx, p)
 		So(err, ShouldBeNil)
 
-		f(*p)
+		f(p)
 	}
 }
 

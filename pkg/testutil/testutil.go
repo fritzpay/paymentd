@@ -24,6 +24,10 @@ func WithContext(f func(*service.Context, <-chan *log15.Record)) func() {
 		log := log15.New()
 		log.SetHandler(log15.ChannelHandler(logChan))
 
+		var cancel context.CancelFunc
+		baseCtx := context.Background()
+		baseCtx, cancel = context.WithCancel(baseCtx)
+
 		ctx, err := service.NewContext(context.Background(), config.DefaultConfig(), log)
 		So(err, ShouldBeNil)
 
@@ -34,6 +38,7 @@ func WithContext(f func(*service.Context, <-chan *log15.Record)) func() {
 
 		Reset(func() {
 			close(logChan)
+			cancel()
 		})
 	}
 }

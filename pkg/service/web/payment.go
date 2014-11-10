@@ -362,10 +362,11 @@ func (h *Handler) PaymentHandler() http.Handler {
 			w.WriteHeader(http.StatusConflict)
 			return
 		}
+		var paymentTx *payment.PaymentTransaction
 		// payment is not initialized, set open status
 		if !h.paymentService.IsInitialized(p) {
 			// open transaction, ledger is -1 * amount (open payment has negative balance)
-			paymentTx := p.NewTransaction(payment.PaymentStatusOpen)
+			paymentTx = p.NewTransaction(payment.PaymentStatusOpen)
 			paymentTx.Amount *= -1
 			err = h.paymentService.SetPaymentTransaction(tx, paymentTx)
 			if err != nil {
@@ -396,6 +397,11 @@ func (h *Handler) PaymentHandler() http.Handler {
 			return
 		}
 		commit = true
+
+		// do callback notification when a new payment transaction was created
+		if paymentTx != nil {
+			h.paymentService.CallbackPaymentTransaction(paymentTx)
+		}
 
 		h.servePaymentHandler(p, method).ServeHTTP(w, r)
 	})
