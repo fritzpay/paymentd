@@ -464,7 +464,7 @@ func (h *Handler) determinePaymentMethodID(tx *sql.Tx, p *payment.Payment, w htt
 		w.WriteHeader(http.StatusBadRequest)
 		return nil, fmt.Errorf("invalid payment method id %d. project mismatch", paymenMethodID)
 	}
-	if meth.Status != payment_method.PaymentMethodStatusActive {
+	if !meth.Active() {
 		w.WriteHeader(http.StatusConflict)
 		return nil, fmt.Errorf("invalid payment method id %d. payment method not active", paymenMethodID)
 	}

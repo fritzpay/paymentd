@@ -71,6 +71,11 @@ type Method struct {
 	Metadata map[string]string
 }
 
+// Active returns true if the payment method is considered active
+func (m Method) Active() bool {
+	return m.Status == PaymentMethodStatusActive
+}
+
 const (
 	metadataTable        = "payment_method_metadata"
 	metadataPrimaryField = "payment_method_id"
