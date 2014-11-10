@@ -59,11 +59,13 @@ func (s *Service) Notify(c Callbacker, paymentTx *payment.PaymentTransaction) {
 	}
 	// balance
 	tl, err := payment.PaymentTransactionsBeforeDB(s.ctx.PaymentDB(service.ReadOnly), paymentTx)
-	if err != nil {
+	if err != nil && err != payment.ErrPaymentTransactionNotFound {
 		log.Error("error retrieving transaction history", log15.Ctx{"err": err})
 		return
 	}
-	not.SetTransactions(tl)
+	if tl != nil {
+		not.SetTransactions(tl)
+	}
 	// signing
 	non, err := nonce.New()
 	if err != nil {
