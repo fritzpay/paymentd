@@ -74,6 +74,17 @@ func (p *Payment) Decimal() *decimal.Decimal {
 	return &decimal.Decimal{Dec: *d}
 }
 
+// HasTransaction returns true if the payment has a payment transaction entry
+func (p *Payment) HasTransaction() bool {
+	if p.TransactionTimestamp.IsZero() {
+		return false
+	}
+	if !p.Status.Valid() {
+		return false
+	}
+	return true
+}
+
 // NewTransaction creates a new payment transaction for this payment
 //
 // Its transaction fields will be populated with the copied values from the payment

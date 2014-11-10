@@ -47,7 +47,7 @@ func WithTestPayment(tx *sql.Tx, pr project.Project, f func(p Payment)) func() {
 		p.Amount = 1234
 		p.Subunits = 2
 		p.Currency = "EUR"
-		p.Created = time.Now()
+		p.Created = time.Unix(1234, 0)
 
 		err = InsertPaymentTx(tx, p)
 		So(err, ShouldBeNil)

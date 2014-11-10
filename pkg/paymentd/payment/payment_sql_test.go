@@ -7,6 +7,7 @@ import (
 	"github.com/fritzpay/paymentd/pkg/testutil"
 	. "github.com/smartystreets/goconvey/convey"
 	"testing"
+	"time"
 )
 
 func TestPaymentSQL(t *testing.T) {
@@ -35,6 +36,23 @@ func TestPaymentSQL(t *testing.T) {
 								So(err, ShouldBeNil)
 								Convey("It should match the original payment", func() {
 									So(p2.ID(), ShouldEqual, p.ID())
+								})
+							})
+						})
+
+						Convey("Given the test payment has a transaction", func() {
+							paymentTx := p.NewTransaction(PaymentStatusPaid)
+							paymentTx.Timestamp = time.Unix(9876, 0)
+							err = InsertPaymentTransactionTx(tx, paymentTx)
+							So(err, ShouldBeNil)
+
+							Convey("When selecting the payment", func() {
+								p2, err := PaymentByIDTx(tx, p.PaymentID())
+								So(err, ShouldBeNil)
+
+								Convey("The transaction values should be set in the payment", func() {
+									So(p2.TransactionTimestamp.Unix(), ShouldEqual, 9876)
+									So(p2.Status, ShouldEqual, PaymentStatusPaid)
 								})
 							})
 						})

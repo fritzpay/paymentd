@@ -1,8 +1,10 @@
 package payment
 
 import (
+	"code.google.com/p/godec/dec"
 	"database/sql"
 	"database/sql/driver"
+	"encoding/json"
 	"fmt"
 	"github.com/fritzpay/paymentd/pkg/decimal"
 	"time"
@@ -31,6 +33,10 @@ func (s *PaymentTransactionStatus) Scan(v interface{}) error {
 // Value implements the Valuer interface for sql
 func (s PaymentTransactionStatus) Value() (driver.Value, error) {
 	return driver.Value(s.String()), nil
+}
+
+func (s PaymentTransactionStatus) Valid() bool {
+	return string(s) != ""
 }
 
 func (s PaymentTransactionStatus) String() string {
@@ -68,6 +74,13 @@ type PaymentTransaction struct {
 	Comment   sql.NullString
 }
 
+func (p *PaymentTransaction) Decimal() *decimal.Decimal {
+	d := dec.NewDecInt64(p.Amount)
+	sc := dec.Scale(int32(p.Subunits))
+	d.SetScale(sc)
+	return &decimal.Decimal{Dec: *d}
+}
+
 // Balance represents a balance which totals the ledger by currency
 type Balance map[string]*decimal.Decimal
 
@@ -77,4 +90,23 @@ func (b Balance) FlatMap() map[string]string {
 		flat[curr] = dec.String()
 	}
 	return flat
+}
+
+func (b Balance) MarshalJSON() ([]byte, error) {
+	return json.Marshal(b.FlatMap())
+}
+
+type PaymentTransactionList []*PaymentTransaction
+
+func (p PaymentTransactionList) Balance() Balance {
+	b := make(map[string]*decimal.Decimal)
+	for _, tx := range p {
+		am := tx.Decimal()
+		if _, ok := b[tx.Currency]; ok {
+			b[tx.Currency].Add(&b[tx.Currency].Dec, &am.Dec)
+		} else {
+			b[tx.Currency] = am
+		}
+	}
+	return b
 }

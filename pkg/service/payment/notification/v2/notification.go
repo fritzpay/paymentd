@@ -3,12 +3,16 @@ package notification
 import (
 	"bytes"
 	"crypto/sha256"
+	"encoding/hex"
+	"encoding/json"
 	"fmt"
 	"github.com/fritzpay/paymentd/pkg/maputil"
 	"github.com/fritzpay/paymentd/pkg/paymentd/payment"
-	paymentService "github.com/fritzpay/paymentd/pkg/service/payment"
+	"github.com/fritzpay/paymentd/pkg/service"
 	"hash"
+	"io"
 	"strconv"
+	"time"
 )
 
 const (
@@ -17,7 +21,7 @@ const (
 
 // PaymentNotification represents a notification for connected systems about
 // the state of a payment
-type PaymentNotification struct {
+type Notification struct {
 	Version              string
 	PaymentId            payment.PaymentID
 	Ident                string
@@ -37,10 +41,10 @@ type PaymentNotification struct {
 	Signature            string            `json:",omitempty"`
 }
 
-func NewPaymentNotification(srv *paymentService.Service, p *payment.Payment) (*PaymentNotification, error) {
-	n := &PaymentNotification{
+func New(encodedPaymentID payment.PaymentID, p *payment.Payment) (*Notification, error) {
+	n := &Notification{
 		Version:       PaymentNotificationVersion,
-		PaymentId:     srv.EncodedPaymentID(p.PaymentID()),
+		PaymentId:     encodedPaymentID,
 		Ident:         p.Ident,
 		Amount:        p.Amount,
 		Subunits:      p.Subunits,
@@ -67,7 +71,26 @@ func NewPaymentNotification(srv *paymentService.Service, p *payment.Payment) (*P
 	return n, nil
 }
 
-func (n *PaymentNotification) Message() ([]byte, error) {
+func (n *Notification) Identification() string {
+	return fmt.Sprintf("payment notification %s", n.Version)
+}
+
+func (n *Notification) SetTransactions(tl payment.PaymentTransactionList) {
+	n.Balance = tl.Balance()
+}
+
+func (n *Notification) Sign(timestamp time.Time, nonce string, secret []byte) error {
+	n.Timestamp = timestamp.Unix()
+	n.Nonce = nonce
+	sig, err := service.Sign(n, secret)
+	if err != nil {
+		return err
+	}
+	n.Signature = hex.EncodeToString(sig)
+	return nil
+}
+
+func (n *Notification) Message() ([]byte, error) {
 	var err error
 	buf := bytes.NewBuffer(nil)
 	_, err = buf.WriteString(n.Version)
@@ -150,6 +173,21 @@ func (n *PaymentNotification) Message() ([]byte, error) {
 	return buf.Bytes(), nil
 }
 
-func (n *PaymentNotification) HashFunc() func() hash.Hash {
+func (n *Notification) HashFunc() func() hash.Hash {
 	return sha256.New
+}
+
+func (n *Notification) Reader() io.ReadCloser {
+	r, w := io.Pipe()
+	go func() {
+		enc := json.NewEncoder(w)
+		err := enc.Encode(n)
+		if err != nil {
+			r.CloseWithError(err)
+			w.CloseWithError(err)
+			return
+		}
+		w.Close()
+	}()
+	return r
 }

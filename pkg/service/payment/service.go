@@ -2,12 +2,12 @@ package payment
 
 import (
 	"database/sql"
+	"errors"
 	"github.com/fritzpay/paymentd/pkg/paymentd/payment"
 	"github.com/fritzpay/paymentd/pkg/paymentd/payment_method"
 	"github.com/fritzpay/paymentd/pkg/paymentd/project"
 	"github.com/fritzpay/paymentd/pkg/server"
 	"github.com/fritzpay/paymentd/pkg/service"
-	"github.com/fritzpay/paymentd/pkg/service/payment/notification"
 	"github.com/go-sql-driver/mysql"
 	"gopkg.in/inconshreveable/log15.v2"
 	"net/http"
@@ -59,6 +59,7 @@ const (
 )
 
 const (
+	// PaymentTokenMaxAgeDefault is the default maximum age of payment tokens
 	PaymentTokenMaxAgeDefault = time.Minute * 15
 )
 
@@ -94,6 +95,19 @@ func NewService(ctx *service.Context) (*Service, error) {
 	s.tr = &http.Transport{}
 	s.cl = &http.Client{
 		Transport: s.tr,
+		CheckRedirect: func(req *http.Request, via []*http.Request) error {
+			if len(via) > 10 {
+				return errors.New("too many redirects")
+			}
+			// keep user-agent
+			if len(via) > 0 {
+				lastReq := via[len(via)-1]
+				if lastReq.Header.Get("User-Agent") != "" {
+					req.Header.Set("User-Agent", lastReq.Header.Get("User-Agent"))
+				}
+			}
+			return nil
+		},
 	}
 
 	go s.handleContext()
@@ -135,7 +149,7 @@ func (s *Service) CreatePayment(tx *sql.Tx, p *payment.Payment) error {
 		"method": "CreatePayment",
 	})
 	if p.Config.HasCallback() {
-		callbackProjectKey, err := project.ProjectKeyByKeyTx(tx, p.Config.CallbackProjectKey.String)
+		callbackProjectKey, err := project.ProjectKeyByKeyDB(s.ctx.PrincipalDB(service.ReadOnly), p.Config.CallbackProjectKey.String)
 		if err != nil {
 			if err == project.ErrProjectKeyNotFound {
 				log.Error("callback project key not found", log15.Ctx{"callbackProjectKey": p.Config.CallbackProjectKey.String})
@@ -183,6 +197,7 @@ func (s *Service) CreatePayment(tx *sql.Tx, p *payment.Payment) error {
 	return nil
 }
 
+// SetPaymentConfig sets/updates the payment configuration
 func (s *Service) SetPaymentConfig(tx *sql.Tx, p *payment.Payment) error {
 	log := s.log.New(log15.Ctx{"method": "SetPaymentConfig"})
 	if p.Config.PaymentMethodID.Valid {
@@ -223,6 +238,7 @@ func (s *Service) SetPaymentConfig(tx *sql.Tx, p *payment.Payment) error {
 	return nil
 }
 
+// SetPaymentMetadata sets/updates the payment metadata
 func (s *Service) SetPaymentMetadata(tx *sql.Tx, p *payment.Payment) error {
 	log := s.log.New(log15.Ctx{"method": "SetPaymentMetadata"})
 	// payment metadata
@@ -267,6 +283,10 @@ func (s *Service) IsInitialized(p *payment.Payment) bool {
 	return p.Status != payment.PaymentStatusNone
 }
 
+// SetPaymentTransaction adds a new payment transaction
+//
+// If a callback method is configured for this payment/project, it will send a callback
+// notification
 func (s *Service) SetPaymentTransaction(tx *sql.Tx, paymentTx *payment.PaymentTransaction) error {
 	log := s.log.New(log15.Ctx{"method": "SetPaymentTransaction"})
 	err := payment.InsertPaymentTransactionTx(tx, paymentTx)
@@ -279,11 +299,26 @@ func (s *Service) SetPaymentTransaction(tx *sql.Tx, paymentTx *payment.PaymentTr
 		log.Error("error saving payment transaction", log15.Ctx{"err": err})
 		return ErrDB
 	}
-	var callback notification.Callbacker
-	if notification.CanCallback(&paymentTx.Payment.Config) {
+	err = s.CallbackPaymentTransaction(tx, paymentTx)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+// CallbackPaymentTransaction performs a callback notification if the payment/project has
+// a callback configured
+func (s *Service) CallbackPaymentTransaction(tx *sql.Tx, paymentTx *payment.PaymentTransaction) error {
+	log := s.log.New(log15.Ctx{
+		"method":    "CallbackPaymentTransaction",
+		"projectID": paymentTx.Payment.ProjectID(),
+		"paymentID": paymentTx.Payment.ID(),
+	})
+	var callback Callbacker
+	if CanCallback(&paymentTx.Payment.Config) {
 		callback = &paymentTx.Payment.Config
 	} else {
-		pr, err := project.ProjectByIDTx(tx, paymentTx.Payment.ProjectID())
+		pr, err := project.ProjectByIDDB(s.ctx.PrincipalDB(service.ReadOnly), paymentTx.Payment.ProjectID())
 		if err != nil {
 			if err == project.ErrProjectNotFound {
 				log.Crit("payment with invalid project", log15.Ctx{"projectID": paymentTx.Payment.ProjectID()})
@@ -292,20 +327,27 @@ func (s *Service) SetPaymentTransaction(tx *sql.Tx, paymentTx *payment.PaymentTr
 			log.Error("error retrieving project", log15.Ctx{"err": err})
 			return ErrDB
 		}
-		if notification.CanCallback(pr.Config) {
+		if CanCallback(pr.Config) {
 			callback = pr.Config
 		}
 	}
 	if callback != nil {
-		notification.Notify(s.ctx, callback, paymentTx)
+		s.Notify(callback, paymentTx)
+	} else {
+		log.Warn("payment without configured callback")
 	}
 	return nil
 }
 
+// PaymentTransaction returns the current payment transaction for the given payment
+//
+// PaymentTransaction will return a payment.ErrPaymentTransactionNotFound if no such
+// transaction exists (i.e. the payment is uninitialized)
 func (s *Service) PaymentTransaction(tx *sql.Tx, p *payment.Payment) (*payment.PaymentTransaction, error) {
 	return payment.PaymentTransactionCurrentTx(tx, p)
 }
 
+// CreatePaymentToken creates a new random payment token
 func (s *Service) CreatePaymentToken(tx *sql.Tx, p *payment.Payment) (*payment.PaymentToken, error) {
 	log := s.log.New(log15.Ctx{"method": "CreatePaymentToken"})
 	token, err := payment.NewPaymentToken(p.PaymentID())
@@ -326,12 +368,15 @@ func (s *Service) CreatePaymentToken(tx *sql.Tx, p *payment.Payment) (*payment.P
 	return token, nil
 }
 
+// PaymentByToken returns the payment associated with the given payment token
+//
 // TODO use token max age from config
 func (s *Service) PaymentByToken(tx *sql.Tx, token string) (*payment.Payment, error) {
 	tokenMaxAge := PaymentTokenMaxAgeDefault
 	return payment.PaymentByTokenTx(tx, token, tokenMaxAge)
 }
 
+// DeletePaymentToken deletes/invalidates the given payment token
 func (s *Service) DeletePaymentToken(tx *sql.Tx, token string) error {
 	log := s.log.New(log15.Ctx{"method": "DeletePaymentToken"})
 	err := payment.DeletePaymentTokenTx(tx, token)
