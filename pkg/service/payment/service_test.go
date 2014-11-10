@@ -1,15 +1,12 @@
 package payment_test
 
 import (
-	"bytes"
 	"database/sql"
-	"encoding/json"
 	"github.com/fritzpay/paymentd/pkg/paymentd/payment"
 	"github.com/fritzpay/paymentd/pkg/paymentd/payment_method"
 	"github.com/fritzpay/paymentd/pkg/paymentd/project"
 	"github.com/fritzpay/paymentd/pkg/service"
 	paymentService "github.com/fritzpay/paymentd/pkg/service/payment"
-	"github.com/fritzpay/paymentd/pkg/service/payment/notification/v2"
 	"github.com/fritzpay/paymentd/pkg/testutil"
 	. "github.com/smartystreets/goconvey/convey"
 	"gopkg.in/inconshreveable/log15.v2"
@@ -127,34 +124,36 @@ func TestPaymentNotification(t *testing.T) {
 												So(err, ShouldBeNil)
 											})
 
-											Convey("A notification should be sent", func() {
-												select {
-												case <-srvOk:
-													So(req, ShouldNotBeNil)
-												case <-time.After(time.Second):
-													t.Errorf("request timeout on %s", testSrv.URL)
-													close(srvOk)
-												drain:
-													for {
-														select {
-														case msg := <-logs:
-															t.Logf("%v", msg)
-														default:
-															break drain
-														}
-													}
-												}
+											// Wrong implementation, notification should not occur inside a transaction
+											//
+											// 	Convey("A notification should be sent", func() {
+											// 		select {
+											// 		case <-srvOk:
+											// 			So(req, ShouldNotBeNil)
+											// 		case <-time.After(time.Second):
+											// 			t.Errorf("request timeout on %s", testSrv.URL)
+											// 			close(srvOk)
+											// 		drain:
+											// 			for {
+											// 				select {
+											// 				case msg := <-logs:
+											// 					t.Logf("%v", msg)
+											// 				default:
+											// 					break drain
+											// 				}
+											// 			}
+											// 		}
 
-												Convey("The notification should contain the transaction", func() {
-													not := &notification.Notification{}
-													dec := json.NewDecoder(bytes.NewBuffer(body))
-													err := dec.Decode(not)
-													So(err, ShouldBeNil)
+											// 		Convey("The notification should contain the transaction", func() {
+											// 			not := &notification.Notification{}
+											// 			dec := json.NewDecoder(bytes.NewBuffer(body))
+											// 			err := dec.Decode(not)
+											// 			So(err, ShouldBeNil)
 
-													So(not.TransactionTimestamp, ShouldNotEqual, 0)
-													So(not.Status, ShouldEqual, payment.PaymentStatusOpen)
-												})
-											})
+											// 			So(not.TransactionTimestamp, ShouldNotEqual, 0)
+											// 			So(not.Status, ShouldEqual, payment.PaymentStatusOpen)
+											// 		})
+											// 	})
 										})
 									})
 								})

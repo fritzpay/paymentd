@@ -300,16 +300,12 @@ func (s *Service) SetPaymentTransaction(tx *sql.Tx, paymentTx *payment.PaymentTr
 		log.Error("error saving payment transaction", log15.Ctx{"err": err})
 		return ErrDB
 	}
-	err = s.CallbackPaymentTransaction(tx, paymentTx)
-	if err != nil {
-		return err
-	}
 	return nil
 }
 
 // CallbackPaymentTransaction performs a callback notification if the payment/project has
 // a callback configured
-func (s *Service) CallbackPaymentTransaction(tx *sql.Tx, paymentTx *payment.PaymentTransaction) error {
+func (s *Service) CallbackPaymentTransaction(paymentTx *payment.PaymentTransaction) error {
 	log := s.log.New(log15.Ctx{
 		"method":    "CallbackPaymentTransaction",
 		"projectID": paymentTx.Payment.ProjectID(),
