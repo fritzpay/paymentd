@@ -3,6 +3,8 @@ package fritzpay
 import (
 	"errors"
 	"fmt"
+	"github.com/fritzpay/paymentd/pkg/paymentd/payment"
+	"github.com/fritzpay/paymentd/pkg/paymentd/payment_method"
 	"github.com/fritzpay/paymentd/pkg/service"
 	paymentService "github.com/fritzpay/paymentd/pkg/service/payment"
 	"github.com/gorilla/mux"
@@ -82,11 +84,72 @@ func (d *Driver) PaymentInfo() http.Handler {
 	})
 }
 
+// Callback handles callback from the "psp" (payment service provider; in this case
+// a mock implementation)
+//
+// It will always answer with a HTTP status 200 OK unless there was a data error
+// We expect the PSP to re-send the callback notification if we answer with anything
+// other than 200
 func (d *Driver) Callback(w http.ResponseWriter, r *http.Request) {
 	log := d.log.New(log15.Ctx{
 		"method": "Callback",
 	})
 	if Debug {
 		log.Debug("received callback", log15.Ctx{"query": r.URL.Query()})
+	}
+	// always answer with ok
+	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
+
+	paymentIDStr := r.URL.Query().Get("paymentID")
+	if paymentIDStr == "" {
+		log.Warn("no payment id in callback")
+		w.WriteHeader(http.StatusOK)
+		return
+	}
+	paymentID, err := payment.ParsePaymentIDStr(paymentIDStr)
+	if err != nil {
+		log.Warn("invalid payment id", log15.Ctx{"err": err})
+		w.WriteHeader(http.StatusOK)
+		return
+	}
+	log = log.New(log15.Ctx{
+		"displayPaymentId": paymentID.String(),
+	})
+	paymentID = d.paymentService.DecodedPaymentID(paymentID)
+	p, err := payment.PaymentByIDDB(d.ctx.PaymentDB(service.ReadOnly), paymentID)
+	if err != nil {
+		if err == payment.ErrPaymentNotFound {
+			log.Warn("payment not found")
+			w.WriteHeader(http.StatusOK)
+			return
+		}
+		log.Error("error retrieving payment", log15.Ctx{"err": err})
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+	log = log.New(log15.Ctx{
+		"projectID": p.ProjectID(),
+		"paymentID": p.ID(),
+	})
+	if !p.Config.IsConfigured() {
+		log.Warn("received callback for unconfigured payment")
+		w.WriteHeader(http.StatusOK)
+		return
+	}
+	if !p.Config.PaymentMethodID.Valid {
+		log.Warn("received callback for payment without payment method")
+		w.WriteHeader(http.StatusOK)
+		return
+	}
+	method, err := payment_method.PaymentMethodByIDDB(d.ctx.PaymentDB(service.ReadOnly), p.Config.PaymentMethodID.Int64)
+	if err != nil {
+		if err == payment_method.ErrPaymentMethodNotFound {
+			log.Warn("payment method not found", log15.Ctx{"paymentMethodID": p.Config.PaymentMethodID.Int64})
+			w.WriteHeader(http.StatusOK)
+			return
+		}
+		log.Error("error retrieving payment method", log15.Ctx{"err": err})
+		w.WriteHeader(http.StatusInternalServerError)
+		return
 	}
 }
