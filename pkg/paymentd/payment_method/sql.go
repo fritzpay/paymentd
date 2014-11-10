@@ -3,8 +3,9 @@ package payment_method
 import (
 	"database/sql"
 	"errors"
-	"github.com/fritzpay/paymentd/pkg/metadata"
 	"time"
+
+	"github.com/fritzpay/paymentd/pkg/metadata"
 )
 
 var (

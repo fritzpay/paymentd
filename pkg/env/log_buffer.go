@@ -4,8 +4,9 @@ package env
 
 import (
 	"bytes"
-	"gopkg.in/inconshreveable/log15.v2"
 	"sync"
+
+	"gopkg.in/inconshreveable/log15.v2"
 )
 
 var bufferPool = &sync.Pool{

@@ -3,8 +3,9 @@ package fritzpay
 import (
 	"database/sql"
 	"errors"
-	"github.com/fritzpay/paymentd/pkg/paymentd/payment"
 	"time"
+
+	"github.com/fritzpay/paymentd/pkg/paymentd/payment"
 )
 
 var (

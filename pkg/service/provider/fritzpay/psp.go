@@ -5,11 +5,12 @@ import (
 	"database/sql"
 	"encoding/hex"
 	"fmt"
-	"golang.org/x/net/context"
-	"gopkg.in/inconshreveable/log15.v2"
 	"net/http"
 	"net/url"
 	"time"
+
+	"golang.org/x/net/context"
+	"gopkg.in/inconshreveable/log15.v2"
 )
 
 func pspInit(ctx context.Context, fritzpayP Payment, callbackURL string) {

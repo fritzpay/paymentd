@@ -2,11 +2,12 @@ package service
 
 import (
 	"database/sql"
+	"testing"
+
 	"github.com/fritzpay/paymentd/pkg/config"
 	. "github.com/smartystreets/goconvey/convey"
 	"golang.org/x/net/context"
 	"gopkg.in/inconshreveable/log15.v2"
-	"testing"
 )
 
 func WithContext(f func(ctx *Context)) func() {

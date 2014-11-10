@@ -3,12 +3,13 @@ package config
 import (
 	"database/sql"
 	"fmt"
-	"github.com/fritzpay/paymentd/pkg/testutil"
-	. "github.com/smartystreets/goconvey/convey"
-	"golang.org/x/crypto/bcrypt"
 	"math/rand"
 	"strconv"
 	"testing"
+
+	"github.com/fritzpay/paymentd/pkg/testutil"
+	. "github.com/smartystreets/goconvey/convey"
+	"golang.org/x/crypto/bcrypt"
 )
 
 func TestConfigEntry(t *testing.T) {

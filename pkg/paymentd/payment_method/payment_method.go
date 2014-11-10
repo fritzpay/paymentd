@@ -4,8 +4,9 @@ import (
 	"database/sql/driver"
 	"errors"
 	"fmt"
-	"github.com/fritzpay/paymentd/pkg/paymentd/provider"
 	"time"
+
+	"github.com/fritzpay/paymentd/pkg/paymentd/provider"
 )
 
 type methodStatus string

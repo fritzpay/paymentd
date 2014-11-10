@@ -3,15 +3,16 @@ package v1
 import (
 	"database/sql"
 	"encoding/json"
+	"net/http"
+	"strconv"
+	"time"
+
 	"github.com/fritzpay/paymentd/pkg/metadata"
 	"github.com/fritzpay/paymentd/pkg/paymentd/principal"
 	"github.com/fritzpay/paymentd/pkg/paymentd/project"
 	"github.com/fritzpay/paymentd/pkg/service"
 	"github.com/gorilla/mux"
 	"gopkg.in/inconshreveable/log15.v2"
-	"net/http"
-	"strconv"
-	"time"
 )
 
 type ProjectAdminAPIResponse struct {

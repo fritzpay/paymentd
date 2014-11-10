@@ -2,6 +2,10 @@ package v1
 
 import (
 	"encoding/json"
+	"net/http"
+	"strconv"
+	"time"
+
 	"github.com/fritzpay/paymentd/pkg/metadata"
 	"github.com/fritzpay/paymentd/pkg/paymentd/payment_method"
 	"github.com/fritzpay/paymentd/pkg/paymentd/project"
@@ -9,9 +13,6 @@ import (
 	"github.com/fritzpay/paymentd/pkg/service"
 	"github.com/gorilla/mux"
 	"gopkg.in/inconshreveable/log15.v2"
-	"net/http"
-	"strconv"
-	"time"
 )
 
 // PaymentMethodRequest is the request JSON struct for POST - PUT

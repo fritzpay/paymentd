@@ -1,9 +1,10 @@
 package service
 
 import (
-	. "github.com/smartystreets/goconvey/convey"
 	"net/http"
 	"testing"
+
+	. "github.com/smartystreets/goconvey/convey"
 )
 
 func TestRequestContextPurging(t *testing.T) {

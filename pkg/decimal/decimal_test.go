@@ -1,8 +1,9 @@
 package decimal
 
 import (
-	"code.google.com/p/godec/dec"
 	"testing"
+
+	"code.google.com/p/godec/dec"
 )
 
 func TestDecimalParts(t *testing.T) {

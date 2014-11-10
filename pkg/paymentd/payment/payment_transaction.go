@@ -1,13 +1,14 @@
 package payment
 
 import (
-	"code.google.com/p/godec/dec"
 	"database/sql"
 	"database/sql/driver"
 	"encoding/json"
 	"fmt"
-	"github.com/fritzpay/paymentd/pkg/decimal"
 	"time"
+
+	"code.google.com/p/godec/dec"
+	"github.com/fritzpay/paymentd/pkg/decimal"
 )
 
 type PaymentTransactionStatus string

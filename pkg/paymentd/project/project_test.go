@@ -2,9 +2,10 @@ package project_test
 
 import (
 	"encoding/json"
+	"testing"
+
 	"github.com/fritzpay/paymentd/pkg/paymentd/project"
 	. "github.com/smartystreets/goconvey/convey"
-	"testing"
 )
 
 func TestProjectConfig(t *testing.T) {

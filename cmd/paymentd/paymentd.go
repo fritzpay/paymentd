@@ -4,6 +4,8 @@ import (
 	"database/sql"
 	"errors"
 	"flag"
+	"os"
+
 	"github.com/fritzpay/paymentd/pkg/config"
 	"github.com/fritzpay/paymentd/pkg/env"
 	"github.com/fritzpay/paymentd/pkg/server"
@@ -13,7 +15,6 @@ import (
 	_ "github.com/go-sql-driver/mysql"
 	"golang.org/x/net/context"
 	"gopkg.in/inconshreveable/log15.v2"
-	"os"
 )
 
 const (

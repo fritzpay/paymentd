@@ -2,10 +2,11 @@ package main
 
 import (
 	"fmt"
-	"github.com/codegangsta/cli"
-	"github.com/fritzpay/paymentd/pkg/config"
 	"net"
 	"os"
+
+	"github.com/codegangsta/cli"
+	"github.com/fritzpay/paymentd/pkg/config"
 )
 
 const cfgCommandDescription = `This command allows you to load, modify and test configuration 

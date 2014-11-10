@@ -1,11 +1,12 @@
 package v1
 
 import (
+	"net/http"
+
 	"github.com/fritzpay/paymentd/pkg/paymentd/currency"
 	"github.com/fritzpay/paymentd/pkg/service"
 	"github.com/gorilla/mux"
 	"gopkg.in/inconshreveable/log15.v2"
-	"net/http"
 )
 
 type CurrencyAdminAPIResponse struct {

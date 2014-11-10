@@ -1,8 +1,9 @@
 package v1
 
 import (
-	"gopkg.in/inconshreveable/log15.v2"
 	"net/http"
+
+	"gopkg.in/inconshreveable/log15.v2"
 )
 
 type UserAdminAPIResponse struct {

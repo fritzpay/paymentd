@@ -2,10 +2,11 @@ package testutil
 
 import (
 	"database/sql"
-	_ "github.com/go-sql-driver/mysql"
-	. "github.com/smartystreets/goconvey/convey"
 	"os"
 	"testing"
+
+	_ "github.com/go-sql-driver/mysql"
+	. "github.com/smartystreets/goconvey/convey"
 )
 
 const (

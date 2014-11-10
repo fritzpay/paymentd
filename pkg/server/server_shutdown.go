@@ -3,8 +3,9 @@
 package server
 
 import (
-	"gopkg.in/inconshreveable/log15.v2"
 	"time"
+
+	"gopkg.in/inconshreveable/log15.v2"
 )
 
 // Shutdown starts the server's shutdown mode

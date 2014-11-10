@@ -2,12 +2,13 @@ package api
 
 import (
 	"fmt"
+	"net/http"
+	"os"
+
 	"github.com/fritzpay/paymentd/pkg/service"
 	"github.com/fritzpay/paymentd/pkg/service/api/v1"
 	"github.com/gorilla/mux"
 	"gopkg.in/inconshreveable/log15.v2"
-	"net/http"
-	"os"
 )
 
 // Handler is the (HTTP) API Handler

@@ -2,10 +2,11 @@ package env
 
 import (
 	"errors"
-	. "github.com/smartystreets/goconvey/convey"
-	"gopkg.in/inconshreveable/log15.v2"
 	golog "log"
 	"testing"
+
+	. "github.com/smartystreets/goconvey/convey"
+	"gopkg.in/inconshreveable/log15.v2"
 )
 
 type testHandler struct {
