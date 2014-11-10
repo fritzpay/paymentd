@@ -11,11 +11,12 @@ go:
   - tip
 
 install:
+  - go get code.google.com/p/go.tools/cmd/vet || true
   - go get golang.org/x/tools/cmd/vet
   - go get github.com/tools/godep
   - $HOME/gopath/bin/godep restore ./...
 
-script: $GOPATH/bin/vet ./... && go test ./... -race -v
+script: go vet ./... && go test ./... -race -v
 
 before_script:
   - export TT=`date -u +%H%M%S`
