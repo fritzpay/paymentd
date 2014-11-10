@@ -3,9 +3,9 @@ package v1
 import (
 	"github.com/fritzpay/paymentd/pkg/paymentd/provider"
 	"github.com/fritzpay/paymentd/pkg/service"
+	"github.com/gorilla/mux"
 	"gopkg.in/inconshreveable/log15.v2"
 	"net/http"
-	"path"
 	"strconv"
 )
 
@@ -25,10 +25,8 @@ func (a *AdminAPI) ProviderGetRequest() http.Handler {
 			log.Info("unsupported method " + r.Method)
 		}
 
-		urlpath, providerIDParam := path.Split(path.Clean(r.URL.Path))
-		log.Info("urlpath: " + urlpath)
-		log.Info("param: " + providerIDParam)
-
+		vars := mux.Vars(r)
+		providerIDParam := vars["providerid"]
 		providerID, err := strconv.ParseInt(providerIDParam, 10, 64)
 		if err != nil {
 			ErrReadParam.Write(w)
@@ -41,11 +39,11 @@ func (a *AdminAPI) ProviderGetRequest() http.Handler {
 		pr, err := provider.ProviderByIDDB(db, providerID)
 		if err == provider.ErrProviderNotFound {
 			ErrNotFound.Write(w)
-			log.Info("provider " + providerIDParam + " not found")
+			log.Info("provider not found", log15.Ctx{"providerID": providerIDParam})
 			return
 		} else if err != nil {
 			ErrDatabase.Write(w)
-			log.Error("database error ", log15.Ctx{"err": err})
+			log.Error("database error", log15.Ctx{"err": err})
 			return
 		}
 
