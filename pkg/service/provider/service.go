@@ -3,6 +3,8 @@ package provider
 import (
 	"errors"
 
+	"github.com/fritzpay/paymentd/pkg/service/provider/paypal_rest"
+
 	"github.com/fritzpay/paymentd/pkg/paymentd/payment_method"
 	"github.com/fritzpay/paymentd/pkg/service"
 	"github.com/fritzpay/paymentd/pkg/service/provider/fritzpay"
@@ -40,6 +42,7 @@ func NewService(ctx *service.Context) (*Service, error) {
 func (s *Service) AttachDrivers(mux *mux.Router) error {
 	// add drivers
 	s.drivers[driverFritzpay] = &fritzpay.Driver{}
+	s.drivers[driverPaypalREST] = &paypal_rest.Driver{}
 
 	var err error
 	mux = mux.PathPrefix(ProviderPath).Subrouter()
