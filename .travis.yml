@@ -15,7 +15,7 @@ install:
   - go get github.com/tools/godep
   - $HOME/gopath/bin/godep restore ./...
 
-script: go vet ./... && go test ./... -race -v
+script: $GOPATH/bin/vet ./... && go test ./... -race -v
 
 before_script:
   - export TT=`date -u +%H%M%S`
