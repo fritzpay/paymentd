@@ -17,6 +17,7 @@ const (
 	TransactionPSPInit  = "psp_init"
 	TransactionInit     = "initialized"
 	TransactionPSPError = "psp_error"
+	TransactionOpen     = "open"
 )
 
 type PaymentTransaction struct {

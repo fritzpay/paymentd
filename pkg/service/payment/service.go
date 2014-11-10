@@ -220,7 +220,7 @@ func (s *Service) SetPaymentConfig(tx *sql.Tx, p *payment.Payment) error {
 			log.Warn(ErrPaymentMethodConflict.Error())
 			return ErrPaymentMethodConflict
 		}
-		if meth.Status != payment_method.PaymentMethodStatusActive {
+		if !meth.Active() {
 			log.Warn(ErrPaymentMethodInactive.Error())
 			return ErrPaymentMethodInactive
 		}
