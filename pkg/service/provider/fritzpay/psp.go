@@ -38,11 +38,7 @@ func pspInit(ctx context.Context, fritzpayP Payment, callbackURL string) {
 		log.Debug("worker start...")
 	}
 	var req *http.Request
-	tr := &http.Transport{}
-	cl := &http.Client{
-		Transport: tr,
-		Timeout:   time.Second,
-	}
+	tr, cl := newClient()
 	ok := make(chan struct{})
 	errors := make(chan error)
 	go func() {
