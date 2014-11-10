@@ -1,16 +1,19 @@
 package payment_test
 
 import (
+	"bytes"
 	"database/sql"
+	"encoding/json"
 	"github.com/fritzpay/paymentd/pkg/paymentd/payment"
 	"github.com/fritzpay/paymentd/pkg/paymentd/payment_method"
 	"github.com/fritzpay/paymentd/pkg/paymentd/project"
-	"github.com/fritzpay/paymentd/pkg/paymentd/provider"
 	"github.com/fritzpay/paymentd/pkg/service"
 	paymentService "github.com/fritzpay/paymentd/pkg/service/payment"
+	"github.com/fritzpay/paymentd/pkg/service/payment/notification/v2"
 	"github.com/fritzpay/paymentd/pkg/testutil"
 	. "github.com/smartystreets/goconvey/convey"
 	"gopkg.in/inconshreveable/log15.v2"
+	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -32,18 +35,7 @@ func WithPayment(tx *sql.Tx, f func(p *payment.Payment)) func() {
 			ID:          1,
 			PrincipalID: 1,
 		}
-		method := &payment_method.Method{
-			ProjectID: 1,
-			Provider: provider.Provider{
-				ID:   1,
-				Name: "test",
-			},
-			MethodKey: "test",
-			Created:   time.Now(),
-			CreatedBy: "test",
-			Status:    payment_method.PaymentMethodStatusActive,
-		}
-		err := payment_method.InsertPaymentMethodTx(tx, method)
+		method, err := payment_method.PaymentMethodByIDTx(tx, 1)
 		So(err, ShouldBeNil)
 		So(method.Active(), ShouldBeTrue)
 		So(method.ID, ShouldNotEqual, 0)
@@ -96,37 +88,76 @@ func TestPaymentNotification(t *testing.T) {
 						Convey("Given a payment", WithPayment(tx, func(p *payment.Payment) {
 
 							Convey("Given a test HTTP server", func() {
+								srvOk := make(chan struct{})
+								var req *http.Request
+								var body []byte
 								testSrv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-
+									req = r
+									body, err = ioutil.ReadAll(r.Body)
+									So(err, ShouldBeNil)
+									close(srvOk)
 								}))
 
 								Reset(func() {
 									testSrv.Close()
 								})
 
-								So(paymentService.CanCallback(&p.Config), ShouldBeTrue)
+								Convey("Given a test callback configuration", func() {
+									testPk, err := project.ProjectKeyByKeyDB(principalDB, "testkey")
+									So(err, ShouldBeNil)
+									So(testPk.IsValid(), ShouldBeTrue)
 
-								Convey("When the payment has no transaction", func() {
-									paymentTx, err := s.PaymentTransaction(tx, p)
-									So(err, ShouldEqual, payment.ErrPaymentTransactionNotFound)
-									So(paymentTx.Status.Valid(), ShouldBeFalse)
+									p.Config.SetCallbackURL(testSrv.URL)
+									p.Config.SetCallbackAPIVersion("2")
+									p.Config.SetCallbackProjectKey(testPk.Key)
 
-									Convey("When creating a transaction", func() {
-										So(s.IsProcessablePayment(p), ShouldBeTrue)
-										paymentTx = p.NewTransaction(payment.PaymentStatusOpen)
-										err = s.SetPaymentTransaction(tx, paymentTx)
+									So(paymentService.CanCallback(&p.Config), ShouldBeTrue)
 
-										Convey("It should succeed", func() {
-											So(err, ShouldBeNil)
+									Convey("When the payment has no transaction", func() {
+										paymentTx, err := s.PaymentTransaction(tx, p)
+										So(err, ShouldEqual, payment.ErrPaymentTransactionNotFound)
+										So(paymentTx.Status.Valid(), ShouldBeFalse)
+
+										Convey("When creating a transaction", func() {
+											So(s.IsProcessablePayment(p), ShouldBeTrue)
+											paymentTx = p.NewTransaction(payment.PaymentStatusOpen)
+											err = s.SetPaymentTransaction(tx, paymentTx)
+
+											Convey("It should succeed", func() {
+												So(err, ShouldBeNil)
+											})
+
+											Convey("A notification should be sent", func() {
+												select {
+												case <-srvOk:
+													So(req, ShouldNotBeNil)
+												case <-time.After(time.Second):
+													t.Errorf("request timeout on %s", testSrv.URL)
+													close(srvOk)
+												drain:
+													for {
+														select {
+														case msg := <-logs:
+															t.Logf("%v", msg)
+														default:
+															break drain
+														}
+													}
+												}
+
+												Convey("The notification should contain the transaction", func() {
+													not := &notification.Notification{}
+													dec := json.NewDecoder(bytes.NewBuffer(body))
+													err := dec.Decode(not)
+													So(err, ShouldBeNil)
+
+													So(not.TransactionTimestamp, ShouldNotEqual, 0)
+													So(not.Status, ShouldEqual, payment.PaymentStatusOpen)
+												})
+											})
 										})
-
-										Convey("A notification should be sent", nil)
-
-										Convey("The notification should contain the transaction", nil)
-
 									})
 								})
-
 							})
 						}))
 					}))
