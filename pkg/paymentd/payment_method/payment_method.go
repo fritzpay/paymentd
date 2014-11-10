@@ -73,7 +73,7 @@ type Method struct {
 }
 
 // Active returns true if the payment method is considered active
-func (m Method) Active() bool {
+func (m *Method) Active() bool {
 	return m.Status == PaymentMethodStatusActive
 }
 
