@@ -2,6 +2,12 @@ package payment_test
 
 import (
 	"database/sql"
+	"io/ioutil"
+	"net/http"
+	"net/http/httptest"
+	"testing"
+	"time"
+
 	"github.com/fritzpay/paymentd/pkg/paymentd/payment"
 	"github.com/fritzpay/paymentd/pkg/paymentd/payment_method"
 	"github.com/fritzpay/paymentd/pkg/paymentd/project"
@@ -10,11 +16,6 @@ import (
 	"github.com/fritzpay/paymentd/pkg/testutil"
 	. "github.com/smartystreets/goconvey/convey"
 	"gopkg.in/inconshreveable/log15.v2"
-	"io/ioutil"
-	"net/http"
-	"net/http/httptest"
-	"testing"
-	"time"
 )
 
 func WithService(ctx *service.Context, f func(s *paymentService.Service)) func() {
