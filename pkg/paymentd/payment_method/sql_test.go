@@ -61,7 +61,7 @@ func TestPaymentMethodSQL(t *testing.T) {
 							So(pr.ID, ShouldEqual, 1)
 
 							Convey("When retrieving a nonexistent payment method", func() {
-								_, err = PaymentMethodByProjectIDProviderIDMethodKey(db, proj.ID, pr.ID, "test")
+								_, err = PaymentMethodByProjectIDProviderIDMethodKeyDB(db, proj.ID, pr.ID, "test")
 								Convey("It should return a not found error", func() {
 									So(err, ShouldEqual, ErrPaymentMethodNotFound)
 								})

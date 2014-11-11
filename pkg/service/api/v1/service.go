@@ -57,8 +57,9 @@ func NewService(ctx *service.Context, mux *mux.Router) (*Service, error) {
 		mux.Handle(ServicePath+"/provider/{providerid}", admin.AuthRequiredHandler(admin.ProviderGetRequest()))
 		mux.Handle(ServicePath+"/project", admin.AuthRequiredHandler(admin.ProjectRequest()))
 		mux.Handle(ServicePath+"/project/{projectid}", admin.AuthRequiredHandler(admin.ProjectGetRequest()))
-		mux.Handle(ServicePath+"/project/{projectid}/method", admin.AuthRequiredHandler(admin.PaymentMethodsGetRequest()))
-		mux.Handle(ServicePath+"/project/{projectid}/method/", admin.AuthRequiredHandler(admin.PaymentMethodsRequest()))
+		mux.Handle(ServicePath+"/project/{projectid}/method/{methodkey}/provider/{providerid}", admin.AuthRequiredHandler(admin.PaymentMethodGetRequest()))
+		mux.Handle(ServicePath+"/project/{projectid}/method/", admin.AuthRequiredHandler(admin.PaymentMethodRequest()))
+		mux.Handle(ServicePath+"/project/{projectid}/method/{methodkey}", admin.AuthRequiredHandler(admin.PaymentMethodRequest()))
 		mux.Handle(ServicePath+"/currency", admin.AuthRequiredHandler(admin.CurrencyGetAllRequest()))
 		mux.Handle(ServicePath+"/currency/{currencycode}", admin.AuthRequiredHandler(admin.CurrencyGetRequest()))
 	}

@@ -201,7 +201,7 @@ func (a *AdminAPI) putNewProject(w http.ResponseWriter, r *http.Request) {
 	}
 	if err != project.ErrProjectNotFound {
 		// project already exists
-		log.Warn("project already exists.", log15.Ctx{"err": err})
+		log.Warn("project already exists", log15.Ctx{"err": err})
 		ErrConflict.Write(w)
 		return
 	}
