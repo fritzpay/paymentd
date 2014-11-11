@@ -13,6 +13,7 @@ import (
 	"net/http"
 	"os"
 	"path"
+	"strings"
 	"testing"
 	"time"
 
@@ -29,6 +30,7 @@ func WithPayment(db *sql.DB, prDB *sql.DB, s *paymentService.Service, f func(p *
 			Currency: "EUR",
 		}
 		p.Config.SetCountry("DE")
+		p.Config.SetPaymentMethodID(1)
 		pr, err := project.ProjectByIDDB(prDB, 1)
 		So(err, ShouldBeNil)
 		err = p.SetProject(pr)
@@ -66,6 +68,8 @@ func TestPayment(t *testing.T) {
 			Convey("Given a service context", testutil.WithContext(func(ctx *service.Context, logs <-chan *log15.Record) {
 				ctx.SetPaymentDB(db, nil)
 				ctx.SetPrincipalDB(prDB, nil)
+				_, err := ctx.WebKeychain().GenerateKey()
+				So(err, ShouldBeNil)
 
 				Convey("Given a payment service", func() {
 					s, err := paymentService.NewService(ctx)
@@ -78,10 +82,11 @@ func TestPayment(t *testing.T) {
 						os.Mkdir(path.Join(os.TempDir(), fritzpay.FritzpayTemplateDir), os.FileMode(0644))
 
 						Convey("Given a web handler", WithWebHandler(ctx, func(h *Handler) {
-							Convey("Given an initialized payment", WithPayment(db, prDB, s, func(p *payment.Payment, t *payment.PaymentToken) {
+							Convey("Given an initialized payment", WithPayment(db, prDB, s, func(p *payment.Payment, token *payment.PaymentToken) {
 
 								Convey("When the payment is already configured", func() {
 									So(p.Config.Country.Valid, ShouldBeTrue)
+									country := p.Config.Country.String
 
 									Convey("Given not all configurations are set", func() {
 										So(p.Config.Locale.Valid, ShouldBeFalse)
@@ -91,11 +96,36 @@ func TestPayment(t *testing.T) {
 											So(err, ShouldBeNil)
 											req.Header.Set("Accept-Language", "de-DE,de;q=0.8,en-US;q=0.6,en;q=0.4")
 
-											Convey("When opening the payment", func() {
+											Convey("Given a valid authorization cookie", func() {
+												wr := testutil.NewResponseWriter()
+												h.authenticatePaymentToken(wr, req, token.Token)
+												So(wr.HeaderWritten, ShouldBeTrue)
+												So(wr.StatusCode, ShouldEqual, http.StatusMovedPermanently)
+												So(wr.Header().Get("Set-Cookie"), ShouldNotBeEmpty)
+												cookieP := strings.Split(wr.Header().Get("Set-Cookie"), ";")
+												req.Header.Set("Cookie", cookieP[0])
 
-												Convey("The configuration should be extended with the missing configuration", nil)
+												Convey("When opening the payment", func() {
+													wr = testutil.NewResponseWriter()
+													h.ServeHTTP(wr, req)
 
-												Convey("The original configuration should not be touched", nil)
+													Convey("It should succeed", func() {
+														So(wr.StatusCode, ShouldEqual, http.StatusOK)
+
+														Convey("When retrieving the new config", func() {
+															p, err := payment.PaymentByIDDB(db, p.PaymentID())
+															So(err, ShouldBeNil)
+
+															Convey("The configuration should be extended with the missing configuration", func() {
+																So(p.Config.Locale.Valid, ShouldBeTrue)
+															})
+
+															Convey("The original configuration should not be touched", func() {
+																So(p.Config.Country.String, ShouldEqual, country)
+															})
+														})
+													})
+												})
 											})
 										})
 									})
