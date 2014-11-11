@@ -70,6 +70,7 @@ func TestPayment(t *testing.T) {
 				ctx.SetPrincipalDB(prDB, nil)
 				_, err := ctx.WebKeychain().GenerateKey()
 				So(err, ShouldBeNil)
+				ctx.Config().Web.URL = "file:///dev/null"
 
 				Convey("Given a payment service", func() {
 					s, err := paymentService.NewService(ctx)
