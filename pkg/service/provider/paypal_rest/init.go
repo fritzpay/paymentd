@@ -38,5 +38,26 @@ func (d *Driver) InitPayment(p *payment.Payment, method *payment_method.Method) 
 		log.Crit("error on begin tx", log15.Ctx{"err": err})
 		return nil, ErrDatabase
 	}
-	return nil, nil
+
+	tr, err := d.oAuthTransport(log)(tx, p, method)
+	if err != nil {
+		return nil, err
+	}
+	err = tr.AuthenticateClient()
+	if err != nil {
+		log.Error("error authenticating", log15.Ctx{"err": err})
+		return nil, ErrInternal
+	}
+	if Debug {
+		log.Debug("authenticated", log15.Ctx{"token": tr.AccessToken})
+	}
+
+	commit = true
+	err = tx.Commit()
+	if err != nil {
+		log.Crit("error on commit", log15.Ctx{"err": err})
+		return nil, ErrDatabase
+	}
+
+	return d.InternalErrorHandler(), nil
 }

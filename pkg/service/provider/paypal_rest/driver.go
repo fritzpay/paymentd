@@ -22,6 +22,7 @@ const (
 
 var (
 	ErrDatabase = errors.New("database error")
+	ErrInternal = errors.New("paypal driver internal error")
 )
 
 type Driver struct {
@@ -31,6 +32,8 @@ type Driver struct {
 	tmplDir string
 
 	paymentService *paymentService.Service
+
+	oauth *OAuthTransportStore
 }
 
 func (d *Driver) Attach(ctx *service.Context, mux *mux.Router) error {
@@ -64,5 +67,8 @@ func (d *Driver) Attach(ctx *service.Context, mux *mux.Router) error {
 	}
 
 	d.mux = mux
+
+	d.oauth = NewOAuthTransportStore()
+
 	return nil
 }
