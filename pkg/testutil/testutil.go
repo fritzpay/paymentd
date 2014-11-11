@@ -55,7 +55,8 @@ type ResponseWriter struct {
 // NewResponseWriter creates a response writer to capture http handler responses
 func NewResponseWriter() *ResponseWriter {
 	return &ResponseWriter{
-		H: http.Header(make(map[string][]string)),
+		H:          http.Header(make(map[string][]string)),
+		StatusCode: http.StatusOK,
 	}
 }
 
@@ -68,9 +69,6 @@ func (r *ResponseWriter) Header() http.Header {
 func (r *ResponseWriter) Write(p []byte) (int, error) {
 	if !r.HeaderWritten {
 		r.HeaderWritten = true
-	}
-	if r.StatusCode == 0 {
-		r.StatusCode = http.StatusOK
 	}
 	return (&(r.Buf)).Write(p)
 }
