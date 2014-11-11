@@ -1,14 +1,15 @@
 package paypal_rest
 
 import (
-	"code.google.com/p/goauth2/oauth"
 	"database/sql"
 	"errors"
+	"net/url"
+	"sync"
+
+	"code.google.com/p/goauth2/oauth"
 	"github.com/fritzpay/paymentd/pkg/paymentd/payment"
 	"github.com/fritzpay/paymentd/pkg/paymentd/payment_method"
 	"gopkg.in/inconshreveable/log15.v2"
-	"net/url"
-	"sync"
 )
 
 const (
