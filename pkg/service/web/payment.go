@@ -447,33 +447,33 @@ func (h *Handler) determineEnv(p *payment.Payment, r *http.Request, configChange
 }
 
 func (h *Handler) determinePaymentMethodID(tx *sql.Tx, p *payment.Payment, w http.ResponseWriter, r *http.Request, configChanged, metadataChanged *bool) (*payment_method.Method, error) {
-	var paymenMethodID int64
+	var paymentMethodID int64
 	if p.Config.PaymentMethodID.Valid {
-		paymenMethodID = p.Config.PaymentMethodID.Int64
+		paymentMethodID = p.Config.PaymentMethodID.Int64
 	} else if idStr := r.URL.Query().Get("paymentMethodId"); idStr != "" {
 		var err error
-		paymenMethodID, err = strconv.ParseInt(idStr, 10, 64)
+		paymentMethodID, err = strconv.ParseInt(idStr, 10, 64)
 		if err != nil {
 			w.WriteHeader(http.StatusBadRequest)
 			return nil, fmt.Errorf("invalid payment method id: %s", idStr)
 		}
 	}
-	meth, err := payment_method.PaymentMethodByIDTx(tx, paymenMethodID)
+	meth, err := payment_method.PaymentMethodByIDTx(tx, paymentMethodID)
 	if err != nil {
 		if err == payment_method.ErrPaymentMethodNotFound {
 			w.WriteHeader(http.StatusNotFound)
-			return nil, fmt.Errorf("payment method id %d not found", paymenMethodID)
+			return nil, fmt.Errorf("payment method id %d not found", paymentMethodID)
 		}
 		w.WriteHeader(http.StatusInternalServerError)
 		return nil, fmt.Errorf("error selecting payment method id: %v", err)
 	}
 	if meth.ProjectID != p.ProjectID() {
 		w.WriteHeader(http.StatusBadRequest)
-		return nil, fmt.Errorf("invalid payment method id %d. project mismatch", paymenMethodID)
+		return nil, fmt.Errorf("invalid payment method id %d. project mismatch", paymentMethodID)
 	}
 	if !meth.Active() {
 		w.WriteHeader(http.StatusConflict)
-		return nil, fmt.Errorf("invalid payment method id %d. payment method not active", paymenMethodID)
+		return nil, fmt.Errorf("invalid payment method id %d. payment method not active", paymentMethodID)
 	}
 	if !p.Config.PaymentMethodID.Valid {
 		p.Config.SetPaymentMethodID(meth.ID)

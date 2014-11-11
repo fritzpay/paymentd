@@ -38,8 +38,8 @@
 		},
 		{
 			"ImportPath": "github.com/smartystreets/goconvey/convey",
-			"Comment": "1.5.0-270-gc9900a9",
-			"Rev": "c9900a95b757fd2e72857ee2c9bf9529fc335eb0"
+			"Comment": "1.5.0-337-g46ed257",
+			"Rev": "46ed257da550caea1f91f8d60b8c6cfadb3a73b7"
 		},
 		{
 			"ImportPath": "golang.org/x/crypto/bcrypt",
