@@ -72,6 +72,7 @@ func NewHandler(ctx *service.Context) (*Handler, error) {
 		return nil, err
 	}
 
+	h.log.Info("attaching provider driver endpoints...")
 	err = h.providerService.AttachDrivers(h.router)
 	if err != nil {
 		h.log.Error("error attaching provider driver endpoints to web", log15.Ctx{"err": err})
@@ -93,7 +94,7 @@ func (h *Handler) requireDir(dir string) error {
 }
 
 func (h *Handler) registerPayment() error {
-	h.log.Info("registering web payment hander...")
+	h.log.Info("registering web payment handler...")
 	h.router.Handle(PaymentPath, h.PaymentHandler()).Methods("GET")
 	return nil
 }

@@ -2,6 +2,7 @@ package provider
 
 import (
 	"errors"
+	"github.com/fritzpay/paymentd/pkg/paymentd/provider"
 
 	"github.com/fritzpay/paymentd/pkg/service/provider/paypal_rest"
 
@@ -40,11 +41,28 @@ func NewService(ctx *service.Context) (*Service, error) {
 }
 
 func (s *Service) AttachDrivers(mux *mux.Router) error {
+	providers, err := provider.ProviderAllDB(s.ctx.PaymentDB())
+	if err != nil {
+		s.log.Error("error retrieving providers", log15.Ctx{"err": err})
+		return err
+	}
 	// add drivers
-	s.drivers[driverFritzpay] = &fritzpay.Driver{}
-	s.drivers[driverPaypalREST] = &paypal_rest.Driver{}
+	for _, prov := range providers {
+		s.log.Info("attaching provider driver...", log15.Ctx{
+			"providerID":   prov.ID,
+			"providerName": prov.Name,
+		})
+		switch prov.ID {
+		case driverFritzpay:
+			s.drivers[driverFritzpay] = &fritzpay.Driver{}
+		case driverPaypalREST:
+			s.drivers[driverPaypalREST] = &paypal_rest.Driver{}
+		default:
+			s.log.Error("unknown provider id in database", log15.Ctx{"providerID": prov.ID})
+			return ErrNoDriver
+		}
+	}
 
-	var err error
 	mux = mux.PathPrefix(ProviderPath).Subrouter()
 	for _, dr := range s.drivers {
 		err = dr.Attach(s.ctx, mux)
