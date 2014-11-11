@@ -81,8 +81,13 @@ func PaymentMethodByIDDB(db *sql.DB, id int64) (*Method, error) {
 	return scanSinglePaymentMethod(row)
 }
 
-func PaymentMethodByProjectIDProviderIDMethodKey(db *sql.DB, project_id int64, provider_id int64, method_key string) (*Method, error) {
+func PaymentMethodByProjectIDProviderIDMethodKeyDB(db *sql.DB, project_id int64, provider_id int64, method_key string) (*Method, error) {
 	row := db.QueryRow(selectPaymentMethodByProjectIDProviderIDMethodKey, project_id, provider_id, method_key)
+	return scanSinglePaymentMethod(row)
+}
+
+func PaymentMethodByProjectIDProviderIDMethodKeyTx(tx *sql.Tx, project_id int64, provider_id int64, method_key string) (*Method, error) {
+	row := tx.QueryRow(selectPaymentMethodByProjectIDProviderIDMethodKey, project_id, provider_id, method_key)
 	return scanSinglePaymentMethod(row)
 }
 
@@ -116,8 +121,7 @@ const insertPaymentMethodStatus = `
 INSERT INTO payment_method_status
 (payment_method_id, timestamp, status, created_by)
 VALUES
-(?, ?, ?, ?)
-`
+(?, ?, ?, ?)`
 
 func InsertPaymentMethodStatusTx(db *sql.Tx, pm *Method) error {
 	stmt, err := db.Prepare(insertPaymentMethodStatus)

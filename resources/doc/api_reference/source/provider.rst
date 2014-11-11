@@ -14,7 +14,7 @@ Available providers
 
         GET /v1/provider HTTP/1.1
         Host: example.com
-        Authorization: dEFFEFeddedeGGEGMceokr353521234
+        Authorization: MTQxNTA5NTI5MHxYaCVyOkp7RNaMujhp...
         Accept: application/json
 
     **Example response**:
@@ -22,8 +22,6 @@ Available providers
     .. sourcecode:: http
 
         HTTP/1.1 200 OK
-        Accept: application/json
-        Authorization: Basic cm9vdDpyb290
         Content-Type: application/json
 
         {
@@ -51,9 +49,9 @@ Available providers
 Check provider
 --------------
 
-.. http:get:: /v1/provider/(providerID)
+.. http:get:: /v1/provider/(providerid)
 
-    Check if a specivic providerID is available in the system.
+    Check if a specific providerid is available in the system.
 
     **Example request**:
 
@@ -61,18 +59,16 @@ Check provider
 
         GET /v1/provider/1 HTTP/1.1
         Host: example.com
-        Authorization: dEFFEFeddedeGGEGMceokr353521234
+        Authorization: MTQxNTA5NTI5MHxYaCVyOkp7RNaMujhp...
         Accept: application/json
 
-    :param providerID: string [0-9]
+    :param providerid: string [0-9]
 
     **Example response**:
 
     .. sourcecode:: http
 
         HTTP/1.1 200 OK
-        Accept: application/json
-        Authorization: Basic cm9vdDpyb290
         Content-Type: application/json
 
         {
