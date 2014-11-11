@@ -3,12 +3,13 @@ package env
 import (
 	"bytes"
 	"fmt"
-	"github.com/go-sql-driver/mysql"
-	"gopkg.in/inconshreveable/log15.v2"
 	golog "log"
 	"os"
 	"strconv"
 	"time"
+
+	"github.com/go-sql-driver/mysql"
+	"gopkg.in/inconshreveable/log15.v2"
 )
 
 const (

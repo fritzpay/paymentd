@@ -2,11 +2,12 @@ package notification
 
 import (
 	"errors"
+	"io"
+	"time"
+
 	"github.com/fritzpay/paymentd/pkg/paymentd/payment"
 	"github.com/fritzpay/paymentd/pkg/service"
 	notificationV2 "github.com/fritzpay/paymentd/pkg/service/payment/notification/v2"
-	"io"
-	"time"
 )
 
 var (

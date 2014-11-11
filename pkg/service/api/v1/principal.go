@@ -3,13 +3,14 @@ package v1
 import (
 	"database/sql"
 	"encoding/json"
+	"net/http"
+	"time"
+
 	"github.com/fritzpay/paymentd/pkg/metadata"
 	"github.com/fritzpay/paymentd/pkg/paymentd/principal"
 	"github.com/fritzpay/paymentd/pkg/service"
 	"github.com/gorilla/mux"
 	"gopkg.in/inconshreveable/log15.v2"
-	"net/http"
-	"time"
 )
 
 type PrincipalAdminAPIResponse struct {

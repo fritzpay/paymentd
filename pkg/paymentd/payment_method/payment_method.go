@@ -4,8 +4,9 @@ import (
 	"database/sql/driver"
 	"errors"
 	"fmt"
-	"github.com/fritzpay/paymentd/pkg/paymentd/provider"
 	"time"
+
+	"github.com/fritzpay/paymentd/pkg/paymentd/provider"
 )
 
 type methodStatus string
@@ -69,6 +70,11 @@ type Method struct {
 	StatusCreatedBy string
 
 	Metadata map[string]string
+}
+
+// Active returns true if the payment method is considered active
+func (m *Method) Active() bool {
+	return m.Status == PaymentMethodStatusActive
 }
 
 const (

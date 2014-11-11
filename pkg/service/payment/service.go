@@ -3,6 +3,9 @@ package payment
 import (
 	"database/sql"
 	"errors"
+	"net/http"
+	"time"
+
 	"github.com/fritzpay/paymentd/pkg/paymentd/payment"
 	"github.com/fritzpay/paymentd/pkg/paymentd/payment_method"
 	"github.com/fritzpay/paymentd/pkg/paymentd/project"
@@ -10,8 +13,6 @@ import (
 	"github.com/fritzpay/paymentd/pkg/service"
 	"github.com/go-sql-driver/mysql"
 	"gopkg.in/inconshreveable/log15.v2"
-	"net/http"
-	"time"
 )
 
 type errorID int
@@ -220,7 +221,7 @@ func (s *Service) SetPaymentConfig(tx *sql.Tx, p *payment.Payment) error {
 			log.Warn(ErrPaymentMethodConflict.Error())
 			return ErrPaymentMethodConflict
 		}
-		if meth.Status != payment_method.PaymentMethodStatusActive {
+		if !meth.Active() {
 			log.Warn(ErrPaymentMethodInactive.Error())
 			return ErrPaymentMethodInactive
 		}
@@ -299,16 +300,12 @@ func (s *Service) SetPaymentTransaction(tx *sql.Tx, paymentTx *payment.PaymentTr
 		log.Error("error saving payment transaction", log15.Ctx{"err": err})
 		return ErrDB
 	}
-	err = s.CallbackPaymentTransaction(tx, paymentTx)
-	if err != nil {
-		return err
-	}
 	return nil
 }
 
 // CallbackPaymentTransaction performs a callback notification if the payment/project has
 // a callback configured
-func (s *Service) CallbackPaymentTransaction(tx *sql.Tx, paymentTx *payment.PaymentTransaction) error {
+func (s *Service) CallbackPaymentTransaction(paymentTx *payment.PaymentTransaction) error {
 	log := s.log.New(log15.Ctx{
 		"method":    "CallbackPaymentTransaction",
 		"projectID": paymentTx.Payment.ProjectID(),

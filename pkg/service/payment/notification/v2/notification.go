@@ -6,13 +6,14 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
-	"github.com/fritzpay/paymentd/pkg/maputil"
-	"github.com/fritzpay/paymentd/pkg/paymentd/payment"
-	"github.com/fritzpay/paymentd/pkg/service"
 	"hash"
 	"io"
 	"strconv"
 	"time"
+
+	"github.com/fritzpay/paymentd/pkg/maputil"
+	"github.com/fritzpay/paymentd/pkg/paymentd/payment"
+	"github.com/fritzpay/paymentd/pkg/service"
 )
 
 const (

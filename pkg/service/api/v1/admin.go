@@ -1,9 +1,10 @@
 package v1
 
 import (
+	"time"
+
 	"github.com/fritzpay/paymentd/pkg/service"
 	"gopkg.in/inconshreveable/log15.v2"
-	"time"
 )
 
 const (

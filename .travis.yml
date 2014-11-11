@@ -8,7 +8,7 @@ go:
   - 1.2
   - 1.3
   - release
-  - tip
+#  - tip
 
 install:
   - go get code.google.com/p/go.tools/cmd/vet || true
@@ -27,3 +27,5 @@ before_script:
   - mysql -u root -e "create database if not exists paymentd_test_payment_$TT;"
   - mysql -u root -D paymentd_test_principal_$TT < ./resources/mysql/paymentd.test.principal.sql
   - mysql -u root -D paymentd_test_payment_$TT < ./resources/mysql/paymentd.test.payment.sql
+  - mysql -u root -D paymentd_test_principal_$TT < ./resources/mysql/paymentd.test.principal.data.sql
+  - mysql -u root -D paymentd_test_payment_$TT < ./resources/mysql/paymentd.test.payment.data.sql

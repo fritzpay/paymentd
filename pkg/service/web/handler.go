@@ -2,13 +2,14 @@ package web
 
 import (
 	"fmt"
+	"net/http"
+	"os"
+
 	"github.com/fritzpay/paymentd/pkg/service"
 	"github.com/fritzpay/paymentd/pkg/service/payment"
 	"github.com/fritzpay/paymentd/pkg/service/provider"
 	"github.com/gorilla/mux"
 	"gopkg.in/inconshreveable/log15.v2"
-	"net/http"
-	"os"
 )
 
 const (

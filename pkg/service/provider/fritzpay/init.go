@@ -3,15 +3,16 @@ package fritzpay
 import (
 	"database/sql"
 	"fmt"
+	"net/http"
+	"net/url"
+	"time"
+
 	"github.com/fritzpay/paymentd/pkg/paymentd/payment"
 	"github.com/fritzpay/paymentd/pkg/paymentd/payment_method"
 	paymentService "github.com/fritzpay/paymentd/pkg/service/payment"
 	"github.com/go-sql-driver/mysql"
 	"golang.org/x/net/context"
 	"gopkg.in/inconshreveable/log15.v2"
-	"net/http"
-	"net/url"
-	"time"
 )
 
 func (d *Driver) InitPayment(p *payment.Payment, method *payment_method.Method) (http.Handler, error) {
@@ -24,7 +25,7 @@ func (d *Driver) InitPayment(p *payment.Payment, method *payment_method.Method) 
 	if Debug {
 		log.Debug("initialize payment")
 	}
-	if method.Status != payment_method.PaymentMethodStatusActive {
+	if !method.Active() {
 		log.Warn("payment requested with inactive payment method")
 		return nil, fmt.Errorf("inactive payment method id %d", method.ID)
 	}

@@ -2,8 +2,9 @@ package v1
 
 import (
 	"encoding/json"
-	"gopkg.in/inconshreveable/log15.v2"
 	"net/http"
+
+	"gopkg.in/inconshreveable/log15.v2"
 )
 
 const (

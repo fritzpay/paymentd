@@ -2,6 +2,7 @@ package main
 
 import (
 	"database/sql"
+
 	"github.com/fritzpay/paymentd/pkg/paymentd/config"
 	"github.com/fritzpay/paymentd/pkg/service"
 	"gopkg.in/inconshreveable/log15.v2"

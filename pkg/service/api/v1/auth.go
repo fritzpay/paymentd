@@ -5,13 +5,14 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"errors"
-	"github.com/gorilla/mux"
 	"hash"
 	"io/ioutil"
 	"net/http"
 	"path"
 	"strings"
 	"time"
+
+	"github.com/gorilla/mux"
 
 	"github.com/fritzpay/paymentd/pkg/paymentd/config"
 	"github.com/fritzpay/paymentd/pkg/service"

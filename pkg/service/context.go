@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+
 	"github.com/fritzpay/paymentd/pkg/config"
 	"golang.org/x/net/context"
 	"gopkg.in/inconshreveable/log15.v2"

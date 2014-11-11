@@ -2,20 +2,20 @@ package project_test
 
 import (
 	"database/sql"
-	"fmt"
+	"testing"
+
 	"github.com/fritzpay/paymentd/pkg/paymentd/principal"
 	"github.com/fritzpay/paymentd/pkg/paymentd/project"
 	"github.com/fritzpay/paymentd/pkg/testutil"
 	. "github.com/smartystreets/goconvey/convey"
-	"testing"
 )
 
-func WithTestProject(db, prDB *sql.DB, f func(pr *project.Project)) func() {
+func WithTestProject(prDB *sql.Tx, f func(pr *project.Project)) func() {
 	return func() {
 		princ := principal.Principal{}
 		princ.Name = "project_testprincipal"
 		princ.CreatedBy = "test"
-		err := principal.InsertPrincipalDB(prDB, &princ)
+		err := principal.InsertPrincipalTx(prDB, &princ)
 		So(err, ShouldBeNil)
 		So(princ.ID, ShouldNotEqual, 0)
 		So(princ.Empty(), ShouldBeFalse)
@@ -24,27 +24,27 @@ func WithTestProject(db, prDB *sql.DB, f func(pr *project.Project)) func() {
 		proj.PrincipalID = princ.ID
 		proj.Name = "project_testproject"
 		proj.CreatedBy = "test"
-		err = project.InsertProjectDB(prDB, proj)
+		err = project.InsertProjectTx(prDB, proj)
 		So(err, ShouldBeNil)
-
-		Reset(func() {
-			_, err = prDB.Exec("delete from project where name = 'project_testproject'")
-			So(err, ShouldBeNil)
-			_, err = prDB.Exec("delete from principal where name = 'project_testprincipal'")
-			So(err, ShouldBeNil)
-		})
 
 		f(proj)
 	}
 }
 
 func TestProjectSQLMapping(t *testing.T) {
-	Convey("Given a payment DB connection", t, testutil.WithPaymentDB(t, func(db *sql.DB) {
-		Convey("Given a principal DB connection", testutil.WithPrincipalDB(t, func(prDB *sql.DB) {
-			Convey("Given a test project", WithTestProject(db, prDB, func(pr *project.Project) {
+	Convey("Given a principal DB connection", t, testutil.WithPrincipalDB(t, func(prDB *sql.DB) {
+		Convey("Given a db transaction", func() {
+			tx, err := prDB.Begin()
+			So(err, ShouldBeNil)
+			Reset(func() {
+				err = tx.Rollback()
+				So(err, ShouldBeNil)
+			})
+
+			Convey("Given a test project", WithTestProject(tx, func(pr *project.Project) {
 
 				Convey("When selecting the project without a present config", func() {
-					selPr, err := project.ProjectByPrincipalIDNameDB(prDB, pr.PrincipalID, pr.Name)
+					selPr, err := project.ProjectByPrincipalIDAndNameTx(tx, pr.PrincipalID, pr.Name)
 					So(err, ShouldBeNil)
 					So(selPr.Empty(), ShouldBeFalse)
 					Convey("The project config should not be set", func() {
@@ -55,16 +55,11 @@ func TestProjectSQLMapping(t *testing.T) {
 				Convey("Given a project config", func() {
 					pr.Config.CallbackURL.String, pr.Config.CallbackURL.Valid = "http://www.example.com", true
 					pr.Config.CallbackAPIVersion.String, pr.Config.CallbackAPIVersion.Valid = "1.2", true
-					err := project.InsertProjectConfigDB(prDB, pr)
+					err := project.InsertProjectConfigTx(tx, pr)
 					So(err, ShouldBeNil)
 
-					Reset(func() {
-						_, err := prDB.Exec(fmt.Sprintf("delete from project_config where project_id = %d", pr.ID))
-						So(err, ShouldBeNil)
-					})
-
 					Convey("When selecting the project", func() {
-						selPr, err := project.ProjectByPrincipalIDandIDDB(prDB, pr.PrincipalID, pr.ID)
+						selPr, err := project.ProjectByPrincipalIDandIDTx(tx, pr.PrincipalID, pr.ID)
 						So(err, ShouldBeNil)
 						So(selPr.Empty(), ShouldBeFalse)
 
@@ -80,6 +75,6 @@ func TestProjectSQLMapping(t *testing.T) {
 					})
 				})
 			}))
-		}))
+		})
 	}))
 }

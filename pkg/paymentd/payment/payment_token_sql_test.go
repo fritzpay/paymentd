@@ -2,12 +2,13 @@ package payment_test
 
 import (
 	"database/sql"
+	"testing"
+	"time"
+
 	. "github.com/fritzpay/paymentd/pkg/paymentd/payment"
 	"github.com/fritzpay/paymentd/pkg/paymentd/project"
 	"github.com/fritzpay/paymentd/pkg/testutil"
 	. "github.com/smartystreets/goconvey/convey"
-	"testing"
-	"time"
 )
 
 func TestPaymentTokenGenerationSQL(t *testing.T) {
@@ -19,7 +20,7 @@ func TestPaymentTokenGenerationSQL(t *testing.T) {
 			Reset(func() {
 				prDB.Close()
 			})
-			Convey("Given a test project", WithTestProject(db, prDB, func(proj project.Project) {
+			Convey("Given a test project", WithTestProject(db, prDB, func(proj *project.Project) {
 				Convey("Given a transaction", func() {
 					tx, err := db.Begin()
 					So(err, ShouldBeNil)
@@ -29,7 +30,7 @@ func TestPaymentTokenGenerationSQL(t *testing.T) {
 						So(err, ShouldBeNil)
 					})
 
-					Convey("Given a test payment", WithTestPayment(tx, proj, func(p Payment) {
+					Convey("Given a test payment", WithTestPayment(tx, proj, func(p *Payment) {
 						Convey("When generating a token for the payment", func() {
 							t, err := NewPaymentToken(p.PaymentID())
 							So(err, ShouldBeNil)

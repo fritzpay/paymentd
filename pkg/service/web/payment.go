@@ -4,6 +4,13 @@ import (
 	"crypto/sha256"
 	"database/sql"
 	"fmt"
+	"hash"
+	"io"
+	"net/http"
+	"strconv"
+	"strings"
+	"time"
+
 	"github.com/fritzpay/paymentd/pkg/paymentd/payment"
 	"github.com/fritzpay/paymentd/pkg/paymentd/payment_method"
 	"github.com/fritzpay/paymentd/pkg/service"
@@ -11,12 +18,6 @@ import (
 	"github.com/go-sql-driver/mysql"
 	"golang.org/x/text/language"
 	"gopkg.in/inconshreveable/log15.v2"
-	"hash"
-	"io"
-	"net/http"
-	"strconv"
-	"strings"
-	"time"
 )
 
 const (
@@ -361,10 +362,11 @@ func (h *Handler) PaymentHandler() http.Handler {
 			w.WriteHeader(http.StatusConflict)
 			return
 		}
+		var paymentTx *payment.PaymentTransaction
 		// payment is not initialized, set open status
 		if !h.paymentService.IsInitialized(p) {
 			// open transaction, ledger is -1 * amount (open payment has negative balance)
-			paymentTx := p.NewTransaction(payment.PaymentStatusOpen)
+			paymentTx = p.NewTransaction(payment.PaymentStatusOpen)
 			paymentTx.Amount *= -1
 			err = h.paymentService.SetPaymentTransaction(tx, paymentTx)
 			if err != nil {
@@ -395,6 +397,11 @@ func (h *Handler) PaymentHandler() http.Handler {
 			return
 		}
 		commit = true
+
+		// do callback notification when a new payment transaction was created
+		if paymentTx != nil {
+			h.paymentService.CallbackPaymentTransaction(paymentTx)
+		}
 
 		h.servePaymentHandler(p, method).ServeHTTP(w, r)
 	})
@@ -440,39 +447,39 @@ func (h *Handler) determineEnv(p *payment.Payment, r *http.Request, configChange
 }
 
 func (h *Handler) determinePaymentMethodID(tx *sql.Tx, p *payment.Payment, w http.ResponseWriter, r *http.Request, configChanged, metadataChanged *bool) (*payment_method.Method, error) {
-	var paymenMethodID int64
+	var paymentMethodID int64
 	if p.Config.PaymentMethodID.Valid {
-		paymenMethodID = p.Config.PaymentMethodID.Int64
+		paymentMethodID = p.Config.PaymentMethodID.Int64
 	} else if idStr := r.URL.Query().Get("paymentMethodId"); idStr != "" {
 		var err error
-		paymenMethodID, err = strconv.ParseInt(idStr, 10, 64)
+		paymentMethodID, err = strconv.ParseInt(idStr, 10, 64)
 		if err != nil {
 			w.WriteHeader(http.StatusBadRequest)
 			return nil, fmt.Errorf("invalid payment method id: %s", idStr)
 		}
 	}
-	meth, err := payment_method.PaymentMethodByIDTx(tx, paymenMethodID)
+	meth, err := payment_method.PaymentMethodByIDTx(tx, paymentMethodID)
 	if err != nil {
 		if err == payment_method.ErrPaymentMethodNotFound {
 			w.WriteHeader(http.StatusNotFound)
-			return nil, fmt.Errorf("payment method id %d not found", paymenMethodID)
+			return nil, fmt.Errorf("payment method id %d not found", paymentMethodID)
 		}
 		w.WriteHeader(http.StatusInternalServerError)
 		return nil, fmt.Errorf("error selecting payment method id: %v", err)
 	}
 	if meth.ProjectID != p.ProjectID() {
 		w.WriteHeader(http.StatusBadRequest)
-		return nil, fmt.Errorf("invalid payment method id %d. project mismatch", paymenMethodID)
+		return nil, fmt.Errorf("invalid payment method id %d. project mismatch", paymentMethodID)
 	}
-	if meth.Status != payment_method.PaymentMethodStatusActive {
+	if !meth.Active() {
 		w.WriteHeader(http.StatusConflict)
-		return nil, fmt.Errorf("invalid payment method id %d. payment method not active", paymenMethodID)
+		return nil, fmt.Errorf("invalid payment method id %d. payment method not active", paymentMethodID)
 	}
 	if !p.Config.PaymentMethodID.Valid {
 		p.Config.SetPaymentMethodID(meth.ID)
 		*configChanged = true
 	}
-	return &meth, nil
+	return meth, nil
 }
 
 func (h *Handler) servePaymentHandler(p *payment.Payment, method *payment_method.Method) http.Handler {

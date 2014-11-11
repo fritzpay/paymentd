@@ -2,9 +2,10 @@ package provider
 
 import (
 	"database/sql"
+	"testing"
+
 	"github.com/fritzpay/paymentd/pkg/testutil"
 	. "github.com/smartystreets/goconvey/convey"
-	"testing"
 )
 
 func TestProviderSQL(t *testing.T) {

@@ -1,9 +1,10 @@
 package metadata
 
 import (
-	. "github.com/smartystreets/goconvey/convey"
 	"reflect"
 	"testing"
+
+	. "github.com/smartystreets/goconvey/convey"
 )
 
 func TestMetadataEntry(t *testing.T) {

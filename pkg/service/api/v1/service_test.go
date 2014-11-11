@@ -1,14 +1,15 @@
 package v1
 
 import (
+	"net/http"
+	"strings"
+	"testing"
+
 	"github.com/fritzpay/paymentd/pkg/service"
 	"github.com/fritzpay/paymentd/pkg/testutil"
 	"github.com/gorilla/mux"
 	. "github.com/smartystreets/goconvey/convey"
 	"gopkg.in/inconshreveable/log15.v2"
-	"net/http"
-	"strings"
-	"testing"
 )
 
 func WithService(ctx *service.Context, logChan <-chan *log15.Record, f func(s *Service, mux *mux.Router)) func() {

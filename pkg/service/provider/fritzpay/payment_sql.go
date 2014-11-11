@@ -3,8 +3,9 @@ package fritzpay
 import (
 	"database/sql"
 	"errors"
-	"github.com/fritzpay/paymentd/pkg/paymentd/payment"
 	"time"
+
+	"github.com/fritzpay/paymentd/pkg/paymentd/payment"
 )
 
 var (
@@ -112,12 +113,20 @@ WHERE
 	)
 `
 
-func PaymentTransactionCurrentByPaymentIDProviderTx(db *sql.Tx, id int64) (PaymentTransaction, error) {
-	query := selectPaymentTransactionByID + `
-AND
-	t.status LIKE 'psp_%'
-	`
-	row := db.QueryRow(query, id)
+const selectPaymentTransactionByIDProvider = selectPaymentTransaction + `
+WHERE
+	t.fritzpay_payment_id = ?
+	AND
+	t.timestamp = (
+		SELECT MAX(timestamp) FROM provider_fritzpay_transaction
+		WHERE
+			fritzpay_payment_id = t.fritzpay_payment_id
+			AND
+			status LIKE 'psp_%'
+	)
+`
+
+func scanSingleTx(row *sql.Row) (PaymentTransaction, error) {
 	paymentTx := PaymentTransaction{}
 	var ts int64
 	err := row.Scan(
@@ -135,4 +144,14 @@ AND
 	}
 	paymentTx.Timestamp = time.Unix(0, ts)
 	return paymentTx, nil
+}
+
+func PaymentTransactionCurrentByPaymentIDTx(db *sql.Tx, id int64) (PaymentTransaction, error) {
+	row := db.QueryRow(selectPaymentTransactionByID, id)
+	return scanSingleTx(row)
+}
+
+func PaymentTransactionCurrentByPaymentIDProviderTx(db *sql.Tx, id int64) (PaymentTransaction, error) {
+	row := db.QueryRow(selectPaymentTransactionByIDProvider, id)
+	return scanSingleTx(row)
 }

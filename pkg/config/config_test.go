@@ -2,9 +2,10 @@ package config
 
 import (
 	"bytes"
-	. "github.com/smartystreets/goconvey/convey"
 	"reflect"
 	"testing"
+
+	. "github.com/smartystreets/goconvey/convey"
 )
 
 func TestReadConfig(t *testing.T) {

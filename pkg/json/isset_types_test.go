@@ -2,8 +2,9 @@ package json
 
 import (
 	j "encoding/json"
-	. "github.com/smartystreets/goconvey/convey"
 	"testing"
+
+	. "github.com/smartystreets/goconvey/convey"
 )
 
 func TestUnmarshalInt64(t *testing.T) {

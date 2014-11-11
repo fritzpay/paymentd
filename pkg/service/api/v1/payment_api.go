@@ -2,12 +2,13 @@ package v1
 
 import (
 	"fmt"
+	"net/http"
+	"time"
+
 	"github.com/fritzpay/paymentd/pkg/paymentd/project"
 	"github.com/fritzpay/paymentd/pkg/service"
 	"github.com/fritzpay/paymentd/pkg/service/payment"
 	"gopkg.in/inconshreveable/log15.v2"
-	"net/http"
-	"time"
 )
 
 const (

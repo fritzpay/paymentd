@@ -3,8 +3,9 @@ package payment_method
 import (
 	"database/sql"
 	"errors"
-	"github.com/fritzpay/paymentd/pkg/metadata"
 	"time"
+
+	"github.com/fritzpay/paymentd/pkg/metadata"
 )
 
 var (
@@ -50,8 +51,8 @@ AND
 	m.method_key = ?
 `
 
-func scanSinglePaymentMethod(row *sql.Row) (Method, error) {
-	pm := Method{}
+func scanSinglePaymentMethod(row *sql.Row) (*Method, error) {
+	pm := &Method{}
 	var ts int64
 	err := row.Scan(
 		&pm.ID,
@@ -75,22 +76,22 @@ func scanSinglePaymentMethod(row *sql.Row) (Method, error) {
 	return pm, nil
 }
 
-func PaymentMethodByIDDB(db *sql.DB, id int64) (Method, error) {
+func PaymentMethodByIDDB(db *sql.DB, id int64) (*Method, error) {
 	row := db.QueryRow(selectPaymentMethodByID, id)
 	return scanSinglePaymentMethod(row)
 }
 
-func PaymentMethodByProjectIDProviderIDMethodKeyDB(db *sql.DB, project_id int64, provider_id int64, method_key string) (Method, error) {
+func PaymentMethodByProjectIDProviderIDMethodKeyDB(db *sql.DB, project_id int64, provider_id int64, method_key string) (*Method, error) {
 	row := db.QueryRow(selectPaymentMethodByProjectIDProviderIDMethodKey, project_id, provider_id, method_key)
 	return scanSinglePaymentMethod(row)
 }
 
-func PaymentMethodByProjectIDProviderIDMethodKeyTx(tx *sql.Tx, project_id int64, provider_id int64, method_key string) (Method, error) {
+func PaymentMethodByProjectIDProviderIDMethodKeyTx(tx *sql.Tx, project_id int64, provider_id int64, method_key string) (*Method, error) {
 	row := tx.QueryRow(selectPaymentMethodByProjectIDProviderIDMethodKey, project_id, provider_id, method_key)
 	return scanSinglePaymentMethod(row)
 }
 
-func PaymentMethodByIDTx(db *sql.Tx, id int64) (Method, error) {
+func PaymentMethodByIDTx(db *sql.Tx, id int64) (*Method, error) {
 	row := db.QueryRow(selectPaymentMethodByID, id)
 	return scanSinglePaymentMethod(row)
 }
@@ -102,17 +103,18 @@ VALUES
 (?, ?, ?, ?, ?)
 `
 
-func InsertPaymentMethodTx(db *sql.Tx, pm Method) (int64, error) {
+func InsertPaymentMethodTx(db *sql.Tx, pm *Method) error {
 	stmt, err := db.Prepare(insertPaymentMethod)
 	if err != nil {
-		return 0, err
+		return err
 	}
 	res, err := stmt.Exec(pm.ProjectID, pm.Provider.ID, pm.MethodKey, pm.Created, pm.CreatedBy)
 	stmt.Close()
 	if err != nil {
-		return 0, err
+		return err
 	}
-	return res.LastInsertId()
+	pm.ID, err = res.LastInsertId()
+	return err
 }
 
 const insertPaymentMethodStatus = `
@@ -121,7 +123,7 @@ INSERT INTO payment_method_status
 VALUES
 (?, ?, ?, ?)`
 
-func InsertPaymentMethodStatusTx(db *sql.Tx, pm Method) error {
+func InsertPaymentMethodStatusTx(db *sql.Tx, pm *Method) error {
 	stmt, err := db.Prepare(insertPaymentMethodStatus)
 	if err != nil {
 		return err
@@ -132,7 +134,7 @@ func InsertPaymentMethodStatusTx(db *sql.Tx, pm Method) error {
 	return err
 }
 
-func InsertPaymentMethodMetadataTx(db *sql.Tx, pm Method, createdBy string) error {
+func InsertPaymentMethodMetadataTx(db *sql.Tx, pm *Method, createdBy string) error {
 	if pm.ID == 0 {
 		return ErrPaymentMethodWithoutID
 	}
@@ -140,7 +142,7 @@ func InsertPaymentMethodMetadataTx(db *sql.Tx, pm Method, createdBy string) erro
 	return metadata.InsertMetadataTx(db, MetadataModel, pm.ID, m)
 }
 
-func PaymentMethodMetadataTx(db *sql.Tx, pm Method) (map[string]string, error) {
+func PaymentMethodMetadataTx(db *sql.Tx, pm *Method) (map[string]string, error) {
 	if pm.ID == 0 {
 		return nil, ErrPaymentMethodWithoutID
 	}

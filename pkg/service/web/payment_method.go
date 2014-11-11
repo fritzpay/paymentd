@@ -1,8 +1,9 @@
 package web
 
 import (
-	"github.com/fritzpay/paymentd/pkg/paymentd/payment"
 	"net/http"
+
+	"github.com/fritzpay/paymentd/pkg/paymentd/payment"
 )
 
 func (h *Handler) SelectPaymentMethodHandler(p *payment.Payment) http.Handler {

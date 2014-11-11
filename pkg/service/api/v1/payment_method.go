@@ -3,6 +3,10 @@ package v1
 import (
 	"database/sql"
 	"encoding/json"
+	"net/http"
+	"strconv"
+	"time"
+
 	"github.com/fritzpay/paymentd/pkg/metadata"
 	"github.com/fritzpay/paymentd/pkg/paymentd/payment_method"
 	"github.com/fritzpay/paymentd/pkg/paymentd/project"
@@ -10,9 +14,6 @@ import (
 	"github.com/fritzpay/paymentd/pkg/service"
 	"github.com/gorilla/mux"
 	"gopkg.in/inconshreveable/log15.v2"
-	"net/http"
-	"strconv"
-	"time"
 )
 
 // PaymentMethodRequest is the request JSON struct for POST - PUT
@@ -210,15 +211,15 @@ func (a *AdminAPI) putNewPaymentMethod(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	// insert method
-	paymentMethodId, err := payment_method.InsertPaymentMethodTx(tx, pm)
+	err = payment_method.InsertPaymentMethodTx(tx, &pm)
 	if err != nil {
 		ErrDatabase.Write(w)
 		log.Error("database error", log15.Ctx{"err": err})
 		return
 	}
-	pm.ID = paymentMethodId
+
 	// insert status
-	err = payment_method.InsertPaymentMethodStatusTx(tx, pm)
+	err = payment_method.InsertPaymentMethodStatusTx(tx, &pm)
 	if err != nil {
 		ErrDatabase.Write(w)
 		log.Error("database error", log15.Ctx{"err": err})
@@ -240,7 +241,7 @@ func (a *AdminAPI) putNewPaymentMethod(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// get payment_method from db with all set values like status created
-	pm, err = payment_method.PaymentMethodByProjectIDProviderIDMethodKeyTx(tx, pm.ProjectID, pm.Provider.ID, pm.MethodKey)
+	pmdb, err := payment_method.PaymentMethodByProjectIDProviderIDMethodKeyTx(tx, pm.ProjectID, pm.Provider.ID, pm.MethodKey)
 	if err != nil {
 		ErrDatabase.Write(w)
 		log.Error("database error", log15.Ctx{"err": err})
@@ -257,7 +258,7 @@ func (a *AdminAPI) putNewPaymentMethod(w http.ResponseWriter, r *http.Request) {
 	resp := ProjectAdminAPIResponse{}
 	resp.Status = StatusSuccess
 	resp.Info = "created with methodkey " + pmr.MethodKey
-	resp.Response = pm
+	resp.Response = pmdb
 	resp.Write(w)
 
 	commit = true
@@ -294,10 +295,6 @@ func (a *AdminAPI) postChangePaymentMethod(w http.ResponseWriter, r *http.Reques
 	}
 	r.Body.Close()
 
-	log.Info("projectid", log15.Ctx{"projectID": projectID})
-	log.Info("methodkey", log15.Ctx{"methodkey": methodKey})
-	log.Info("providerID", log15.Ctx{"providerID": pmr.ProviderID})
-
 	// Rollback handling
 	var tx *sql.Tx
 	var commit bool
@@ -309,6 +306,7 @@ func (a *AdminAPI) postChangePaymentMethod(w http.ResponseWriter, r *http.Reques
 			}
 		}
 	}()
+
 	tx, err = a.ctx.PaymentDB().Begin()
 	// check if payment_method exists
 	pm, err := payment_method.PaymentMethodByProjectIDProviderIDMethodKeyTx(tx, projectID, pmr.ProviderID, methodKey)
