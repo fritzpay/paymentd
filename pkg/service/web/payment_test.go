@@ -3,6 +3,13 @@ package web
 import (
 	"database/sql"
 	"fmt"
+	"net/http"
+	"os"
+	"path"
+	"strings"
+	"testing"
+	"time"
+
 	"github.com/fritzpay/paymentd/pkg/paymentd/payment"
 	"github.com/fritzpay/paymentd/pkg/paymentd/project"
 	"github.com/fritzpay/paymentd/pkg/service"
@@ -10,12 +17,6 @@ import (
 	"github.com/fritzpay/paymentd/pkg/service/provider/fritzpay"
 	"github.com/fritzpay/paymentd/pkg/testutil"
 	"gopkg.in/inconshreveable/log15.v2"
-	"net/http"
-	"os"
-	"path"
-	"strings"
-	"testing"
-	"time"
 
 	. "github.com/smartystreets/goconvey/convey"
 )

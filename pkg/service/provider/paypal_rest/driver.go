@@ -1,6 +1,7 @@
 package paypal_rest
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"path"
@@ -17,6 +18,10 @@ const (
 
 const (
 	providerTemplateDir = "paypal_rest"
+)
+
+var (
+	ErrDatabase = errors.New("database error")
 )
 
 type Driver struct {

@@ -2,6 +2,7 @@ package provider
 
 import (
 	"errors"
+
 	"github.com/fritzpay/paymentd/pkg/paymentd/provider"
 
 	"github.com/fritzpay/paymentd/pkg/service/provider/paypal_rest"
