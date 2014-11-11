@@ -37,7 +37,6 @@ func WithContext(f func(*service.Context, <-chan *log15.Record)) func() {
 		f(ctx, logChan)
 
 		Reset(func() {
-			close(logChan)
 			cancel()
 		})
 	}
