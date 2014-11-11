@@ -18,7 +18,8 @@ import (
 )
 
 const (
-	FritzpayDriverPath = "/fritzpay"
+	FritzpayDriverPath  = "/fritzpay"
+	FritzpayTemplateDir = "fritzpay"
 )
 
 const (
@@ -58,7 +59,7 @@ func (d *Driver) Attach(ctx *service.Context, mux *mux.Router) error {
 	if cfg.Provider.ProviderTemplateDir == "" {
 		return fmt.Errorf("provider template dir not set")
 	}
-	d.tmplDir = path.Join(cfg.Provider.ProviderTemplateDir, "fritzpay")
+	d.tmplDir = path.Join(cfg.Provider.ProviderTemplateDir, FritzpayTemplateDir)
 	dirInfo, err := os.Stat(d.tmplDir)
 	if err != nil {
 		d.log.Error("error opening template dir", log15.Ctx{

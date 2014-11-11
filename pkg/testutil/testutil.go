@@ -24,6 +24,10 @@ func WithContext(f func(*service.Context, <-chan *log15.Record)) func() {
 		log := log15.New()
 		log.SetHandler(log15.ChannelHandler(logChan))
 
+		var cancel context.CancelFunc
+		baseCtx := context.Background()
+		baseCtx, cancel = context.WithCancel(baseCtx)
+
 		ctx, err := service.NewContext(context.Background(), config.DefaultConfig(), log)
 		So(err, ShouldBeNil)
 
@@ -33,7 +37,7 @@ func WithContext(f func(*service.Context, <-chan *log15.Record)) func() {
 		f(ctx, logChan)
 
 		Reset(func() {
-			close(logChan)
+			cancel()
 		})
 	}
 }
@@ -50,7 +54,8 @@ type ResponseWriter struct {
 // NewResponseWriter creates a response writer to capture http handler responses
 func NewResponseWriter() *ResponseWriter {
 	return &ResponseWriter{
-		H: http.Header(make(map[string][]string)),
+		H:          http.Header(make(map[string][]string)),
+		StatusCode: http.StatusOK,
 	}
 }
 
@@ -63,9 +68,6 @@ func (r *ResponseWriter) Header() http.Header {
 func (r *ResponseWriter) Write(p []byte) (int, error) {
 	if !r.HeaderWritten {
 		r.HeaderWritten = true
-	}
-	if r.StatusCode == 0 {
-		r.StatusCode = http.StatusOK
 	}
 	return (&(r.Buf)).Write(p)
 }

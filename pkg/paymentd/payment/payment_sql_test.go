@@ -20,7 +20,7 @@ func TestPaymentSQL(t *testing.T) {
 			Reset(func() {
 				prDB.Close()
 			})
-			Convey("Given a test project", WithTestProject(db, prDB, func(proj project.Project) {
+			Convey("Given a test project", WithTestProject(db, prDB, func(proj *project.Project) {
 				Convey("Given a transaction", func() {
 					tx, err := db.Begin()
 					So(err, ShouldBeNil)
@@ -30,7 +30,7 @@ func TestPaymentSQL(t *testing.T) {
 						So(err, ShouldBeNil)
 					})
 
-					Convey("Given a test payment", WithTestPayment(tx, proj, func(p Payment) {
+					Convey("Given a test payment", WithTestPayment(tx, proj, func(p *Payment) {
 						Convey("When selecting a payment by ident", func() {
 							p2, err := PaymentByProjectIDAndIdentTx(tx, proj.ID, p.Ident)
 							Convey("It should succeed", func() {
