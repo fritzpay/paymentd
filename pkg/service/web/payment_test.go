@@ -112,7 +112,7 @@ func TestPayment(t *testing.T) {
 													Convey("It should succeed", func() {
 														So(wr.StatusCode, ShouldEqual, http.StatusOK)
 
-														Convey("When retrieving the new config", func() {
+														Convey("When retrieving the payment", func() {
 															p, err := payment.PaymentByIDDB(db, p.PaymentID())
 															So(err, ShouldBeNil)
 
