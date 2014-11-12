@@ -11,8 +11,13 @@ import (
 )
 
 func (d *Driver) InitPayment(p *payment.Payment, method *payment_method.Method) (http.Handler, error) {
+
+	return d.InitPageHandler(p), nil
+}
+
+func (d *Driver) doInit(errors chan<- error, p *payment.Payment, method *payment_method.Method) {
 	log := d.log.New(log15.Ctx{
-		"method":          "InitPayment",
+		"method":          "doInit",
 		"projectID":       p.ProjectID(),
 		"paymentID":       p.ID(),
 		"paymentMethodID": method.ID,
@@ -36,17 +41,20 @@ func (d *Driver) InitPayment(p *payment.Payment, method *payment_method.Method) 
 	if err != nil {
 		commit = true
 		log.Crit("error on begin tx", log15.Ctx{"err": err})
-		return nil, ErrDatabase
+		errors <- ErrDatabase
+		return
 	}
 
 	tr, err := d.oAuthTransport(log)(tx, p, method)
 	if err != nil {
-		return nil, err
+		errors <- err
+		return
 	}
 	err = tr.AuthenticateClient()
 	if err != nil {
 		log.Error("error authenticating", log15.Ctx{"err": err})
-		return nil, ErrInternal
+		errors <- ErrInternal
+		return
 	}
 	if Debug {
 		log.Debug("authenticated", log15.Ctx{"token": tr.AccessToken})
@@ -56,8 +64,8 @@ func (d *Driver) InitPayment(p *payment.Payment, method *payment_method.Method) 
 	err = tx.Commit()
 	if err != nil {
 		log.Crit("error on commit", log15.Ctx{"err": err})
-		return nil, ErrDatabase
+		errors <- ErrDatabase
+		return
 	}
-
-	return d.InternalErrorHandler(), nil
+	close(errors)
 }

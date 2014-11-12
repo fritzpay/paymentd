@@ -18,6 +18,7 @@ const (
 
 const (
 	providerTemplateDir = "paypal_rest"
+	defaultLocale       = "en_US"
 )
 
 var (
