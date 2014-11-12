@@ -93,3 +93,13 @@ func (d *Driver) InitPageHandler(p *payment.Payment) http.Handler {
 func (d *Driver) InternalErrorHandler() http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {})
 }
+func (d *Driver) PaymentErrorHandler(p *payment.Payment) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {})
+}
+
+func (d *Driver) ReturnHandler() http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {})
+}
+func (d *Driver) CancelHandler() http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {})
+}

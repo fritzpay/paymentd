@@ -8,6 +8,7 @@ import (
 const (
 	TransactionTypeCreatePayment         = "createPayment"
 	TransactionTypeCreatePaymentResponse = "createPaymentResponse"
+	TransactionTypeError                 = "error"
 )
 
 type Transaction struct {

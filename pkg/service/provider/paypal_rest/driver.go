@@ -3,6 +3,7 @@ package paypal_rest
 import (
 	"errors"
 	"fmt"
+	"net/url"
 	"os"
 	"path"
 
@@ -24,12 +25,16 @@ const (
 var (
 	ErrDatabase = errors.New("database error")
 	ErrInternal = errors.New("paypal driver internal error")
+	ErrHTTP     = errors.New("HTTP error")
+	ErrProvider = errors.New("provider error")
 )
 
 type Driver struct {
-	ctx     *service.Context
-	mux     *mux.Router
-	log     log15.Logger
+	ctx *service.Context
+	mux *mux.Router
+	log log15.Logger
+
+	baseURL *url.URL
 	tmplDir string
 
 	paymentService *paymentService.Service
@@ -66,8 +71,15 @@ func (d *Driver) Attach(ctx *service.Context, mux *mux.Router) error {
 	if !dirInfo.IsDir() {
 		return fmt.Errorf("provider template dir %s is not a directory", d.tmplDir)
 	}
+	d.baseURL, err = url.Parse(cfg.Provider.URL)
+	if err != nil {
+		d.log.Error("error parsing provider base URL", log15.Ctx{"err": err})
+		return fmt.Errorf("error on provider base URL: %v", err)
+	}
 
-	d.mux = mux
+	d.mux = mux.Path(PaypalDriverPath).Subrouter()
+	d.mux.Handle("/return", d.ReturnHandler()).Name("returnHandler")
+	d.mux.Handle("/cancel", d.ReturnHandler()).Name("cancelHandler")
 
 	d.oauth = NewOAuthTransportStore()
 

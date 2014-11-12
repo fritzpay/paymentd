@@ -55,7 +55,7 @@ type PayPalDetails struct {
 type PayPalAmount struct {
 	Currency string         `json:"currency"`
 	Total    string         `json:"total"`
-	Details  *PayPalDetails `json:details,omitempty`
+	Details  *PayPalDetails `json:"details,omitempty"`
 }
 
 type PayPalTransaction struct {
