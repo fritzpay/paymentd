@@ -5,6 +5,8 @@ import (
 	"testing"
 	"time"
 
+	testPay "github.com/fritzpay/paymentd/pkg/testutil/payment"
+
 	"github.com/fritzpay/paymentd/pkg/paymentd/payment"
 
 	"github.com/fritzpay/paymentd/pkg/service/provider/paypal_rest"
@@ -23,7 +25,7 @@ func TestPaypalTransaction(t *testing.T) {
 				So(err, ShouldBeNil)
 			})
 
-			Convey("Given a payment", testutil.WithPaymentInTx(tx, func(p *payment.Payment) {
+			Convey("Given a payment", testPay.WithPaymentInTx(tx, func(p *payment.Payment) {
 
 				Convey("When creating a new transaction", func() {
 					pt := &paypal_rest.Transaction{
@@ -48,9 +50,9 @@ func TestPaypalTransaction(t *testing.T) {
 									Convey("It should succeed", func() {
 										So(err, ShouldBeNil)
 										So(ptRet, ShouldNotBeNil)
-										Convey("It should have no update time", func() {
-											So(ptRet.PaypalUpdateTime, ShouldBeNil)
-										})
+									})
+									Convey("It should have no update time", func() {
+										So(ptRet.PaypalUpdateTime, ShouldBeNil)
 									})
 								})
 							})
@@ -59,6 +61,7 @@ func TestPaypalTransaction(t *testing.T) {
 
 					Convey("When an update time is set", func() {
 						tm := time.Now()
+						tm = tm.Round(time.Second)
 						pt.PaypalUpdateTime = &tm
 
 						Convey("When inserting the transaction", func() {
@@ -73,9 +76,12 @@ func TestPaypalTransaction(t *testing.T) {
 									Convey("It should succeed", func() {
 										So(err, ShouldBeNil)
 										So(ptRet, ShouldNotBeNil)
-										Convey("It should have an update time", func() {
-											So(ptRet.PaypalUpdateTime, ShouldNotBeNil)
-										})
+									})
+									Convey("It should have an update time", func() {
+										So(ptRet.PaypalUpdateTime, ShouldNotBeNil)
+									})
+									Convey("The update time should match the inserted time", func() {
+										So(ptRet.PaypalUpdateTime.Unix(), ShouldEqual, tm.Unix())
 									})
 								})
 							})

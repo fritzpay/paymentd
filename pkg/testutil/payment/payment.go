@@ -1,4 +1,4 @@
-package testutil
+package payment
 
 import (
 	"database/sql"

@@ -16,7 +16,7 @@ type Transaction struct {
 	Timestamp        time.Time
 	Type             string
 	PaypalID         sql.NullString
-	PaypalCreateTime sql.NullString
+	PaypalCreateTime *time.Time
 	PaypalState      sql.NullString
 	PaypalUpdateTime *time.Time
 	Links            sql.NullString
