@@ -506,6 +506,11 @@ func (h *Handler) servePaymentHandler(p *payment.Payment, method *payment_method
 			w.WriteHeader(http.StatusInternalServerError)
 			return
 		}
+		if h == nil {
+			log.Error("driver did not return a handler")
+			w.WriteHeader(http.StatusServiceUnavailable)
+			return
+		}
 		h.ServeHTTP(w, r)
 	})
 }
