@@ -4,6 +4,7 @@ import (
 	"code.google.com/p/godec/dec"
 	"database/sql"
 	"encoding/json"
+	"io/ioutil"
 	"net/http"
 	"net/url"
 	"strings"
@@ -107,9 +108,9 @@ func (d *Driver) InitPayment(p *payment.Payment, method *payment_method.Method) 
 		Timestamp: time.Now(),
 		Type:      TransactionTypeCreatePayment,
 	}
-	paypalTx.Data.String, paypalTx.Data.Valid = string(jsonBytes), true
+	paypalTx.Data = jsonBytes
 
-	err = InsertTransaction(tx, paypalTx)
+	err = InsertTransactionTx(tx, paypalTx)
 	if err != nil {
 		log.Error("error saving transaction", log15.Ctx{"err": err})
 		return nil, ErrDatabase
@@ -181,7 +182,7 @@ func (d *Driver) payPalTransactionFromPayment(p *payment.Payment) PayPalTransact
 
 func (d *Driver) doInit(errors chan<- error, cfg *Config, reqURL *url.URL, p *payment.Payment, body string) {
 	log := d.log.New(log15.Ctx{
-		"method":    "doPost",
+		"method":    "doInit",
 		"projectID": p.ProjectID(),
 		"paymentID": p.ID(),
 		"methodKey": cfg.MethodKey,
@@ -209,8 +210,9 @@ func (d *Driver) doInit(errors chan<- error, cfg *Config, reqURL *url.URL, p *pa
 		errors <- err
 		return
 	}
-	if resp.StatusCode != http.StatusCreated {
+	if resp.StatusCode != http.StatusCreated && resp.StatusCode != http.StatusOK {
 		log.Error("error on HTTP request", log15.Ctx{"HTTPStatusCode": resp.StatusCode})
+		d.setPayPalErrorResponse(p, resp)
 		errors <- ErrHTTP
 		return
 	}
@@ -225,5 +227,78 @@ func (d *Driver) doInit(errors chan<- error, cfg *Config, reqURL *url.URL, p *pa
 		log.Debug("received response", log15.Ctx{"paypalPayment": paypalP})
 	}
 
+	paypalTx := &Transaction{
+		ProjectID: p.ProjectID(),
+		PaymentID: p.ID(),
+		Timestamp: time.Now(),
+		Type:      TransactionTypeCreatePaymentResponse,
+	}
+	if paypalP.ID != "" {
+		paypalTx.SetPaypalID(paypalP.ID)
+	}
+	if paypalP.State != "" {
+		paypalTx.SetState(paypalP.State)
+	}
+	if paypalP.CreateTime != "" {
+		t, err := time.Parse(time.RFC3339, paypalP.CreateTime)
+		if err != nil {
+			log.Warn("error parsing paypal create time", log15.Ctx{"err": err})
+		} else {
+			paypalTx.PaypalCreateTime = &t
+		}
+	}
+	if paypalP.UpdateTime != "" {
+		t, err := time.Parse(time.RFC3339, paypalP.UpdateTime)
+		if err != nil {
+			log.Warn("error parsing paypal update time", log15.Ctx{"err": err})
+		} else {
+			paypalTx.PaypalUpdateTime = &t
+		}
+	}
+	paypalTx.Links, err = json.Marshal(paypalP.Links)
+	if err != nil {
+		log.Error("error on saving links on response", log15.Ctx{"err": err})
+		errors <- ErrProvider
+		return
+	}
+	paypalTx.Data, err = json.Marshal(paypalP)
+	if err != nil {
+		log.Error("error marshalling paypal payment response", log15.Ctx{"err": err})
+		errors <- ErrProvider
+		return
+	}
+	err = InsertTransactionDB(d.ctx.PaymentDB(), paypalTx)
+	if err != nil {
+		log.Error("error saving paypal response", log15.Ctx{"err": err})
+		errors <- ErrProvider
+		return
+	}
+
 	close(errors)
+}
+
+func (d *Driver) setPayPalErrorResponse(p *payment.Payment, resp *http.Response) {
+	log := d.log.New(log15.Ctx{
+		"method":    "setPayPalErrorResponse",
+		"projectID": p.ProjectID(),
+		"paymentID": p.ID(),
+	})
+
+	errBody, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		log.Error("error reading paypal error response", log15.Ctx{"err": err})
+		return
+	}
+
+	paypalTx := &Transaction{
+		ProjectID: p.ProjectID(),
+		PaymentID: p.ID(),
+		Timestamp: time.Now(),
+		Type:      TransactionTypeError,
+	}
+	paypalTx.Data = errBody
+	err = InsertTransactionDB(d.ctx.PaymentDB(), paypalTx)
+	if err != nil {
+		log.Error("error saving paypal transaction", log15.Ctx{"err": err})
+	}
 }

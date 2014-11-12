@@ -20,6 +20,14 @@ type Transaction struct {
 	PaypalCreateTime *time.Time
 	PaypalState      sql.NullString
 	PaypalUpdateTime *time.Time
-	Links            sql.NullString
-	Data             sql.NullString
+	Links            []byte
+	Data             []byte
+}
+
+func (t *Transaction) SetPaypalID(id string) {
+	t.PaypalID.String, t.PaypalID.Valid = id, true
+}
+
+func (t *Transaction) SetState(state string) {
+	t.PaypalState.String, t.PaypalState.Valid = state, true
 }

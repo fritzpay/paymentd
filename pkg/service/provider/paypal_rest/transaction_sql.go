@@ -75,12 +75,8 @@ VALUES
 (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 `
 
-func InsertTransaction(db *sql.Tx, t *Transaction) error {
-	stmt, err := db.Prepare(insertTransaction)
-	if err != nil {
-		return err
-	}
-	_, err = stmt.Exec(
+func doInsertTransaction(stmt *sql.Stmt, t *Transaction) error {
+	_, err := stmt.Exec(
 		t.ProjectID,
 		t.PaymentID,
 		t.Timestamp.UnixNano(),
@@ -94,4 +90,20 @@ func InsertTransaction(db *sql.Tx, t *Transaction) error {
 	)
 	stmt.Close()
 	return err
+}
+
+func InsertTransactionTx(db *sql.Tx, t *Transaction) error {
+	stmt, err := db.Prepare(insertTransaction)
+	if err != nil {
+		return err
+	}
+	return doInsertTransaction(stmt, t)
+}
+
+func InsertTransactionDB(db *sql.DB, t *Transaction) error {
+	stmt, err := db.Prepare(insertTransaction)
+	if err != nil {
+		return err
+	}
+	return doInsertTransaction(stmt, t)
 }

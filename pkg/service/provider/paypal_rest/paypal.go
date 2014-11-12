@@ -8,6 +8,13 @@ const (
 	PayPalPaymentMethodCC                         = "credit_card"
 )
 
+type PayPalError struct {
+	Name            string `json:"name"`
+	Message         string `json:"message"`
+	InformationLink string `json:"information_link"`
+	Details         string `json:"details"`
+}
+
 // PaypalPayer represents the "payer" object as defined by the PayPal REST-API
 //
 // See https://developer.paypal.com/docs/api/#payer-object

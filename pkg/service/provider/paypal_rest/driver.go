@@ -77,7 +77,7 @@ func (d *Driver) Attach(ctx *service.Context, mux *mux.Router) error {
 		return fmt.Errorf("error on provider base URL: %v", err)
 	}
 
-	d.mux = mux.Path(PaypalDriverPath).Subrouter()
+	d.mux = mux.PathPrefix(PaypalDriverPath).Subrouter()
 	d.mux.Handle("/return", d.ReturnHandler()).Name("returnHandler")
 	d.mux.Handle("/cancel", d.ReturnHandler()).Name("cancelHandler")
 
