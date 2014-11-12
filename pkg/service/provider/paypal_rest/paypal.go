@@ -56,7 +56,7 @@ type PayPalDetails struct {
 	Fee              string `json:"fee,omitempty"`
 	HandlingFee      string `json:"handling_fee,omitempty"`
 	Insurance        string `json:"insurance,omitempty"`
-	ShippingDiscount string `json:shipping_discount,omitempty`
+	ShippingDiscount string `json:"shipping_discount,omitempty"`
 }
 
 type PayPalAmount struct {
