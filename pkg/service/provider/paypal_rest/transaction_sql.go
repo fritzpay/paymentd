@@ -18,7 +18,9 @@ SELECT
 	t.payment_id,
 	t.timestamp,
 	t.type,
+	t.intent,
 	t.paypal_id,
+	t.payer_id,
 	t.paypal_create_time,
 	t.paypal_state,
 	t.paypal_update_time,
@@ -51,7 +53,9 @@ func TransactionCurrentByPaymentIDTx(db *sql.Tx, paymentID payment.PaymentID) (*
 		&t.PaymentID,
 		&ts,
 		&t.Type,
+		&t.Intent,
 		&t.PaypalID,
+		&t.PayerID,
 		&t.PaypalCreateTime,
 		&t.PaypalState,
 		&t.PaypalUpdateTime,
@@ -70,9 +74,9 @@ func TransactionCurrentByPaymentIDTx(db *sql.Tx, paymentID payment.PaymentID) (*
 
 const insertTransaction = `
 INSERT INTO provider_paypal_transaction
-(project_id, payment_id, timestamp, type, paypal_id, paypal_create_time, paypal_state, paypal_update_time, links, data)
+(project_id, payment_id, timestamp, type, intent, paypal_id, payer_id, paypal_create_time, paypal_state, paypal_update_time, links, data)
 VALUES
-(?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 `
 
 func doInsertTransaction(stmt *sql.Stmt, t *Transaction) error {
@@ -81,7 +85,9 @@ func doInsertTransaction(stmt *sql.Stmt, t *Transaction) error {
 		t.PaymentID,
 		t.Timestamp.UnixNano(),
 		t.Type,
+		t.Intent,
 		t.PaypalID,
+		t.PayerID,
 		t.PaypalCreateTime,
 		t.PaypalState,
 		t.PaypalUpdateTime,
