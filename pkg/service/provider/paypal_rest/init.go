@@ -55,12 +55,7 @@ func (d *Driver) InitPayment(p *payment.Payment, method *payment_method.Method) 
 		if Debug {
 			log.Debug("already initialized payment")
 		}
-		switch currentTx.Type {
-		case TransactionTypeError:
-			return d.PaymentErrorHandler(p), nil
-		default:
-			return d.InitPageHandler(p), nil
-		}
+		return d.StatusHandler(currentTx, p), nil
 	}
 
 	cfg, err := ConfigByPaymentMethodTx(tx, method)
