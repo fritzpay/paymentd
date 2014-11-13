@@ -299,7 +299,9 @@ CREATE TABLE IF NOT EXISTS `provider_paypal_transaction` (
   `payment_id` BIGINT UNSIGNED NOT NULL,
   `timestamp` BIGINT UNSIGNED NOT NULL,
   `type` VARCHAR(32) NOT NULL,
+  `intent` VARCHAR(32) NULL,
   `paypal_id` VARCHAR(128) NULL,
+  `payer_id` VARCHAR(64) NULL,
   `paypal_create_time` DATETIME NULL,
   `paypal_state` VARCHAR(32) NULL,
   `paypal_update_time` DATETIME NULL,
@@ -309,6 +311,8 @@ CREATE TABLE IF NOT EXISTS `provider_paypal_transaction` (
   INDEX `paypal_id` (`paypal_id` ASC),
   INDEX `paypal_state` (`paypal_state` ASC),
   INDEX `fk_provider_paypal_transaction_payment_id_idx` (`payment_id` ASC),
+  INDEX `paypal_payer_id` (`payer_id` ASC),
+  INDEX `paypal_intent` (`intent` ASC),
   CONSTRAINT `fk_provider_paypal_transaction_payment_id`
     FOREIGN KEY (`payment_id`)
     REFERENCES `payment` (`id`)
