@@ -244,6 +244,9 @@ func (d *Driver) doInit(errors chan<- error, cfg *Config, reqURL *url.URL, p *pa
 		Timestamp: time.Now(),
 		Type:      TransactionTypeCreatePaymentResponse,
 	}
+	if paypalP.Intent != "" {
+		paypalTx.SetIntent(paypalP.Intent)
+	}
 	if paypalP.ID != "" {
 		paypalTx.SetPaypalID(paypalP.ID)
 	}
