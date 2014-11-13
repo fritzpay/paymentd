@@ -309,11 +309,6 @@ CREATE TABLE IF NOT EXISTS `provider_paypal_transaction` (
   INDEX `paypal_id` (`paypal_id` ASC),
   INDEX `paypal_state` (`paypal_state` ASC),
   INDEX `fk_provider_paypal_transaction_payment_id_idx` (`payment_id` ASC),
-  CONSTRAINT `fk_provider_paypal_transaction_project_id`
-    FOREIGN KEY (`project_id`)
-    REFERENCES `fritzpay_principal`.`project` (`id`)
-    ON DELETE RESTRICT
-    ON UPDATE CASCADE,
   CONSTRAINT `fk_provider_paypal_transaction_payment_id`
     FOREIGN KEY (`payment_id`)
     REFERENCES `payment` (`id`)
