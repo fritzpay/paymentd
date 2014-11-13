@@ -225,7 +225,7 @@ func (d *Driver) doInit(errors chan<- error, cfg *Config, reqURL *url.URL, p *pa
 		errors <- ErrHTTP
 		return
 	}
-	log = log.New(log15.Ctx{"responseBody": body})
+	log = log.New(log15.Ctx{"responseBody": string(respBody)})
 	if Debug {
 		log.Debug("received response")
 	}
