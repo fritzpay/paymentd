@@ -54,7 +54,7 @@ func getTemplateFile(tmplDir, locale, baseName string) (string, error) {
 	return tmplFile, nil
 }
 
-func getTemplate(tmplDir, locale, baseName string) (tmpl *template.Template, tmplLocale string, err error) {
+func (d *Driver) getTemplate(tmplDir, locale, baseName string) (tmpl *template.Template, tmplLocale string, err error) {
 	tmplFile, err := getTemplateFile(tmplDir, locale, baseName)
 	if err != nil {
 		return nil, "", err
@@ -64,6 +64,15 @@ func getTemplate(tmplDir, locale, baseName string) (tmpl *template.Template, tmp
 		return nil, "", err
 	}
 	tmpl = template.New("page")
+	tmpl.Funcs(template.FuncMap(map[string]interface{}{
+		"staticPath": func() (string, error) {
+			url, err := d.mux.Get("staticHandler").URLPath()
+			if err != nil {
+				return "", err
+			}
+			return url.Path, nil
+		},
+	}))
 	_, err = tmpl.Parse(string(tmplB))
 	if err != nil {
 		return nil, "", err
@@ -77,7 +86,7 @@ func (d *Driver) InitPageHandler(p *payment.Payment) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		log := d.log.New(log15.Ctx{"method": "InitPageHandler"})
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")
-		tmpl, locale, err := getTemplate(d.tmplDir, p.Config.Locale.String, baseName)
+		tmpl, locale, err := d.getTemplate(d.tmplDir, p.Config.Locale.String, baseName)
 		if err != nil {
 			log.Error("error initializing template", log15.Ctx{"err": err})
 			w.WriteHeader(http.StatusInternalServerError)

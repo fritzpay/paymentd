@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/fritzpay/paymentd/pkg/paymentd/payment"
+	"net/http"
 	"net/url"
 	"os"
 	"path"
@@ -82,6 +83,8 @@ func (d *Driver) Attach(ctx *service.Context, mux *mux.Router) error {
 	d.mux = mux.PathPrefix(PaypalDriverPath).Subrouter()
 	d.mux.Handle("/return", d.ReturnHandler()).Name("returnHandler")
 	d.mux.Handle("/cancel", d.ReturnHandler()).Name("cancelHandler")
+	staticDir := path.Join(d.tmplDir, "static")
+	d.mux.Handle("/static", http.StripPrefix("/static", http.FileServer(http.Dir(staticDir)))).Name("staticHandler")
 
 	d.oauth = NewOAuthTransportStore()
 
