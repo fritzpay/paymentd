@@ -75,6 +75,12 @@ func (p *Payment) Decimal() *decimal.Decimal {
 	return &decimal.Decimal{Dec: *d}
 }
 
+func (p *Payment) DecimalRound(scale int32) *decimal.Decimal {
+	d := &p.Decimal().Dec
+	d.Round(d, dec.Scale(scale), dec.RoundHalfUp)
+	return &decimal.Decimal{Dec: *d}
+}
+
 // HasTransaction returns true if the payment has a payment transaction entry
 func (p *Payment) HasTransaction() bool {
 	if p.TransactionTimestamp.IsZero() {

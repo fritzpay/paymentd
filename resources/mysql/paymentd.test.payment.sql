@@ -268,7 +268,7 @@ COMMENT = 'Stores payments made with the FritzPay demo provider.';
 
 
 -- -----------------------------------------------------
--- Table `fritzpay_payment`.`provider_fritzpay_transaction`
+-- Table `provider_fritzpay_transaction`
 -- -----------------------------------------------------
 DROP TABLE IF EXISTS `provider_fritzpay_transaction` ;
 
@@ -288,6 +288,37 @@ CREATE TABLE IF NOT EXISTS `provider_fritzpay_transaction` (
     ON UPDATE CASCADE)
 ENGINE = InnoDB;
 
+
+-- -----------------------------------------------------
+-- Table `provider_paypal_transaction`
+-- -----------------------------------------------------
+DROP TABLE IF EXISTS `provider_paypal_transaction` ;
+
+CREATE TABLE IF NOT EXISTS `provider_paypal_transaction` (
+  `project_id` INT UNSIGNED NOT NULL,
+  `payment_id` BIGINT UNSIGNED NOT NULL,
+  `timestamp` BIGINT UNSIGNED NOT NULL,
+  `type` VARCHAR(32) NOT NULL,
+  `intent` VARCHAR(32) NULL,
+  `paypal_id` VARCHAR(128) NULL,
+  `payer_id` VARCHAR(64) NULL,
+  `paypal_create_time` DATETIME NULL,
+  `paypal_state` VARCHAR(32) NULL,
+  `paypal_update_time` DATETIME NULL,
+  `links` TEXT NULL,
+  `data` TEXT NULL,
+  PRIMARY KEY (`project_id`, `payment_id`, `timestamp`),
+  INDEX `paypal_id` (`paypal_id` ASC),
+  INDEX `paypal_state` (`paypal_state` ASC),
+  INDEX `fk_provider_paypal_transaction_payment_id_idx` (`payment_id` ASC),
+  INDEX `paypal_payer_id` (`payer_id` ASC),
+  INDEX `paypal_intent` (`intent` ASC),
+  CONSTRAINT `fk_provider_paypal_transaction_payment_id`
+    FOREIGN KEY (`payment_id`)
+    REFERENCES `payment` (`id`)
+    ON DELETE RESTRICT
+    ON UPDATE CASCADE)
+ENGINE = InnoDB;
 
 SET SQL_MODE=@OLD_SQL_MODE;
 SET FOREIGN_KEY_CHECKS=@OLD_FOREIGN_KEY_CHECKS;

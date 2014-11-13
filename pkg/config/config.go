@@ -114,6 +114,8 @@ type Config struct {
 		AuthKeys []string
 	}
 	Provider struct {
+		URL string
+
 		ProviderTemplateDir string
 	}
 }
@@ -150,6 +152,8 @@ func DefaultConfig() Config {
 	cfg.Web.AuthKeys = make([]string, 0)
 
 	cfg.Web.Cookie.HTTPOnly = true
+
+	cfg.Provider.URL = "http://localhost:8443"
 
 	return cfg
 }

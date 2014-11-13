@@ -1,14 +1,12 @@
 package paypal_rest
 
 import (
-	"database/sql"
 	"errors"
 	"net/url"
 	"sync"
 
 	"code.google.com/p/goauth2/oauth"
 	"github.com/fritzpay/paymentd/pkg/paymentd/payment"
-	"github.com/fritzpay/paymentd/pkg/paymentd/payment_method"
 	"gopkg.in/inconshreveable/log15.v2"
 )
 
@@ -79,19 +77,14 @@ func (c *OAuthTransportStore) PutTransport(projectID int64, methodKey string, tr
 	c.m.Unlock()
 }
 
-func (d *Driver) oAuthTransport(log log15.Logger) func(tx *sql.Tx, p *payment.Payment, method *payment_method.Method) (*oauth.Transport, error) {
-	return func(tx *sql.Tx, p *payment.Payment, method *payment_method.Method) (*oauth.Transport, error) {
-		tr, err := d.oauth.Transport(p.ProjectID(), method.MethodKey)
+func (d *Driver) oAuthTransport(log log15.Logger) func(p *payment.Payment, cfg *Config) (*oauth.Transport, error) {
+	return func(p *payment.Payment, cfg *Config) (*oauth.Transport, error) {
+		tr, err := d.oauth.Transport(p.ProjectID(), cfg.MethodKey)
 		if err != nil && err != ErrNoTransport {
 			log.Error("error retrieving transport", log15.Ctx{"err": err})
 			return nil, ErrInternal
 		}
 		if err == ErrNoTransport {
-			cfg, err := ConfigByPaymentMethodTx(tx, method)
-			if err != nil {
-				log.Error("error retrieving PayPal config", log15.Ctx{"err": err})
-				return nil, ErrDatabase
-			}
 			tokenURL, err := url.Parse(cfg.Endpoint)
 			if err != nil {
 				log.Error("invalid endpoint", log15.Ctx{"err": err})
@@ -106,7 +99,7 @@ func (d *Driver) oAuthTransport(log log15.Logger) func(tx *sql.Tx, p *payment.Pa
 				TokenCache:   NewTokenCache(),
 			}
 			tr = &oauth.Transport{Config: oAuthCfg}
-			d.oauth.PutTransport(p.ProjectID(), method.MethodKey, tr)
+			d.oauth.PutTransport(p.ProjectID(), cfg.MethodKey, tr)
 		}
 		return tr, nil
 	}
