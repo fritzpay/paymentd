@@ -1,7 +1,6 @@
 package paypal_rest
 
 import (
-	"code.google.com/p/godec/dec"
 	"database/sql"
 	"encoding/json"
 	"io/ioutil"
@@ -72,7 +71,7 @@ func (d *Driver) InitPayment(p *payment.Payment, method *payment_method.Method) 
 	}
 	req.Intent = cfg.Type
 	req.Payer.PaymentMethod = PayPalPaymentMethodPayPal
-	req.RedirectURLs, err = d.redirectURLs()
+	req.RedirectURLs, err = d.redirectURLs(p)
 	if err != nil {
 		log.Error("error creating redirect urls", log15.Ctx{"err": err})
 		return nil, ErrInternal
@@ -140,7 +139,7 @@ func (d *Driver) InitPayment(p *payment.Payment, method *payment_method.Method) 
 	return d.InitPageHandler(p), nil
 }
 
-func (d *Driver) redirectURLs() (PayPalRedirectURLs, error) {
+func (d *Driver) redirectURLs(p *payment.Payment) (PayPalRedirectURLs, error) {
 	u := PayPalRedirectURLs{}
 	returnRoute, err := d.mux.Get("returnHandler").URLPath()
 	if err != nil {
@@ -151,12 +150,17 @@ func (d *Driver) redirectURLs() (PayPalRedirectURLs, error) {
 		return u, err
 	}
 
+	q := url.Values(make(map[string][]string))
+	q.Set("paymentID", d.paymentService.EncodedPaymentID(p.PaymentID()).String())
+
 	returnURL := &(*d.baseURL)
 	returnURL.Path = returnRoute.Path
+	returnURL.RawQuery = q.Encode()
 	u.ReturnURL = returnURL.String()
 
 	cancelURL := &(*d.baseURL)
 	cancelURL.Path = cancelRoute.Path
+	cancelURL.RawQuery = q.Encode()
 	u.CancelURL = cancelURL.String()
 
 	return u, nil
@@ -167,11 +171,9 @@ func (d *Driver) payPalTransactionFromPayment(p *payment.Payment) PayPalTransact
 	encPaymentID := d.paymentService.EncodedPaymentID(p.PaymentID())
 	t.Custom = encPaymentID.String()
 	t.InvoiceNumber = encPaymentID.String()
-	amnt := &p.Decimal().Dec
-	amnt.Round(amnt, dec.Scale(2), dec.RoundHalfUp)
 	t.Amount = PayPalAmount{
 		Currency: p.Currency,
-		Total:    amnt.String(),
+		Total:    p.DecimalRound(2).String(),
 	}
 	return t
 }

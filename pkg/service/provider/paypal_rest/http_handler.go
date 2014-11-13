@@ -87,6 +87,7 @@ func (d *Driver) InitPageHandler(p *payment.Payment) http.Handler {
 		tmplData["locale"] = locale
 		tmplData["payment"] = p
 		tmplData["paymentID"] = d.paymentService.EncodedPaymentID(p.PaymentID())
+		tmplData["amount"] = p.DecimalRound(2)
 		buf := buffer()
 		err = tmpl.Execute(buf, tmplData)
 		if err != nil {
