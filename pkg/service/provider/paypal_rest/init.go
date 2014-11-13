@@ -182,10 +182,11 @@ func (d *Driver) payPalTransactionFromPayment(p *payment.Payment) PayPalTransact
 
 func (d *Driver) doInit(errors chan<- error, cfg *Config, reqURL *url.URL, p *payment.Payment, body string) {
 	log := d.log.New(log15.Ctx{
-		"method":    "doInit",
-		"projectID": p.ProjectID(),
-		"paymentID": p.ID(),
-		"methodKey": cfg.MethodKey,
+		"method":      "doInit",
+		"projectID":   p.ProjectID(),
+		"paymentID":   p.ID(),
+		"methodKey":   cfg.MethodKey,
+		"requestBody": body,
 	})
 	if Debug {
 		log.Debug("posting...")
@@ -212,19 +213,28 @@ func (d *Driver) doInit(errors chan<- error, cfg *Config, reqURL *url.URL, p *pa
 	}
 	if resp.StatusCode != http.StatusCreated && resp.StatusCode != http.StatusOK {
 		log.Error("error on HTTP request", log15.Ctx{"HTTPStatusCode": resp.StatusCode})
-		d.setPayPalErrorResponse(p, resp)
+		d.setPayPalErrorResponse(p, nil)
 		errors <- ErrHTTP
 		return
 	}
+	respBody, err := ioutil.ReadAll(resp.Body)
+	resp.Body.Close()
+	if err != nil {
+		log.Error("error reading response body", log15.Ctx{"err": err})
+		d.setPayPalErrorResponse(p, nil)
+		errors <- ErrHTTP
+		return
+	}
+	log = log.New(log15.Ctx{"responseBody": body})
+	if Debug {
+		log.Debug("received response")
+	}
 	paypalP := &PaypalPayment{}
-	dec := json.NewDecoder(resp.Body)
-	err = dec.Decode(paypalP)
+	err = json.Unmarshal(respBody, paypalP)
 	if err != nil {
 		log.Error("error decoding PayPal response", log15.Ctx{"err": err})
+		d.setPayPalErrorResponse(p, respBody)
 		errors <- ErrProvider
-	}
-	if Debug {
-		log.Debug("received response", log15.Ctx{"paypalPayment": paypalP})
 	}
 
 	paypalTx := &Transaction{
@@ -258,18 +268,21 @@ func (d *Driver) doInit(errors chan<- error, cfg *Config, reqURL *url.URL, p *pa
 	paypalTx.Links, err = json.Marshal(paypalP.Links)
 	if err != nil {
 		log.Error("error on saving links on response", log15.Ctx{"err": err})
+		d.setPayPalErrorResponse(p, respBody)
 		errors <- ErrProvider
 		return
 	}
 	paypalTx.Data, err = json.Marshal(paypalP)
 	if err != nil {
 		log.Error("error marshalling paypal payment response", log15.Ctx{"err": err})
+		d.setPayPalErrorResponse(p, respBody)
 		errors <- ErrProvider
 		return
 	}
 	err = InsertTransactionDB(d.ctx.PaymentDB(), paypalTx)
 	if err != nil {
 		log.Error("error saving paypal response", log15.Ctx{"err": err})
+		d.setPayPalErrorResponse(p, respBody)
 		errors <- ErrProvider
 		return
 	}
@@ -277,18 +290,12 @@ func (d *Driver) doInit(errors chan<- error, cfg *Config, reqURL *url.URL, p *pa
 	close(errors)
 }
 
-func (d *Driver) setPayPalErrorResponse(p *payment.Payment, resp *http.Response) {
+func (d *Driver) setPayPalErrorResponse(p *payment.Payment, data []byte) {
 	log := d.log.New(log15.Ctx{
 		"method":    "setPayPalErrorResponse",
 		"projectID": p.ProjectID(),
 		"paymentID": p.ID(),
 	})
-
-	errBody, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		log.Error("error reading paypal error response", log15.Ctx{"err": err})
-		return
-	}
 
 	paypalTx := &Transaction{
 		ProjectID: p.ProjectID(),
@@ -296,8 +303,8 @@ func (d *Driver) setPayPalErrorResponse(p *payment.Payment, resp *http.Response)
 		Timestamp: time.Now(),
 		Type:      TransactionTypeError,
 	}
-	paypalTx.Data = errBody
-	err = InsertTransactionDB(d.ctx.PaymentDB(), paypalTx)
+	paypalTx.Data = data
+	err := InsertTransactionDB(d.ctx.PaymentDB(), paypalTx)
 	if err != nil {
 		log.Error("error saving paypal transaction", log15.Ctx{"err": err})
 	}
