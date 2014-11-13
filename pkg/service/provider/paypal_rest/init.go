@@ -108,6 +108,7 @@ func (d *Driver) InitPayment(p *payment.Payment, method *payment_method.Method) 
 		Timestamp: time.Now(),
 		Type:      TransactionTypeCreatePayment,
 	}
+	paypalTx.SetIntent(cfg.Type)
 	paypalTx.Data = jsonBytes
 
 	err = InsertTransactionTx(tx, paypalTx)
