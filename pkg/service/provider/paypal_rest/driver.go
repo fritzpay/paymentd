@@ -3,9 +3,11 @@ package paypal_rest
 import (
 	"errors"
 	"fmt"
+	"github.com/fritzpay/paymentd/pkg/paymentd/payment"
 	"net/url"
 	"os"
 	"path"
+	"time"
 
 	"github.com/fritzpay/paymentd/pkg/service"
 	paymentService "github.com/fritzpay/paymentd/pkg/service/payment"
@@ -84,4 +86,26 @@ func (d *Driver) Attach(ctx *service.Context, mux *mux.Router) error {
 	d.oauth = NewOAuthTransportStore()
 
 	return nil
+}
+
+// creates an error transaction
+func (d *Driver) setPayPalErrorResponse(p *payment.Payment, data []byte) {
+	log := d.log.New(log15.Ctx{
+		"method":    "setPayPalErrorResponse",
+		"projectID": p.ProjectID(),
+		"paymentID": p.ID(),
+	})
+	log.Warn("status error")
+
+	paypalTx := &Transaction{
+		ProjectID: p.ProjectID(),
+		PaymentID: p.ID(),
+		Timestamp: time.Now(),
+		Type:      TransactionTypeError,
+	}
+	paypalTx.Data = data
+	err := InsertTransactionDB(d.ctx.PaymentDB(), paypalTx)
+	if err != nil {
+		log.Error("error saving paypal transaction", log15.Ctx{"err": err})
+	}
 }

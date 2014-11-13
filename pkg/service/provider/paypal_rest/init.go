@@ -289,23 +289,3 @@ func (d *Driver) doInit(errors chan<- error, cfg *Config, reqURL *url.URL, p *pa
 
 	close(errors)
 }
-
-func (d *Driver) setPayPalErrorResponse(p *payment.Payment, data []byte) {
-	log := d.log.New(log15.Ctx{
-		"method":    "setPayPalErrorResponse",
-		"projectID": p.ProjectID(),
-		"paymentID": p.ID(),
-	})
-
-	paypalTx := &Transaction{
-		ProjectID: p.ProjectID(),
-		PaymentID: p.ID(),
-		Timestamp: time.Now(),
-		Type:      TransactionTypeError,
-	}
-	paypalTx.Data = data
-	err := InsertTransactionDB(d.ctx.PaymentDB(), paypalTx)
-	if err != nil {
-		log.Error("error saving paypal transaction", log15.Ctx{"err": err})
-	}
-}
