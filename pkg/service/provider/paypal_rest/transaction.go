@@ -2,6 +2,8 @@ package paypal_rest
 
 import (
 	"database/sql"
+	"encoding/json"
+	"errors"
 	"time"
 )
 
@@ -9,6 +11,10 @@ const (
 	TransactionTypeCreatePayment         = "createPayment"
 	TransactionTypeCreatePaymentResponse = "createPaymentResponse"
 	TransactionTypeError                 = "error"
+)
+
+var (
+	ErrNoLinks = errors.New("no links")
 )
 
 // Transaction represents a transaction on a paypal payment
@@ -50,4 +56,20 @@ func (t *Transaction) SetPayerID(id string) {
 
 func (t *Transaction) SetState(state string) {
 	t.PaypalState.String, t.PaypalState.Valid = state, true
+}
+
+func (t *Transaction) PayPalLinks() (map[string]*PayPalLink, error) {
+	if t.Links == nil || len(t.Links) == 0 {
+		return nil, ErrNoLinks
+	}
+	links := make([]*PayPalLink, 0, 10)
+	err := json.Unmarshal(t.Links, &links)
+	if err != nil {
+		return nil, err
+	}
+	ret := make(map[string]*PayPalLink)
+	for _, l := range links {
+		ret[l.Rel] = l
+	}
+	return ret, nil
 }

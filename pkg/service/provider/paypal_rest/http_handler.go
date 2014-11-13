@@ -119,8 +119,26 @@ func (d *Driver) CancelHandler() http.Handler {
 }
 
 func (d *Driver) ApprovalHandler(tx *Transaction, p *payment.Payment) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {})
-
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		log := d.log.New(log15.Ctx{
+			"method":               "ApprovalHandler",
+			"projectID":            p.ProjectID(),
+			"paymentID":            p.PaymentID(),
+			"transactionTimestamp": tx.Timestamp.UnixNano(),
+		})
+		links, err := tx.PayPalLinks()
+		if err != nil {
+			log.Error("transaction links error", log15.Ctx{"err": err})
+			d.PaymentErrorHandler(p).ServeHTTP(w, r)
+			return
+		}
+		if links["approval_url"] == nil {
+			log.Error("no approval URL")
+			d.PaymentErrorHandler(p).ServeHTTP(w, r)
+			return
+		}
+		http.Redirect(w, r, links["approval_url"].HRef, http.StatusTemporaryRedirect)
+	})
 }
 
 func (d *Driver) StatusHandler(tx *Transaction, p *payment.Payment) http.Handler {
