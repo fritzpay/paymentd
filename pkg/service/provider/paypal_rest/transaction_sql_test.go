@@ -39,7 +39,7 @@ func TestPaypalTransaction(t *testing.T) {
 						So(pt.PaypalUpdateTime, ShouldBeNil)
 
 						Convey("When inserting the transaction", func() {
-							err = paypal_rest.InsertTransaction(tx, pt)
+							err = paypal_rest.InsertTransactionTx(tx, pt)
 
 							Convey("It should succeed", func() {
 								So(err, ShouldBeNil)
@@ -65,7 +65,7 @@ func TestPaypalTransaction(t *testing.T) {
 						pt.PaypalUpdateTime = &tm
 
 						Convey("When inserting the transaction", func() {
-							err = paypal_rest.InsertTransaction(tx, pt)
+							err = paypal_rest.InsertTransactionTx(tx, pt)
 
 							Convey("It should succeed", func() {
 								So(err, ShouldBeNil)
