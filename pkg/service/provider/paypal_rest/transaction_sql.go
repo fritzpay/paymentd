@@ -44,8 +44,7 @@ WHERE
 	)
 `
 
-func TransactionCurrentByPaymentIDTx(db *sql.Tx, paymentID payment.PaymentID) (*Transaction, error) {
-	row := db.QueryRow(selectTransactionCurrentByPaymentID, paymentID.ProjectID, paymentID.PaymentID)
+func scanTransactionRow(row *sql.Row) (*Transaction, error) {
 	t := &Transaction{}
 	var ts int64
 	err := row.Scan(
@@ -70,6 +69,16 @@ func TransactionCurrentByPaymentIDTx(db *sql.Tx, paymentID payment.PaymentID) (*
 	}
 	t.Timestamp = time.Unix(0, ts)
 	return t, nil
+}
+
+func TransactionCurrentByPaymentIDTx(db *sql.Tx, paymentID payment.PaymentID) (*Transaction, error) {
+	row := db.QueryRow(selectTransactionCurrentByPaymentID, paymentID.ProjectID, paymentID.PaymentID)
+	return scanTransactionRow(row)
+}
+
+func TransactionCurrentByPaymentIDDB(db *sql.DB, paymentID payment.PaymentID) (*Transaction, error) {
+	row := db.QueryRow(selectTransactionCurrentByPaymentID, paymentID.ProjectID, paymentID.PaymentID)
+	return scanTransactionRow(row)
 }
 
 const insertTransaction = `
