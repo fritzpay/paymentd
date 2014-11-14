@@ -11,6 +11,7 @@ const (
 	TransactionTypeCreatePayment         = "createPayment"
 	TransactionTypeCreatePaymentResponse = "createPaymentResponse"
 	TransactionTypeError                 = "error"
+	TransactionTypeCancelled             = "cancelled"
 )
 
 var (

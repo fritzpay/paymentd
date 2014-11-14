@@ -3,6 +3,7 @@ package paypal_rest
 import (
 	"database/sql"
 	"net/http"
+	"time"
 
 	"github.com/fritzpay/paymentd/pkg/paymentd/payment"
 	"gopkg.in/inconshreveable/log15.v2"
@@ -16,6 +17,11 @@ func (d *Driver) CancelHandler() http.Handler {
 			log.Info("request without payment ID")
 			d.NotFoundHandler().ServeHTTP(w, r)
 			return
+		}
+		nonce := r.URL.Query().Get("nonce")
+		if nonce == "" {
+			log.Info("request without nonce")
+			d.NotFoundHandler().ServeHTTP(w, r)
 		}
 		paymentID, err := payment.ParsePaymentIDStr(paymentIDStr)
 		if err != nil {
@@ -46,10 +52,21 @@ func (d *Driver) CancelHandler() http.Handler {
 			return
 		}
 
+		paypalTx, err := TransactionByPaymentIDAndNonceTx(tx, paymentID, nonce)
+		if err != nil {
+			if err == ErrTransactionNotFound {
+				log.Info("paypal transaction not found")
+				d.NotFoundHandler().ServeHTTP(w, r)
+				return
+			}
+			log.Error("error retrieving paypal transaction")
+			d.InternalErrorHandler(nil).ServeHTTP(w, r)
+			return
+		}
 		p, err := payment.PaymentByIDTx(tx, paymentID)
 		if err != nil {
 			if err == payment.ErrPaymentNotFound {
-				log.Info("payment not found")
+				log.Info("payment not found", log15.Ctx{"err": err})
 				d.NotFoundHandler().ServeHTTP(w, r)
 				return
 			}
@@ -57,21 +74,40 @@ func (d *Driver) CancelHandler() http.Handler {
 			d.InternalErrorHandler(nil).ServeHTTP(w, r)
 			return
 		}
-		paypalTx, err := TransactionCurrentByPaymentIDTx(tx, p.PaymentID())
-		if err != nil {
-			if err == ErrTransactionNotFound {
-				log.Info("paypal transaction not found")
-				d.NotFoundHandler().ServeHTTP(w, r)
+
+		if paypalTx.Type != TransactionTypeCancelled {
+			paypalTx := &Transaction{
+				ProjectID: p.ProjectID(),
+				PaymentID: p.ID(),
+				Timestamp: time.Now(),
+				Type:      TransactionTypeCancelled,
+			}
+			err = InsertTransactionTx(tx, paypalTx)
+			if err != nil {
+				log.Error("error create paypal transaction", log15.Ctx{"err": err})
+				d.InternalErrorHandler(p).ServeHTTP(w, r)
 				return
 			}
-			log.Error("error retrievin paypal transaction")
+		}
+		if p.Status != payment.PaymentStatusCancelled {
+			paymentTx := p.NewTransaction(payment.PaymentStatusCancelled)
+			paymentTx.Amount = 0
+			err = d.paymentService.SetPaymentTransaction(tx, paymentTx)
+			if err != nil {
+				log.Error("error creating payment transaction", log15.Ctx{"err": err})
+				d.InternalErrorHandler(p).ServeHTTP(w, r)
+				return
+			}
+		}
+
+		commit = true
+		err = tx.Commit()
+		if err != nil {
+			log.Crit("error on commit", log15.Ctx{"err": err})
 			d.InternalErrorHandler(p).ServeHTTP(w, r)
 			return
 		}
-		if !paypalTx.PaypalID.Valid {
-			log.Warn("paypal transaction without paypal id")
-			d.PaymentErrorHandler(p).ServeHTTP(w, r)
-			return
-		}
+
+		d.CancelPageHandler(p).ServeHTTP(w, r)
 	})
 }

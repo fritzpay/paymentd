@@ -92,7 +92,7 @@ func (d *Driver) Attach(ctx *service.Context, mux *mux.Router) error {
 	}
 	d.mux = driverRoute.Subrouter()
 	d.mux.Handle("/return", d.ReturnHandler()).Name("returnHandler")
-	d.mux.Handle("/cancel", d.ReturnHandler()).Name("cancelHandler")
+	d.mux.Handle("/cancel", d.CancelHandler()).Name("cancelHandler")
 	staticDir := path.Join(d.tmplDir, "static")
 	d.log.Info("serving static dir", log15.Ctx{
 		"staticDir": staticDir,
