@@ -32,6 +32,7 @@ type Transaction struct {
 	PaymentID        int64
 	Timestamp        time.Time
 	Type             string
+	Nonce            sql.NullString
 	Intent           sql.NullString
 	PaypalID         sql.NullString
 	PayerID          sql.NullString
@@ -40,6 +41,10 @@ type Transaction struct {
 	PaypalUpdateTime *time.Time
 	Links            []byte
 	Data             []byte
+}
+
+func (t *Transaction) SetNonce(nonce string) {
+	t.Nonce.String, t.Nonce.Valid = nonce, true
 }
 
 func (t *Transaction) SetIntent(intent string) {

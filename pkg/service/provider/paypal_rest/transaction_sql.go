@@ -18,6 +18,7 @@ SELECT
 	t.payment_id,
 	t.timestamp,
 	t.type,
+	t.nonce,
 	t.intent,
 	t.paypal_id,
 	t.payer_id,
@@ -43,6 +44,14 @@ WHERE
 			payment_id = t.payment_id
 	)
 `
+const selectTransactionByPaymentIDAndNonce = selectTransaction + `
+WHERE
+	t.project_id = ?
+	AND
+	t.payment_id = ?
+	AND
+	t.nonce = ?
+`
 
 func scanTransactionRow(row *sql.Row) (*Transaction, error) {
 	t := &Transaction{}
@@ -52,6 +61,7 @@ func scanTransactionRow(row *sql.Row) (*Transaction, error) {
 		&t.PaymentID,
 		&ts,
 		&t.Type,
+		&t.Nonce,
 		&t.Intent,
 		&t.PaypalID,
 		&t.PayerID,
@@ -81,11 +91,16 @@ func TransactionCurrentByPaymentIDDB(db *sql.DB, paymentID payment.PaymentID) (*
 	return scanTransactionRow(row)
 }
 
+func TransactionByPaymentIDAndNonceTx(db *sql.Tx, paymentID payment.PaymentID, nonce string) (*Transaction, error) {
+	row := db.QueryRow(selectTransactionByPaymentIDAndNonce, paymentID.ProjectID, paymentID.PaymentID, nonce)
+	return scanTransactionRow(row)
+}
+
 const insertTransaction = `
 INSERT INTO provider_paypal_transaction
-(project_id, payment_id, timestamp, type, intent, paypal_id, payer_id, paypal_create_time, paypal_state, paypal_update_time, links, data)
+(project_id, payment_id, timestamp, type, nonce, intent, paypal_id, payer_id, paypal_create_time, paypal_state, paypal_update_time, links, data)
 VALUES
-(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 `
 
 func doInsertTransaction(stmt *sql.Stmt, t *Transaction) error {
@@ -94,6 +109,7 @@ func doInsertTransaction(stmt *sql.Stmt, t *Transaction) error {
 		t.PaymentID,
 		t.Timestamp.UnixNano(),
 		t.Type,
+		t.Nonce,
 		t.Intent,
 		t.PaypalID,
 		t.PayerID,
