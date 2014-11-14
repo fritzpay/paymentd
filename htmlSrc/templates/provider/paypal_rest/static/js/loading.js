@@ -34,7 +34,7 @@ var loading = (function () {
                 location.reload();
                 return;
             }
-            if (xhr.response.c !== undefined && xhr.response.c === true) {
+            if (xhr.response !== null && xhr.response.c !== undefined && xhr.response.c === true) {
                 location.reload();
                 return;
             }
