@@ -54,16 +54,16 @@ func getTemplateFile(tmplDir, locale, baseName string) (string, error) {
 	return tmplFile, nil
 }
 
-func (d *Driver) getTemplate(tmplDir, locale, baseName string) (tmpl *template.Template, tmplLocale string, err error) {
+func (d *Driver) getTemplate(tmpl *template.Template, tmplDir, locale, baseName string) (err error) {
 	tmplFile, err := getTemplateFile(tmplDir, locale, baseName)
 	if err != nil {
-		return nil, "", err
+		return err
 	}
 	tmplB, err := ioutil.ReadFile(tmplFile)
 	if err != nil {
-		return nil, "", err
+		return err
 	}
-	tmpl = template.New("page")
+	tmplLocale := path.Base(path.Ext(tmplFile))
 	tmpl.Funcs(template.FuncMap(map[string]interface{}{
 		"staticPath": func() (string, error) {
 			url, err := d.mux.Get("staticHandler").URLPath()
@@ -72,13 +72,15 @@ func (d *Driver) getTemplate(tmplDir, locale, baseName string) (tmpl *template.T
 			}
 			return url.Path, nil
 		},
+		"locale": func() string {
+			return tmplLocale
+		},
 	}))
 	_, err = tmpl.Parse(string(tmplB))
 	if err != nil {
-		return nil, "", err
+		return err
 	}
-	tmplLocale = path.Base(path.Ext(tmplFile))
-	return tmpl, tmplLocale, nil
+	return nil
 }
 
 func (d *Driver) InitPageHandler(p *payment.Payment) http.Handler {
@@ -86,14 +88,14 @@ func (d *Driver) InitPageHandler(p *payment.Payment) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		log := d.log.New(log15.Ctx{"method": "InitPageHandler"})
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")
-		tmpl, locale, err := d.getTemplate(d.tmplDir, p.Config.Locale.String, baseName)
+		tmpl := template.New("init")
+		err := d.getTemplate(tmpl, d.tmplDir, p.Config.Locale.String, baseName)
 		if err != nil {
 			log.Error("error initializing template", log15.Ctx{"err": err})
 			w.WriteHeader(http.StatusInternalServerError)
 			return
 		}
 		tmplData := make(map[string]interface{})
-		tmplData["locale"] = locale
 		tmplData["payment"] = p
 		tmplData["paymentID"] = d.paymentService.EncodedPaymentID(p.PaymentID())
 		tmplData["amount"] = p.DecimalRound(2)
