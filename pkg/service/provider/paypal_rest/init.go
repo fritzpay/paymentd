@@ -64,20 +64,10 @@ func (d *Driver) InitPayment(p *payment.Payment, method *payment_method.Method) 
 	}
 
 	// create payment request
-	req := &PayPalPaymentRequest{}
-	if cfg.Type != "sale" && cfg.Type != "authorize" {
-		log.Crit("invalid config type", log15.Ctx{"configType": cfg.Type})
-		return nil, ErrInternal
-	}
-	req.Intent = cfg.Type
-	req.Payer.PaymentMethod = PayPalPaymentMethodPayPal
-	req.RedirectURLs, err = d.redirectURLs(p)
+	req, err := d.createPaypalPaymentRequest(p, cfg)
 	if err != nil {
-		log.Error("error creating redirect urls", log15.Ctx{"err": err})
+		log.Error("error creating paypal payment request", log15.Ctx{"err": err})
 		return nil, ErrInternal
-	}
-	req.Transactions = []PayPalTransaction{
-		d.payPalTransactionFromPayment(p),
 	}
 	if Debug {
 		log.Debug("created paypal payment request", log15.Ctx{"request": req})
@@ -164,18 +154,6 @@ func (d *Driver) redirectURLs(p *payment.Payment) (PayPalRedirectURLs, error) {
 	u.CancelURL = cancelURL.String()
 
 	return u, nil
-}
-
-func (d *Driver) payPalTransactionFromPayment(p *payment.Payment) PayPalTransaction {
-	t := PayPalTransaction{}
-	encPaymentID := d.paymentService.EncodedPaymentID(p.PaymentID())
-	t.Custom = encPaymentID.String()
-	t.InvoiceNumber = encPaymentID.String()
-	t.Amount = PayPalAmount{
-		Currency: p.Currency,
-		Total:    p.DecimalRound(2).String(),
-	}
-	return t
 }
 
 func (d *Driver) doInit(errors chan<- error, cfg *Config, reqURL *url.URL, p *payment.Payment, body string) {

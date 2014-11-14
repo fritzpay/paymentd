@@ -3,12 +3,13 @@ package paypal_rest
 import (
 	"errors"
 	"fmt"
-	"github.com/fritzpay/paymentd/pkg/paymentd/payment"
 	"net/http"
 	"net/url"
 	"os"
 	"path"
 	"time"
+
+	"github.com/fritzpay/paymentd/pkg/paymentd/payment"
 
 	"github.com/fritzpay/paymentd/pkg/service"
 	paymentService "github.com/fritzpay/paymentd/pkg/service/payment"
