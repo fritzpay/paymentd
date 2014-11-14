@@ -10,6 +10,7 @@ import (
 	"os"
 	"path"
 	"strings"
+	"time"
 
 	"github.com/fritzpay/paymentd/pkg/paymentd/payment"
 	"gopkg.in/inconshreveable/log15.v2"
@@ -25,6 +26,9 @@ var (
 // it does not necessarily return a valid locale. in this case the default
 // locale will be used anyways
 func normalizeLocale(l string) string {
+	if l == "" {
+		return "_"
+	}
 	l = strings.Replace(l, "-", "_", -1)
 	parts := strings.Split(l, "_")
 	if len(parts) == 2 {
@@ -83,6 +87,34 @@ func (d *Driver) getTemplate(tmpl *template.Template, tmplDir, locale, baseName 
 	return nil
 }
 
+func (d *Driver) templatePaymentData(p *payment.Payment) map[string]interface{} {
+	tmplData := make(map[string]interface{})
+	if p != nil {
+		tmplData["payment"] = p
+		tmplData["paymentID"] = d.paymentService.EncodedPaymentID(p.PaymentID())
+		tmplData["amount"] = p.DecimalRound(2)
+	}
+	tmplData["timestamp"] = time.Now().Unix()
+	return tmplData
+}
+
+func writeTemplateBuf(log log15.Logger, w io.Writer, tmpl *template.Template, tmplData interface{}) error {
+	buf := buffer()
+	err := tmpl.Execute(buf, tmplData)
+	if err != nil {
+		log.Error("error on template", log15.Ctx{"err": err})
+		return ErrInternal
+	}
+	_, err = io.Copy(w, buf)
+	putBuffer(buf)
+	buf = nil
+	if err != nil {
+		log.Error("error writing buffered output", log15.Ctx{"err": err})
+	}
+	return nil
+}
+
+// InitPageHandler serves the init page (loading screen)
 func (d *Driver) InitPageHandler(p *payment.Payment) http.Handler {
 	const baseName = "init.html.tmpl"
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -95,37 +127,54 @@ func (d *Driver) InitPageHandler(p *payment.Payment) http.Handler {
 			w.WriteHeader(http.StatusInternalServerError)
 			return
 		}
-		tmplData := make(map[string]interface{})
-		tmplData["payment"] = p
-		tmplData["paymentID"] = d.paymentService.EncodedPaymentID(p.PaymentID())
-		tmplData["amount"] = p.DecimalRound(2)
-		buf := buffer()
-		err = tmpl.Execute(buf, tmplData)
+		tmplData := d.templatePaymentData(p)
+		err = writeTemplateBuf(log, w, tmpl, tmplData)
 		if err != nil {
-			log.Error("error on template", log15.Ctx{"err": err})
 			w.WriteHeader(http.StatusInternalServerError)
-			return
-		}
-		_, err = io.Copy(w, buf)
-		putBuffer(buf)
-		buf = nil
-		if err != nil {
-			log.Error("error writing buffered output", log15.Ctx{"err": err})
 		}
 	})
 }
 
-func (d *Driver) InternalErrorHandler() http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {})
+// InternalErrorHandler serves the page notifying the user about a (critical)
+// internal error. The payment can not continue.
+//
+// It can handle a nil payment parameter.
+func (d *Driver) InternalErrorHandler(p *payment.Payment) http.Handler {
+	const baseName = "internal_error.html.tmpl"
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		log := d.log.New(log15.Ctx{"method": "InternalErrorHandler"})
+
+		tmplData := d.templatePaymentData(p)
+		// do log so we can find the timestamp in the logs
+		log.Error("internal error", log15.Ctx{"timestamp": tmplData["timestamp"]})
+		w.WriteHeader(http.StatusInternalServerError)
+		locale := defaultLocale
+		if p != nil {
+			locale = p.Config.Locale.String
+		}
+		tmpl := template.New("internal_error")
+		err := d.getTemplate(tmpl, d.tmplDir, locale, baseName)
+		if err != nil {
+			log.Error("error initializing template", log15.Ctx{"err": err})
+			return
+		}
+		writeTemplateBuf(log, w, tmpl, tmplData)
+	})
 }
+
 func (d *Driver) PaymentErrorHandler(p *payment.Payment) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {})
 }
 
-func (d *Driver) ReturnHandler() http.Handler {
+func (d *Driver) BadRequestHandler() http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {})
 }
-func (d *Driver) CancelHandler() http.Handler {
+
+func (d *Driver) NotFoundHandler() http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {})
+}
+
+func (d *Driver) ReturnHandler() http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {})
 }
 

@@ -129,33 +129,6 @@ func (d *Driver) InitPayment(p *payment.Payment, method *payment_method.Method) 
 	return d.InitPageHandler(p), nil
 }
 
-func (d *Driver) redirectURLs(p *payment.Payment) (PayPalRedirectURLs, error) {
-	u := PayPalRedirectURLs{}
-	returnRoute, err := d.mux.Get("returnHandler").URLPath()
-	if err != nil {
-		return u, err
-	}
-	cancelRoute, err := d.mux.Get("cancelHandler").URLPath()
-	if err != nil {
-		return u, err
-	}
-
-	q := url.Values(make(map[string][]string))
-	q.Set("paymentID", d.paymentService.EncodedPaymentID(p.PaymentID()).String())
-
-	returnURL := &(*d.baseURL)
-	returnURL.Path = returnRoute.Path
-	returnURL.RawQuery = q.Encode()
-	u.ReturnURL = returnURL.String()
-
-	cancelURL := &(*d.baseURL)
-	cancelURL.Path = cancelRoute.Path
-	cancelURL.RawQuery = q.Encode()
-	u.CancelURL = cancelURL.String()
-
-	return u, nil
-}
-
 func (d *Driver) doInit(errors chan<- error, cfg *Config, reqURL *url.URL, p *payment.Payment, body string) {
 	log := d.log.New(log15.Ctx{
 		"method":      "doInit",

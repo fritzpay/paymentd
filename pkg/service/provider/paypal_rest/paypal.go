@@ -3,12 +3,17 @@ package paypal_rest
 
 import (
 	"fmt"
+	"net/url"
 
 	"github.com/fritzpay/paymentd/pkg/paymentd/payment"
 	"gopkg.in/inconshreveable/log15.v2"
 )
 
 type PayPalPaymentMethod string
+
+const (
+	paymentIDParam = "paymentID"
+)
 
 const (
 	PayPalPaymentMethodPayPal PayPalPaymentMethod = "paypal"
@@ -137,4 +142,31 @@ func (d *Driver) payPalTransactionFromPayment(p *payment.Payment) PayPalTransact
 		Total:    p.DecimalRound(2).String(),
 	}
 	return t
+}
+
+func (d *Driver) redirectURLs(p *payment.Payment) (PayPalRedirectURLs, error) {
+	u := PayPalRedirectURLs{}
+	returnRoute, err := d.mux.Get("returnHandler").URLPath()
+	if err != nil {
+		return u, err
+	}
+	cancelRoute, err := d.mux.Get("cancelHandler").URLPath()
+	if err != nil {
+		return u, err
+	}
+
+	q := url.Values(make(map[string][]string))
+	q.Set(paymentIDParam, d.paymentService.EncodedPaymentID(p.PaymentID()).String())
+
+	returnURL := &(*d.baseURL)
+	returnURL.Path = returnRoute.Path
+	returnURL.RawQuery = q.Encode()
+	u.ReturnURL = returnURL.String()
+
+	cancelURL := &(*d.baseURL)
+	cancelURL.Path = cancelRoute.Path
+	cancelURL.RawQuery = q.Encode()
+	u.CancelURL = cancelURL.String()
+
+	return u, nil
 }

@@ -1,0 +1,22 @@
+<!doctype html>
+<html>
+	<head>
+		<meta charset="UTF-8">
+		<title>PayPal - Cancelled</title>
+	</head>
+	<body>
+		<h1>Your payment was cancelled</h1>
+		<p>The payment was cancelled. Your account was not charged.</p>
+		<h2>Your Payment</h2>
+		<dl>
+			<dt>Payment ID</dt>
+			<dd>{{.paymentID}}</dd>
+			<dt>Payment Amount</dt>
+			<dd>{{.payment.Currency}} {{.amount}}</dd>
+		</dl>
+		<p>
+			Please provide the &quot;Payment ID&quot; if you have any questions
+			in regard to this payment.
+		</p>
+	</body>
+</html>
