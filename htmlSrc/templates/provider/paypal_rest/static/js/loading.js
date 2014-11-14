@@ -23,14 +23,24 @@ var loading = (function () {
     "use strict";
     var check = function () {
         var xhr = j();
-        xhr.setRequestHeader("Accept", "application/json");
         xhr.open("GET", document.URL, true);
+        xhr.setRequestHeader("Accept", "application/json");
+        xhr.responseType = "json";
         xhr.onreadystatechange = function () {
-        	if (xhr.status !== 4) {
+        	if (xhr.readyState !== 4) {
         		return;
         	}
-        	console.log(xhr.response);
+            if (xhr.status !== 200) {
+                location.reload();
+                return;
+            }
+            if (xhr.response.c !== undefined && xhr.response.c === true) {
+                location.reload();
+                return;
+            }
+            setTimeout(check, 1000);
         };
+        xhr.send();
     };
 
     return {
@@ -39,3 +49,4 @@ var loading = (function () {
         }
     };
 }());
+loading.init();

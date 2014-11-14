@@ -168,8 +168,8 @@ func (d *Driver) StatusHandler(tx *Transaction, p *payment.Payment) http.Handler
 		// ajax poll?
 		if strings.Contains(r.Header.Get("Content-Type"), "application/json") ||
 			strings.Contains(r.Header.Get("Accept"), "application/json") {
-			w.Header().Set("Content-Type", "text/plain; charset-utf8")
-			_, err := fmt.Fprintf(w, "%t", cont)
+			w.Header().Set("Content-Type", "application/json")
+			_, err := fmt.Fprintf(w, "{\"c\": %t}", cont)
 			if err != nil {
 				d.log.Error("error writing response", log15.Ctx{
 					"method": "StatusHandler",
