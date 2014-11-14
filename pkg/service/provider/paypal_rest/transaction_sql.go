@@ -27,10 +27,10 @@ SELECT
 	t.paypal_update_time,
 	t.links,
 	t.data
-FROM provider_paypal_transaction AS t
 `
 
 const selectTransactionCurrentByPaymentID = selectTransaction + `
+FROM provider_paypal_transaction AS t
 WHERE
 	t.project_id = ?
 	AND
@@ -45,12 +45,25 @@ WHERE
 	)
 `
 const selectTransactionByPaymentIDAndNonce = selectTransaction + `
+FROM provider_paypal_transaction AS tn
+INNER JOIN provider_paypal_transaction AS t ON
+	t.project_id = tn.project_id
+	AND
+	t.payment_id = tn.payment_id
+	AND
+	t.timestamp = (
+		SELECT MAX(timestamp) FROM provider_paypal_transaction
+		WHERE
+			project_id = t.project_id
+			AND
+			payment_id = t.payment_id
+	)
 WHERE
-	t.project_id = ?
+	tn.project_id = ?
 	AND
-	t.payment_id = ?
+	tn.payment_id = ?
 	AND
-	t.nonce = ?
+	tn.nonce = ?
 `
 
 func scanTransactionRow(row *sql.Row) (*Transaction, error) {
