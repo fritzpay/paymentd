@@ -3,6 +3,7 @@ package paypal_rest
 import (
 	"database/sql"
 	"encoding/json"
+	"github.com/fritzpay/paymentd/pkg/paymentd/nonce"
 	"io/ioutil"
 	"net/http"
 	"net/url"
@@ -64,7 +65,12 @@ func (d *Driver) InitPayment(p *payment.Payment, method *payment_method.Method) 
 	}
 
 	// create payment request
-	req, err := d.createPaypalPaymentRequest(p, cfg)
+	non, err := nonce.New()
+	if err != nil {
+		log.Error("error generating nonce", log15.Ctx{"err": err})
+		return nil, ErrInternal
+	}
+	req, err := d.createPaypalPaymentRequest(p, cfg, non)
 	if err != nil {
 		log.Error("error creating paypal payment request", log15.Ctx{"err": err})
 		return nil, ErrInternal
@@ -93,6 +99,7 @@ func (d *Driver) InitPayment(p *payment.Payment, method *payment_method.Method) 
 		Type:      TransactionTypeCreatePayment,
 	}
 	paypalTx.SetIntent(cfg.Type)
+	paypalTx.SetNonce(non.Nonce)
 	paypalTx.Data = jsonBytes
 
 	err = InsertTransactionTx(tx, paypalTx)
