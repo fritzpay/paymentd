@@ -153,6 +153,9 @@ func (d *Driver) doInit(errors chan<- error, cfg *Config, reqURL *url.URL, p *pa
 		errors <- err
 		return
 	}
+	if Debug {
+		log.Debug("authenticated", log15.Ctx{"accessToken": tr.Token.AccessToken})
+	}
 	cl := tr.Client()
 	resp, err := cl.Post(reqURL.String(), "application/json", strings.NewReader(body))
 	if err != nil {
@@ -162,7 +165,7 @@ func (d *Driver) doInit(errors chan<- error, cfg *Config, reqURL *url.URL, p *pa
 	}
 	if resp.StatusCode != http.StatusCreated && resp.StatusCode != http.StatusOK {
 		log.Error("error on HTTP request", log15.Ctx{"HTTPStatusCode": resp.StatusCode})
-		d.setPayPalErrorResponse(p, nil)
+		d.setPayPalError(p, nil)
 		errors <- ErrHTTP
 		return
 	}
@@ -170,7 +173,7 @@ func (d *Driver) doInit(errors chan<- error, cfg *Config, reqURL *url.URL, p *pa
 	resp.Body.Close()
 	if err != nil {
 		log.Error("error reading response body", log15.Ctx{"err": err})
-		d.setPayPalErrorResponse(p, nil)
+		d.setPayPalError(p, nil)
 		errors <- ErrHTTP
 		return
 	}
@@ -182,7 +185,7 @@ func (d *Driver) doInit(errors chan<- error, cfg *Config, reqURL *url.URL, p *pa
 	err = json.Unmarshal(respBody, paypalP)
 	if err != nil {
 		log.Error("error decoding PayPal response", log15.Ctx{"err": err})
-		d.setPayPalErrorResponse(p, respBody)
+		d.setPayPalError(p, respBody)
 		errors <- ErrProvider
 	}
 
@@ -220,21 +223,21 @@ func (d *Driver) doInit(errors chan<- error, cfg *Config, reqURL *url.URL, p *pa
 	paypalTx.Links, err = json.Marshal(paypalP.Links)
 	if err != nil {
 		log.Error("error on saving links on response", log15.Ctx{"err": err})
-		d.setPayPalErrorResponse(p, respBody)
+		d.setPayPalError(p, respBody)
 		errors <- ErrProvider
 		return
 	}
 	paypalTx.Data, err = json.Marshal(paypalP)
 	if err != nil {
 		log.Error("error marshalling paypal payment response", log15.Ctx{"err": err})
-		d.setPayPalErrorResponse(p, respBody)
+		d.setPayPalError(p, respBody)
 		errors <- ErrProvider
 		return
 	}
 	err = InsertTransactionDB(d.ctx.PaymentDB(), paypalTx)
 	if err != nil {
 		log.Error("error saving paypal response", log15.Ctx{"err": err})
-		d.setPayPalErrorResponse(p, respBody)
+		d.setPayPalError(p, respBody)
 		errors <- ErrProvider
 		return
 	}

@@ -18,6 +18,8 @@ import (
 )
 
 const (
+	// PaypalDriverPath is the (sub-)path under which PayPal driver endpoints
+	// will be attached
 	PaypalDriverPath = "/paypal"
 )
 
@@ -33,6 +35,7 @@ var (
 	ErrProvider = errors.New("provider error")
 )
 
+// Driver is the PayPal provider driver
 type Driver struct {
 	ctx *service.Context
 	mux *mux.Router
@@ -103,9 +106,9 @@ func (d *Driver) Attach(ctx *service.Context, mux *mux.Router) error {
 }
 
 // creates an error transaction
-func (d *Driver) setPayPalErrorResponse(p *payment.Payment, data []byte) {
+func (d *Driver) setPayPalError(p *payment.Payment, data []byte) {
 	log := d.log.New(log15.Ctx{
-		"method":    "setPayPalErrorResponse",
+		"method":    "setPayPalError",
 		"projectID": p.ProjectID(),
 		"paymentID": p.ID(),
 	})

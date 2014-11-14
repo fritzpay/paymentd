@@ -13,10 +13,6 @@
 			<dt>Payment ID</dt>
 			<dd>{{.paymentID}}</dd>
 			{{end}}
-			{{if and .payment .amount}}
-			<dt>Payment Amount</dt>
-			<dd>{{.payment.Currency}} {{.amount}}</dd>
-			{{end}}
 			{{if .timestamp}}
 			<dt>Timestamp</dt>
 			<dd>{{.timestamp}}</dd>
