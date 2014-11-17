@@ -95,8 +95,10 @@ func (p *Payment) HasTransaction() bool {
 // NewTransaction creates a new payment transaction for this payment
 //
 // Its transaction fields will be populated with the copied values from the payment
+// The payment's transaction timestamp and status fields will be updated with the
+// new transaction values
 func (p *Payment) NewTransaction(s PaymentTransactionStatus) *PaymentTransaction {
-	return &PaymentTransaction{
+	paymentTx := &PaymentTransaction{
 		Payment: p,
 
 		Timestamp: time.Now(),
@@ -105,6 +107,9 @@ func (p *Payment) NewTransaction(s PaymentTransactionStatus) *PaymentTransaction
 		Currency:  p.Currency,
 		Status:    s,
 	}
+	p.TransactionTimestamp = paymentTx.Timestamp
+	p.Status = s
+	return paymentTx
 }
 
 type Config struct {
