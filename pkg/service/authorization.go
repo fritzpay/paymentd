@@ -99,6 +99,9 @@ func (a *Authorization) ReadFrom(r io.Reader) (int64, error) {
 
 // Expiry returns the expiry time
 func (a *Authorization) Expiry() time.Time {
+	if a.timestamp == 0 {
+		return time.Time{}
+	}
 	return time.Unix(a.timestamp, 0)
 }
 

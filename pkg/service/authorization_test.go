@@ -317,3 +317,22 @@ func TestAuthorizationChain(t *testing.T) {
 		})
 	})
 }
+
+func TestAuthorizationTime(t *testing.T) {
+	Convey("Given an authorization", t, func() {
+		auth := NewAuthorization(sha256.New)
+		auth.Payload["test"] = "testValue"
+
+		Convey("Given the authorization has no Expiry set", func() {
+			So(auth.timestamp, ShouldEqual, 0)
+
+			Convey("When retrieving the expiry", func() {
+				exp := auth.Expiry()
+
+				Convey("It should be treated as zero time", func() {
+					So(exp.IsZero(), ShouldBeTrue)
+				})
+			})
+		})
+	})
+}
