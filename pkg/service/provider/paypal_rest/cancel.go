@@ -89,8 +89,9 @@ func (d *Driver) CancelHandler() http.Handler {
 				return
 			}
 		}
+		var paymentTx *payment.PaymentTransaction
 		if p.Status != payment.PaymentStatusCancelled {
-			paymentTx := p.NewTransaction(payment.PaymentStatusCancelled)
+			paymentTx = p.NewTransaction(payment.PaymentStatusCancelled)
 			paymentTx.Amount = 0
 			err = d.paymentService.SetPaymentTransaction(tx, paymentTx)
 			if err != nil {
@@ -106,6 +107,11 @@ func (d *Driver) CancelHandler() http.Handler {
 			log.Crit("error on commit", log15.Ctx{"err": err})
 			d.InternalErrorHandler(p).ServeHTTP(w, r)
 			return
+		}
+
+		// do notify on new payment tx
+		if paymentTx != nil {
+			d.paymentService.CallbackPaymentTransaction(paymentTx)
 		}
 
 		d.CancelPageHandler(p).ServeHTTP(w, r)

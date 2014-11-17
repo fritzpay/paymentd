@@ -245,8 +245,8 @@ func (d *Driver) ApprovalHandler(tx *Transaction, p *payment.Payment) http.Handl
 
 func (d *Driver) StatusHandler(tx *Transaction, p *payment.Payment) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		// will be true when the polling (ajax) should stop and reload
 		var h http.Handler
+		// will be true when the polling (ajax) should stop and reload
 		var cont bool
 		switch tx.Type {
 		case TransactionTypeError:
