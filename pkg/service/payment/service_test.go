@@ -4,12 +4,13 @@ import (
 	"bytes"
 	"database/sql"
 	"encoding/json"
-	"github.com/fritzpay/paymentd/pkg/service/payment/notification/v2"
 	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 	"time"
+
+	"github.com/fritzpay/paymentd/pkg/service/payment/notification/v2"
 
 	testPay "github.com/fritzpay/paymentd/pkg/testutil/payment"
 

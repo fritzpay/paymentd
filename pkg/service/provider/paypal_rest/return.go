@@ -2,6 +2,7 @@ package paypal_rest
 
 import (
 	"database/sql"
+
 	"github.com/fritzpay/paymentd/pkg/paymentd/payment"
 	"gopkg.in/inconshreveable/log15.v2"
 
