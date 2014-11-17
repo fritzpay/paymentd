@@ -1,7 +1,20 @@
 // Paypal data types
 package paypal_rest
 
+import (
+	"fmt"
+	"github.com/fritzpay/paymentd/pkg/paymentd/nonce"
+	"net/url"
+
+	"github.com/fritzpay/paymentd/pkg/paymentd/payment"
+	"gopkg.in/inconshreveable/log15.v2"
+)
+
 type PayPalPaymentMethod string
+
+const (
+	paymentIDParam = "paymentID"
+)
 
 const (
 	PayPalPaymentMethodPayPal PayPalPaymentMethod = "paypal"
@@ -99,4 +112,85 @@ type PaypalPayment struct {
 	State      string       `json:"state"`
 	UpdateTime string       `json:"update_time"`
 	Links      []PayPalLink `json:"links"`
+}
+
+func (d *Driver) createPaypalPaymentRequest(p *payment.Payment, cfg *Config, non *nonce.Nonce) (*PayPalPaymentRequest, error) {
+	if cfg.Type != "sale" && cfg.Type != "authorize" {
+		return nil, fmt.Errorf("invalid config. type %s not recognized", cfg.Type)
+	}
+	var err error
+	req := &PayPalPaymentRequest{}
+	req.Intent = cfg.Type
+	req.Payer.PaymentMethod = PayPalPaymentMethodPayPal
+	req.RedirectURLs, err = d.redirectURLs(p, urlSetNonce(non.Nonce))
+	if err != nil {
+		d.log.Error("error creating redirect urls", log15.Ctx{"err": err})
+		return nil, ErrInternal
+	}
+	req.Transactions = []PayPalTransaction{
+		d.payPalTransactionFromPayment(p),
+	}
+	return req, nil
+}
+
+func (d *Driver) payPalTransactionFromPayment(p *payment.Payment) PayPalTransaction {
+	t := PayPalTransaction{}
+	encPaymentID := d.paymentService.EncodedPaymentID(p.PaymentID())
+	t.Custom = encPaymentID.String()
+	t.InvoiceNumber = encPaymentID.String()
+	t.Amount = PayPalAmount{
+		Currency: p.Currency,
+		Total:    p.DecimalRound(2).String(),
+	}
+	return t
+}
+
+type urlModification func(u *url.URL) error
+
+var urlSetNonce = func(nonce string) urlModification {
+	return urlModification(func(u *url.URL) error {
+		q := u.Query()
+		q.Set("nonce", nonce)
+		u.RawQuery = q.Encode()
+		return nil
+	})
+}
+
+func (d *Driver) redirectURLs(p *payment.Payment, mods ...urlModification) (PayPalRedirectURLs, error) {
+	u := PayPalRedirectURLs{}
+	returnRoute, err := d.mux.Get("returnHandler").URLPath()
+	if err != nil {
+		return u, err
+	}
+	cancelRoute, err := d.mux.Get("cancelHandler").URLPath()
+	if err != nil {
+		return u, err
+	}
+
+	q := url.Values(make(map[string][]string))
+	q.Set(paymentIDParam, d.paymentService.EncodedPaymentID(p.PaymentID()).String())
+
+	returnURL := &(*d.baseURL)
+	returnURL.Path = returnRoute.Path
+	returnURL.RawQuery = q.Encode()
+
+	cancelURL := &(*d.baseURL)
+	cancelURL.Path = cancelRoute.Path
+	cancelURL.RawQuery = q.Encode()
+
+	for _, mod := range mods {
+		err = mod(returnURL)
+		if err != nil {
+			return u, err
+		}
+		err = mod(cancelURL)
+		if err != nil {
+			return u, err
+		}
+	}
+
+	u.ReturnURL = returnURL.String()
+	u.CancelURL = cancelURL.String()
+
+	return u, nil
 }

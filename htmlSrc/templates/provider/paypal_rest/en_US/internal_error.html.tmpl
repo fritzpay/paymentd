@@ -1,0 +1,26 @@
+<!doctype html>
+<html>
+	<head>
+		<meta charset="UTF-8">
+		<title>PayPal - Error</title>
+	</head>
+	<body>
+		<h1>Payment error</h1>
+		<p>We encountered an error while processing your payment.</p>
+		<h2>Additional Information</h2>
+		<dl>
+			{{if .paymentID}}
+			<dt>Payment ID</dt>
+			<dd>{{.paymentID}}</dd>
+			{{end}}
+			{{if .timestamp}}
+			<dt>Timestamp</dt>
+			<dd>{{.timestamp}}</dd>
+			{{end}}
+		</dl>
+		<p>
+			Please provide us with the additional infomration if you have any questions
+			in regard to this payment.
+		</p>
+	</body>
+</html>

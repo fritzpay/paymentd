@@ -3,6 +3,7 @@ package paypal_rest
 import (
 	"database/sql"
 	"encoding/json"
+	"github.com/fritzpay/paymentd/pkg/paymentd/nonce"
 	"io/ioutil"
 	"net/http"
 	"net/url"
@@ -64,20 +65,15 @@ func (d *Driver) InitPayment(p *payment.Payment, method *payment_method.Method) 
 	}
 
 	// create payment request
-	req := &PayPalPaymentRequest{}
-	if cfg.Type != "sale" && cfg.Type != "authorize" {
-		log.Crit("invalid config type", log15.Ctx{"configType": cfg.Type})
-		return nil, ErrInternal
-	}
-	req.Intent = cfg.Type
-	req.Payer.PaymentMethod = PayPalPaymentMethodPayPal
-	req.RedirectURLs, err = d.redirectURLs(p)
+	non, err := nonce.New()
 	if err != nil {
-		log.Error("error creating redirect urls", log15.Ctx{"err": err})
+		log.Error("error generating nonce", log15.Ctx{"err": err})
 		return nil, ErrInternal
 	}
-	req.Transactions = []PayPalTransaction{
-		d.payPalTransactionFromPayment(p),
+	req, err := d.createPaypalPaymentRequest(p, cfg, non)
+	if err != nil {
+		log.Error("error creating paypal payment request", log15.Ctx{"err": err})
+		return nil, ErrInternal
 	}
 	if Debug {
 		log.Debug("created paypal payment request", log15.Ctx{"request": req})
@@ -103,6 +99,7 @@ func (d *Driver) InitPayment(p *payment.Payment, method *payment_method.Method) 
 		Type:      TransactionTypeCreatePayment,
 	}
 	paypalTx.SetIntent(cfg.Type)
+	paypalTx.SetNonce(non.Nonce)
 	paypalTx.Data = jsonBytes
 
 	err = InsertTransactionTx(tx, paypalTx)
@@ -139,45 +136,6 @@ func (d *Driver) InitPayment(p *payment.Payment, method *payment_method.Method) 
 	return d.InitPageHandler(p), nil
 }
 
-func (d *Driver) redirectURLs(p *payment.Payment) (PayPalRedirectURLs, error) {
-	u := PayPalRedirectURLs{}
-	returnRoute, err := d.mux.Get("returnHandler").URLPath()
-	if err != nil {
-		return u, err
-	}
-	cancelRoute, err := d.mux.Get("cancelHandler").URLPath()
-	if err != nil {
-		return u, err
-	}
-
-	q := url.Values(make(map[string][]string))
-	q.Set("paymentID", d.paymentService.EncodedPaymentID(p.PaymentID()).String())
-
-	returnURL := &(*d.baseURL)
-	returnURL.Path = returnRoute.Path
-	returnURL.RawQuery = q.Encode()
-	u.ReturnURL = returnURL.String()
-
-	cancelURL := &(*d.baseURL)
-	cancelURL.Path = cancelRoute.Path
-	cancelURL.RawQuery = q.Encode()
-	u.CancelURL = cancelURL.String()
-
-	return u, nil
-}
-
-func (d *Driver) payPalTransactionFromPayment(p *payment.Payment) PayPalTransaction {
-	t := PayPalTransaction{}
-	encPaymentID := d.paymentService.EncodedPaymentID(p.PaymentID())
-	t.Custom = encPaymentID.String()
-	t.InvoiceNumber = encPaymentID.String()
-	t.Amount = PayPalAmount{
-		Currency: p.Currency,
-		Total:    p.DecimalRound(2).String(),
-	}
-	return t
-}
-
 func (d *Driver) doInit(errors chan<- error, cfg *Config, reqURL *url.URL, p *payment.Payment, body string) {
 	log := d.log.New(log15.Ctx{
 		"method":      "doInit",
@@ -202,6 +160,9 @@ func (d *Driver) doInit(errors chan<- error, cfg *Config, reqURL *url.URL, p *pa
 		errors <- err
 		return
 	}
+	if Debug {
+		log.Debug("authenticated", log15.Ctx{"accessToken": tr.Token.AccessToken})
+	}
 	cl := tr.Client()
 	resp, err := cl.Post(reqURL.String(), "application/json", strings.NewReader(body))
 	if err != nil {
@@ -211,7 +172,7 @@ func (d *Driver) doInit(errors chan<- error, cfg *Config, reqURL *url.URL, p *pa
 	}
 	if resp.StatusCode != http.StatusCreated && resp.StatusCode != http.StatusOK {
 		log.Error("error on HTTP request", log15.Ctx{"HTTPStatusCode": resp.StatusCode})
-		d.setPayPalErrorResponse(p, nil)
+		d.setPayPalError(p, nil)
 		errors <- ErrHTTP
 		return
 	}
@@ -219,7 +180,7 @@ func (d *Driver) doInit(errors chan<- error, cfg *Config, reqURL *url.URL, p *pa
 	resp.Body.Close()
 	if err != nil {
 		log.Error("error reading response body", log15.Ctx{"err": err})
-		d.setPayPalErrorResponse(p, nil)
+		d.setPayPalError(p, nil)
 		errors <- ErrHTTP
 		return
 	}
@@ -231,7 +192,7 @@ func (d *Driver) doInit(errors chan<- error, cfg *Config, reqURL *url.URL, p *pa
 	err = json.Unmarshal(respBody, paypalP)
 	if err != nil {
 		log.Error("error decoding PayPal response", log15.Ctx{"err": err})
-		d.setPayPalErrorResponse(p, respBody)
+		d.setPayPalError(p, respBody)
 		errors <- ErrProvider
 	}
 
@@ -269,21 +230,21 @@ func (d *Driver) doInit(errors chan<- error, cfg *Config, reqURL *url.URL, p *pa
 	paypalTx.Links, err = json.Marshal(paypalP.Links)
 	if err != nil {
 		log.Error("error on saving links on response", log15.Ctx{"err": err})
-		d.setPayPalErrorResponse(p, respBody)
+		d.setPayPalError(p, respBody)
 		errors <- ErrProvider
 		return
 	}
 	paypalTx.Data, err = json.Marshal(paypalP)
 	if err != nil {
 		log.Error("error marshalling paypal payment response", log15.Ctx{"err": err})
-		d.setPayPalErrorResponse(p, respBody)
+		d.setPayPalError(p, respBody)
 		errors <- ErrProvider
 		return
 	}
 	err = InsertTransactionDB(d.ctx.PaymentDB(), paypalTx)
 	if err != nil {
 		log.Error("error saving paypal response", log15.Ctx{"err": err})
-		d.setPayPalErrorResponse(p, respBody)
+		d.setPayPalError(p, respBody)
 		errors <- ErrProvider
 		return
 	}

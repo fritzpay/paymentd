@@ -3,11 +3,13 @@ package paypal_rest
 import (
 	"errors"
 	"fmt"
-	"github.com/fritzpay/paymentd/pkg/paymentd/payment"
+	"net/http"
 	"net/url"
 	"os"
 	"path"
 	"time"
+
+	"github.com/fritzpay/paymentd/pkg/paymentd/payment"
 
 	"github.com/fritzpay/paymentd/pkg/service"
 	paymentService "github.com/fritzpay/paymentd/pkg/service/payment"
@@ -16,6 +18,8 @@ import (
 )
 
 const (
+	// PaypalDriverPath is the (sub-)path under which PayPal driver endpoints
+	// will be attached
 	PaypalDriverPath = "/paypal"
 )
 
@@ -31,6 +35,7 @@ var (
 	ErrProvider = errors.New("provider error")
 )
 
+// Driver is the PayPal provider driver
 type Driver struct {
 	ctx *service.Context
 	mux *mux.Router
@@ -79,9 +84,21 @@ func (d *Driver) Attach(ctx *service.Context, mux *mux.Router) error {
 		return fmt.Errorf("error on provider base URL: %v", err)
 	}
 
-	d.mux = mux.PathPrefix(PaypalDriverPath).Subrouter()
+	driverRoute := mux.PathPrefix(PaypalDriverPath)
+	u, err := driverRoute.URLPath()
+	if err != nil {
+		d.log.Error("error determining path prefix", log15.Ctx{"err": err})
+		return fmt.Errorf("error on subroute path: %v", err)
+	}
+	d.mux = driverRoute.Subrouter()
 	d.mux.Handle("/return", d.ReturnHandler()).Name("returnHandler")
-	d.mux.Handle("/cancel", d.ReturnHandler()).Name("cancelHandler")
+	d.mux.Handle("/cancel", d.CancelHandler()).Name("cancelHandler")
+	staticDir := path.Join(d.tmplDir, "static")
+	d.log.Info("serving static dir", log15.Ctx{
+		"staticDir": staticDir,
+		"prefix":    u.Path + "/static",
+	})
+	d.mux.PathPrefix("/static").Handler(http.StripPrefix(u.Path+"/static", http.FileServer(http.Dir(staticDir)))).Name("staticHandler")
 
 	d.oauth = NewOAuthTransportStore()
 
@@ -89,9 +106,9 @@ func (d *Driver) Attach(ctx *service.Context, mux *mux.Router) error {
 }
 
 // creates an error transaction
-func (d *Driver) setPayPalErrorResponse(p *payment.Payment, data []byte) {
+func (d *Driver) setPayPalError(p *payment.Payment, data []byte) {
 	log := d.log.New(log15.Ctx{
-		"method":    "setPayPalErrorResponse",
+		"method":    "setPayPalError",
 		"projectID": p.ProjectID(),
 		"paymentID": p.ID(),
 	})
