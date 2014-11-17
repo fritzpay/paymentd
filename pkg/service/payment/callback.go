@@ -22,10 +22,43 @@ func CanCallback(c Callbacker) bool {
 	return c.HasCallback()
 }
 
-func (s *Service) Notify(c Callbacker, paymentTx *payment.PaymentTransaction) {
+// performs a callback notification if the payment/project has
+// a callback configured
+func (s *Service) notify(paymentTx *payment.PaymentTransaction) error {
+	log := s.log.New(log15.Ctx{
+		"method":    "notify",
+		"projectID": paymentTx.Payment.ProjectID(),
+		"paymentID": paymentTx.Payment.ID(),
+	})
+	var callback Callbacker
+	if CanCallback(&paymentTx.Payment.Config) {
+		callback = &paymentTx.Payment.Config
+	} else {
+		pr, err := project.ProjectByIDDB(s.ctx.PrincipalDB(service.ReadOnly), paymentTx.Payment.ProjectID())
+		if err != nil {
+			if err == project.ErrProjectNotFound {
+				log.Crit("payment with invalid project", log15.Ctx{"projectID": paymentTx.Payment.ProjectID()})
+				return ErrInternal
+			}
+			log.Error("error retrieving project", log15.Ctx{"err": err})
+			return ErrDB
+		}
+		if CanCallback(pr.Config) {
+			callback = pr.Config
+		}
+	}
+	if callback != nil {
+		s.doNotify(callback, paymentTx)
+	} else {
+		log.Warn("payment without configured callback")
+	}
+	return nil
+}
+
+func (s *Service) doNotify(c Callbacker, paymentTx *payment.PaymentTransaction) {
 	cbURL, cbAPIVersion, cbProjectKey := c.CallbackConfig()
 	log := s.log.New(log15.Ctx{
-		"method":                      "Notify",
+		"method":                      "doNotify",
 		"projectID":                   paymentTx.Payment.ProjectID(),
 		"paymentID":                   paymentTx.Payment.ID(),
 		"paymentTransactionTimestamp": paymentTx.Timestamp.UnixNano(),

@@ -400,7 +400,7 @@ func (h *Handler) PaymentHandler() http.Handler {
 
 		// do callback notification when a new payment transaction was created
 		if paymentTx != nil {
-			h.paymentService.CallbackPaymentTransaction(paymentTx)
+			h.paymentService.Notify <- paymentTx
 		}
 
 		h.servePaymentHandler(p, method).ServeHTTP(w, r)

@@ -60,6 +60,10 @@ const (
 )
 
 const (
+	notificationBufferSize = 16
+)
+
+const (
 	// PaymentTokenMaxAgeDefault is the default maximum age of payment tokens
 	PaymentTokenMaxAgeDefault = time.Minute * 15
 )
@@ -70,6 +74,8 @@ type Service struct {
 	log log15.Logger
 
 	idCoder *payment.IDEncoder
+
+	Notify chan *payment.PaymentTransaction
 
 	tr *http.Transport
 	cl *http.Client
@@ -93,6 +99,8 @@ func NewService(ctx *service.Context) (*Service, error) {
 		return nil, err
 	}
 
+	s.Notify = make(chan *payment.PaymentTransaction, notificationBufferSize)
+
 	s.tr = &http.Transport{}
 	s.cl = &http.Client{
 		Transport: s.tr,
@@ -111,12 +119,12 @@ func NewService(ctx *service.Context) (*Service, error) {
 		},
 	}
 
-	go s.handleContext()
+	go s.handleBackground()
 
 	return s, nil
 }
 
-func (s *Service) handleContext() {
+func (s *Service) handleBackground() {
 	// if attached to a server, this will tell the server to wait with shutting down
 	// until the cleanup process is complete
 	server.Wait.Add(1)
@@ -128,6 +136,15 @@ func (s *Service) handleContext() {
 			s.log.Info("closing idle connections...")
 			s.tr.CloseIdleConnections()
 			return
+
+		case paymentTx := <-s.Notify:
+			if paymentTx == nil {
+				break
+			}
+			err := s.notify(paymentTx)
+			if err != nil {
+				s.log.Error("error on callback", log15.Ctx{"err": err})
+			}
 		}
 	}
 }
@@ -299,39 +316,6 @@ func (s *Service) SetPaymentTransaction(tx *sql.Tx, paymentTx *payment.PaymentTr
 		}
 		log.Error("error saving payment transaction", log15.Ctx{"err": err})
 		return ErrDB
-	}
-	return nil
-}
-
-// CallbackPaymentTransaction performs a callback notification if the payment/project has
-// a callback configured
-func (s *Service) CallbackPaymentTransaction(paymentTx *payment.PaymentTransaction) error {
-	log := s.log.New(log15.Ctx{
-		"method":    "CallbackPaymentTransaction",
-		"projectID": paymentTx.Payment.ProjectID(),
-		"paymentID": paymentTx.Payment.ID(),
-	})
-	var callback Callbacker
-	if CanCallback(&paymentTx.Payment.Config) {
-		callback = &paymentTx.Payment.Config
-	} else {
-		pr, err := project.ProjectByIDDB(s.ctx.PrincipalDB(service.ReadOnly), paymentTx.Payment.ProjectID())
-		if err != nil {
-			if err == project.ErrProjectNotFound {
-				log.Crit("payment with invalid project", log15.Ctx{"projectID": paymentTx.Payment.ProjectID()})
-				return ErrInternal
-			}
-			log.Error("error retrieving project", log15.Ctx{"err": err})
-			return ErrDB
-		}
-		if CanCallback(pr.Config) {
-			callback = pr.Config
-		}
-	}
-	if callback != nil {
-		s.Notify(callback, paymentTx)
-	} else {
-		log.Warn("payment without configured callback")
 	}
 	return nil
 }

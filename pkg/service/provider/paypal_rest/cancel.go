@@ -111,7 +111,7 @@ func (d *Driver) CancelHandler() http.Handler {
 
 		// do notify on new payment tx
 		if paymentTx != nil {
-			d.paymentService.CallbackPaymentTransaction(paymentTx)
+			d.paymentService.Notify <- paymentTx
 		}
 
 		d.CancelPageHandler(p).ServeHTTP(w, r)
