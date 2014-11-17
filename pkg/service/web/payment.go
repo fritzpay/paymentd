@@ -21,10 +21,9 @@ import (
 )
 
 const (
-	PaymentTokenParam        = "token"
-	PaymentCookieName        = "payment"
-	PaymentCookieMaxLifetime = 15 * time.Minute
-	PaymentAuthPaymentID     = "paymentID"
+	PaymentTokenParam    = "token"
+	PaymentCookieName    = "payment"
+	PaymentAuthPaymentID = "paymentID"
 )
 
 func (h *Handler) hashFunc() func() hash.Hash {
