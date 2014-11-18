@@ -18,7 +18,7 @@ func (d *Driver) CancelHandler() http.Handler {
 			d.NotFoundHandler(nil).ServeHTTP(w, r)
 			return
 		}
-		nonce := r.URL.Query().Get("nonce")
+		nonce := r.URL.Query().Get(nonceParam)
 		if nonce == "" {
 			log.Info("request without nonce")
 			d.NotFoundHandler(nil).ServeHTTP(w, r)

@@ -14,7 +14,9 @@ import (
 type PayPalPaymentMethod string
 
 const (
-	paymentIDParam = "paymentID"
+	paymentIDParam         = "paymentID"
+	nonceParam             = "nonce"
+	paypalPayerIDParameter = "PayerID"
 )
 
 const (

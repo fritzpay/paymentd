@@ -109,6 +109,11 @@ func TransactionByPaymentIDAndNonceTx(db *sql.Tx, paymentID payment.PaymentID, n
 	return scanTransactionRow(row)
 }
 
+func TransactionByPaymentIDAndNonceDB(db *sql.DB, paymentID payment.PaymentID, nonce string) (*Transaction, error) {
+	row := db.QueryRow(selectTransactionByPaymentIDAndNonce, paymentID.ProjectID, paymentID.PaymentID, nonce)
+	return scanTransactionRow(row)
+}
+
 const insertTransaction = `
 INSERT INTO provider_paypal_transaction
 (project_id, payment_id, timestamp, type, nonce, intent, paypal_id, payer_id, paypal_create_time, paypal_state, paypal_update_time, links, data)

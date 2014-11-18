@@ -18,7 +18,7 @@ func (d *Driver) ReturnHandler() http.Handler {
 			d.NotFoundHandler(nil).ServeHTTP(w, r)
 			return
 		}
-		nonce := r.URL.Query().Get("nonce")
+		nonce := r.URL.Query().Get(nonceParam)
 		if nonce == "" {
 			log.Info("request without nonce")
 			d.NotFoundHandler(nil).ServeHTTP(w, r)
@@ -33,6 +33,7 @@ func (d *Driver) ReturnHandler() http.Handler {
 			return
 		}
 		paymentID = d.paymentService.DecodedPaymentID(paymentID)
+		payerID := r.URL.Query().Get(paypalPayerIDParameter)
 
 		var tx *sql.Tx
 		var commit bool
@@ -52,7 +53,7 @@ func (d *Driver) ReturnHandler() http.Handler {
 			return
 		}
 
-		paypalTx, err := TransactionByPaymentIDAndNonceTx(tx, paymentID, nonce)
+		_, err = TransactionByPaymentIDAndNonceTx(tx, paymentID, nonce)
 		if err != nil {
 			if err == ErrTransactionNotFound {
 				log.Info("paypal transaction not found")
@@ -74,6 +75,10 @@ func (d *Driver) ReturnHandler() http.Handler {
 			d.InternalErrorHandler(nil).ServeHTTP(w, r)
 			return
 		}
-		_, _ = paypalTx, p
+		go d.executePayment(p, payerID)
 	})
+}
+
+func (d *Driver) executePayment(p *payment.Payment, payerID string) {
+
 }
