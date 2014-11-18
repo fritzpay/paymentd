@@ -15,6 +15,6 @@
 */
 
 /*
-Package env provides runtime environment related support for FritzPay applications
+Package json provides special types which can be used in conjunction with JSON serialization
 */
-package env
+package json

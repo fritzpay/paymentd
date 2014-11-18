@@ -15,6 +15,6 @@
 */
 
 /*
-Package env provides runtime environment related support for FritzPay applications
+Package config has config-related types
 */
-package env
+package config

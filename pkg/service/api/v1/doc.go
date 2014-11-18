@@ -15,6 +15,8 @@
 */
 
 /*
-Package env provides runtime environment related support for FritzPay applications
+Package v1 provides API functionality for the version:
+
+1.x
 */
-package env
+package v1

@@ -15,6 +15,6 @@
 */
 
 /*
-Package env provides runtime environment related support for FritzPay applications
+Package nonce provides nonce-related types
 */
-package env
+package nonce
