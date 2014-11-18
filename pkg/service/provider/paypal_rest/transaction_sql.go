@@ -66,6 +66,24 @@ WHERE
 	tn.nonce = ?
 `
 
+const selectTransactionByPaymentIDAndType = selectTransaction + `
+FROM provider_paypal_transaction AS t
+WHERE
+	t.project_id = ?
+	AND
+	t.payment_id = ?
+	AND
+	t.timestamp = (
+		SELECT MAX(timestamp) FROM provider_paypal_transaction
+		WHERE
+			project_id = t.project_id
+			AND
+			payment_id = t.payment_id
+			AND
+			type = ?
+	)
+`
+
 func scanTransactionRow(row *sql.Row) (*Transaction, error) {
 	t := &Transaction{}
 	var ts int64
@@ -111,6 +129,11 @@ func TransactionByPaymentIDAndNonceTx(db *sql.Tx, paymentID payment.PaymentID, n
 
 func TransactionByPaymentIDAndNonceDB(db *sql.DB, paymentID payment.PaymentID, nonce string) (*Transaction, error) {
 	row := db.QueryRow(selectTransactionByPaymentIDAndNonce, paymentID.ProjectID, paymentID.PaymentID, nonce)
+	return scanTransactionRow(row)
+}
+
+func TransactionByPaymentIDAndTypeDB(db *sql.DB, paymentID payment.PaymentID, t string) (*Transaction, error) {
+	row := db.QueryRow(selectTransactionByPaymentIDAndType, paymentID.ProjectID, paymentID.PaymentID, t)
 	return scanTransactionRow(row)
 }
 
