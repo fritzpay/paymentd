@@ -1,6 +1,7 @@
 package paypal_rest
 
 import (
+	"code.google.com/p/goauth2/oauth"
 	"errors"
 	"fmt"
 	"net/http"
@@ -124,5 +125,39 @@ func (d *Driver) setPayPalError(p *payment.Payment, data []byte) {
 	err := InsertTransactionDB(d.ctx.PaymentDB(), paypalTx)
 	if err != nil {
 		log.Error("error saving paypal transaction", log15.Ctx{"err": err})
+	}
+}
+
+func httpDo(
+	ctx *service.Context,
+	createTr func() (*oauth.Transport, error),
+	req *http.Request,
+	f func(*http.Response, error) error) error {
+
+	tr, err := createTr()
+	if err != nil {
+		ctx.Log().Error("error on auth transport", log15.Ctx{"err": err})
+		return err
+	}
+	err = tr.AuthenticateClient()
+	if err != nil {
+		ctx.Log().Error("error authenticating", log15.Ctx{"err": err})
+		return err
+	}
+	if Debug {
+		ctx.Log().Debug("authenticated", log15.Ctx{"accessToken": tr.Token.AccessToken})
+	}
+	cl := tr.Client()
+	c := make(chan error, 1)
+	go func() { c <- f(cl.Do(req)) }()
+	select {
+	case <-ctx.Done():
+		if httpTr, ok := tr.Transport.(*http.Transport); ok {
+			httpTr.CancelRequest(req)
+		}
+		<-c
+		return ctx.Err()
+	case err := <-c:
+		return err
 	}
 }
