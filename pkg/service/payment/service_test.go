@@ -1,11 +1,16 @@
 package payment_test
 
 import (
+	"bytes"
 	"database/sql"
+	"encoding/json"
 	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
 	"testing"
+	"time"
+
+	"github.com/fritzpay/paymentd/pkg/service/payment/notification/v2"
 
 	testPay "github.com/fritzpay/paymentd/pkg/testutil/payment"
 
@@ -34,8 +39,7 @@ func TestPaymentNotification(t *testing.T) {
 				tx, err := db.Begin()
 				So(err, ShouldBeNil)
 				Reset(func() {
-					err = tx.Rollback()
-					So(err, ShouldBeNil)
+					tx.Rollback()
 				})
 
 				Convey("Given a service context", testutil.WithContext(func(ctx *service.Context, logs <-chan *log15.Record) {
@@ -46,14 +50,14 @@ func TestPaymentNotification(t *testing.T) {
 
 						Convey("Given a payment", testPay.WithPaymentInTx(tx, func(p *payment.Payment) {
 
-							Convey("Given a test HTTP server", func() {
+							Convey("Given a test HTTP server", func(c C) {
 								srvOk := make(chan struct{})
 								var req *http.Request
 								var body []byte
 								testSrv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 									req = r
 									body, err = ioutil.ReadAll(r.Body)
-									So(err, ShouldBeNil)
+									c.So(err, ShouldBeNil)
 									close(srvOk)
 								}))
 
@@ -80,42 +84,52 @@ func TestPaymentNotification(t *testing.T) {
 										Convey("When creating a transaction", func() {
 											So(s.IsProcessablePayment(p), ShouldBeTrue)
 											paymentTx = p.NewTransaction(payment.PaymentStatusOpen)
+											So(paymentTx.Timestamp.UnixNano(), ShouldNotEqual, 0)
 											err = s.SetPaymentTransaction(tx, paymentTx)
 
 											Convey("It should succeed", func() {
 												So(err, ShouldBeNil)
+
+												Convey("When committing the transaction", func() {
+													err = tx.Commit()
+													Convey("It should succeed", func() {
+														So(err, ShouldBeNil)
+
+														Convey("When requesting a notification", func() {
+															s.Notify <- paymentTx
+
+															Convey("A notification should be sent", func() {
+																select {
+																case <-srvOk:
+																	So(req, ShouldNotBeNil)
+																case <-time.After(time.Second):
+																	t.Errorf("request timeout on %s", testSrv.URL)
+																	close(srvOk)
+																drain:
+																	for {
+																		select {
+																		case msg := <-logs:
+																			t.Logf("%v", msg)
+																		default:
+																			break drain
+																		}
+																	}
+																}
+
+																Convey("The notification should contain the transaction", func() {
+																	not := &notification.Notification{}
+																	dec := json.NewDecoder(bytes.NewBuffer(body))
+																	err := dec.Decode(not)
+																	So(err, ShouldBeNil)
+
+																	So(not.TransactionTimestamp, ShouldNotEqual, 0)
+																	So(not.Status, ShouldEqual, payment.PaymentStatusOpen)
+																})
+															})
+														})
+													})
+												})
 											})
-
-											// Wrong implementation, notification should not occur inside a transaction
-											//
-											// 	Convey("A notification should be sent", func() {
-											// 		select {
-											// 		case <-srvOk:
-											// 			So(req, ShouldNotBeNil)
-											// 		case <-time.After(time.Second):
-											// 			t.Errorf("request timeout on %s", testSrv.URL)
-											// 			close(srvOk)
-											// 		drain:
-											// 			for {
-											// 				select {
-											// 				case msg := <-logs:
-											// 					t.Logf("%v", msg)
-											// 				default:
-											// 					break drain
-											// 				}
-											// 			}
-											// 		}
-
-											// 		Convey("The notification should contain the transaction", func() {
-											// 			not := &notification.Notification{}
-											// 			dec := json.NewDecoder(bytes.NewBuffer(body))
-											// 			err := dec.Decode(not)
-											// 			So(err, ShouldBeNil)
-
-											// 			So(not.TransactionTimestamp, ShouldNotEqual, 0)
-											// 			So(not.Status, ShouldEqual, payment.PaymentStatusOpen)
-											// 		})
-											// 	})
 										})
 									})
 								})

@@ -2,16 +2,16 @@ package paypal_rest
 
 import (
 	"database/sql"
-	"net/http"
-	"time"
 
 	"github.com/fritzpay/paymentd/pkg/paymentd/payment"
 	"gopkg.in/inconshreveable/log15.v2"
+
+	"net/http"
 )
 
-func (d *Driver) CancelHandler() http.Handler {
+func (d *Driver) ReturnHandler() http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		log := d.log.New(log15.Ctx{"method": "CancelHandler"})
+		log := d.log.New(log15.Ctx{"method": "ReturnHandler"})
 		paymentIDStr := r.URL.Query().Get(paymentIDParam)
 		if paymentIDStr == "" {
 			log.Info("request without payment ID")
@@ -74,46 +74,6 @@ func (d *Driver) CancelHandler() http.Handler {
 			d.InternalErrorHandler(nil).ServeHTTP(w, r)
 			return
 		}
-
-		if paypalTx.Type != TransactionTypeCancelled {
-			paypalTx := &Transaction{
-				ProjectID: p.ProjectID(),
-				PaymentID: p.ID(),
-				Timestamp: time.Now(),
-				Type:      TransactionTypeCancelled,
-			}
-			err = InsertTransactionTx(tx, paypalTx)
-			if err != nil {
-				log.Error("error create paypal transaction", log15.Ctx{"err": err})
-				d.InternalErrorHandler(p).ServeHTTP(w, r)
-				return
-			}
-		}
-		var paymentTx *payment.PaymentTransaction
-		if p.Status != payment.PaymentStatusCancelled {
-			paymentTx = p.NewTransaction(payment.PaymentStatusCancelled)
-			paymentTx.Amount = 0
-			err = d.paymentService.SetPaymentTransaction(tx, paymentTx)
-			if err != nil {
-				log.Error("error creating payment transaction", log15.Ctx{"err": err})
-				d.InternalErrorHandler(p).ServeHTTP(w, r)
-				return
-			}
-		}
-
-		commit = true
-		err = tx.Commit()
-		if err != nil {
-			log.Crit("error on commit", log15.Ctx{"err": err})
-			d.InternalErrorHandler(p).ServeHTTP(w, r)
-			return
-		}
-
-		// do notify on new payment tx
-		if paymentTx != nil {
-			d.paymentService.Notify <- paymentTx
-		}
-
-		d.CancelPageHandler(p).ServeHTTP(w, r)
+		_, _ = paypalTx, p
 	})
 }

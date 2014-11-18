@@ -97,6 +97,25 @@ func (b Balance) MarshalJSON() ([]byte, error) {
 	return json.Marshal(b.FlatMap())
 }
 
+func (b *Balance) UnmarshalJSON(p []byte) error {
+	m := make(map[string]string)
+	err := json.Unmarshal(p, &m)
+	if err != nil {
+		return err
+	}
+	bal := make(map[string]*decimal.Decimal)
+	for k, v := range m {
+		dec := dec.NewDecInt64(0)
+		_, ok := dec.SetString(v)
+		if !ok {
+			return fmt.Errorf("error decoding decimal %s", v)
+		}
+		bal[k] = &decimal.Decimal{Dec: *dec}
+	}
+	*b = Balance(bal)
+	return nil
+}
+
 type PaymentTransactionList []*PaymentTransaction
 
 func (p PaymentTransactionList) Balance() Balance {

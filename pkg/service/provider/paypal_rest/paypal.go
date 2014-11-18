@@ -3,8 +3,9 @@ package paypal_rest
 
 import (
 	"fmt"
-	"github.com/fritzpay/paymentd/pkg/paymentd/nonce"
 	"net/url"
+
+	"github.com/fritzpay/paymentd/pkg/paymentd/nonce"
 
 	"github.com/fritzpay/paymentd/pkg/paymentd/payment"
 	"gopkg.in/inconshreveable/log15.v2"

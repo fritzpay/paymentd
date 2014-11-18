@@ -3,12 +3,13 @@ package paypal_rest
 import (
 	"database/sql"
 	"encoding/json"
-	"github.com/fritzpay/paymentd/pkg/paymentd/nonce"
 	"io/ioutil"
 	"net/http"
 	"net/url"
 	"strings"
 	"time"
+
+	"github.com/fritzpay/paymentd/pkg/paymentd/nonce"
 
 	"gopkg.in/inconshreveable/log15.v2"
 

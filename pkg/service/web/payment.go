@@ -21,10 +21,9 @@ import (
 )
 
 const (
-	PaymentTokenParam        = "token"
-	PaymentCookieName        = "payment"
-	PaymentCookieMaxLifetime = 15 * time.Minute
-	PaymentAuthPaymentID     = "paymentID"
+	PaymentTokenParam    = "token"
+	PaymentCookieName    = "payment"
+	PaymentAuthPaymentID = "paymentID"
 )
 
 func (h *Handler) hashFunc() func() hash.Hash {
@@ -146,7 +145,7 @@ func (h *Handler) readPaymentCookie(w http.ResponseWriter, r *http.Request) (pro
 			w.WriteHeader(http.StatusUnauthorized)
 			return false
 		}
-		if auth.Expiry().Before(time.Now()) {
+		if !auth.Expiry().IsZero() && auth.Expiry().Before(time.Now()) {
 			log.Warn("expired cookie", log15.Ctx{"expiry": auth.Expiry()})
 			h.resetPaymentCookie(w)
 			w.WriteHeader(http.StatusUnauthorized)
@@ -183,7 +182,9 @@ func (h *Handler) setPaymentCookie(w http.ResponseWriter, p *payment.Payment) er
 	log := h.log.New(log15.Ctx{"method": "setPaymentCookie"})
 	auth := service.NewAuthorization(h.hashFunc())
 	auth.Payload[PaymentAuthPaymentID] = p.PaymentID().String()
-	auth.Expires(time.Now().Add(PaymentCookieMaxLifetime))
+	// TODO set expiry if requested, without expiry, its lifetime is based on the session
+	// cookie
+	// auth.Expires(time.Now().Add(PaymentCookieMaxLifetime))
 	key, err := h.ctx.WebKeychain().BinKey()
 	if err != nil {
 		log.Error("error retrieving auth key", log15.Ctx{"err": err})
@@ -195,10 +196,11 @@ func (h *Handler) setPaymentCookie(w http.ResponseWriter, p *payment.Payment) er
 		return err
 	}
 	c := &http.Cookie{
-		Name:    PaymentCookieName,
-		Path:    PaymentPath,
-		Expires: auth.Expiry(),
+		Name: PaymentCookieName,
+		Path: PaymentPath,
 	}
+	// TODO set cookie expiry
+	// 		Expires: auth.Expiry(),
 	c.Value, err = auth.Serialized()
 	if err != nil {
 		log.Error("error retrieving serialized auth", log15.Ctx{"err": err})
@@ -400,7 +402,7 @@ func (h *Handler) PaymentHandler() http.Handler {
 
 		// do callback notification when a new payment transaction was created
 		if paymentTx != nil {
-			h.paymentService.CallbackPaymentTransaction(paymentTx)
+			h.paymentService.Notify <- paymentTx
 		}
 
 		h.servePaymentHandler(p, method).ServeHTTP(w, r)

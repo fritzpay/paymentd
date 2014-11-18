@@ -170,12 +170,30 @@ func (d *Driver) BadRequestHandler() http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {})
 }
 
-func (d *Driver) NotFoundHandler() http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {})
-}
+func (d *Driver) NotFoundHandler(p *payment.Payment) http.Handler {
+	const baseName = "not_found.html.tmpl"
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		log := d.log.New(log15.Ctx{"method": "NotFoundHandler"})
 
-func (d *Driver) ReturnHandler() http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {})
+		tmplData := d.templatePaymentData(p)
+		// do log so we can find the timestamp in the logs
+		log.Warn("payment not found", log15.Ctx{"timestamp": tmplData["timestamp"]})
+		w.WriteHeader(http.StatusNotFound)
+		locale := defaultLocale
+		if p != nil {
+			locale = p.Config.Locale.String
+		}
+		tmpl := template.New("not_found")
+		err := d.getTemplate(tmpl, d.tmplDir, locale, baseName)
+		if err != nil {
+			log.Error("error initializing template", log15.Ctx{
+				"method": "NotFoundHandler",
+				"err":    err,
+			})
+			return
+		}
+		writeTemplateBuf(log, w, tmpl, tmplData)
+	})
 }
 
 func (d *Driver) CancelPageHandler(p *payment.Payment) http.Handler {
@@ -227,8 +245,8 @@ func (d *Driver) ApprovalHandler(tx *Transaction, p *payment.Payment) http.Handl
 
 func (d *Driver) StatusHandler(tx *Transaction, p *payment.Payment) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		// will be true when the polling (ajax) should stop and reload
 		var h http.Handler
+		// will be true when the polling (ajax) should stop and reload
 		var cont bool
 		switch tx.Type {
 		case TransactionTypeError:
