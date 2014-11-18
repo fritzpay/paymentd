@@ -8,10 +8,12 @@ import (
 )
 
 const (
-	TransactionTypeCreatePayment         = "createPayment"
-	TransactionTypeCreatePaymentResponse = "createPaymentResponse"
-	TransactionTypeError                 = "error"
-	TransactionTypeCancelled             = "cancelled"
+	TransactionTypeCreatePayment          = "createPayment"
+	TransactionTypeCreatePaymentResponse  = "createPaymentResponse"
+	TransactionTypeError                  = "error"
+	TransactionTypeCancelled              = "cancelled"
+	TransactionTypeExecutePayment         = "executePayment"
+	TransactionTypeExecutePaymentResponse = "executePaymentResponse"
 )
 
 var (

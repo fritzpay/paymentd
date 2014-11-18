@@ -117,6 +117,11 @@ type PaypalPayment struct {
 	Links      []PayPalLink `json:"links"`
 }
 
+type PayPalPaymentExecution struct {
+	PayerID      string              `json:"payer_id"`
+	Transactions []PayPalTransaction `json:"transactions,omitempty"`
+}
+
 func (d *Driver) createPaypalPaymentRequest(p *payment.Payment, cfg *Config, non *nonce.Nonce) (*PayPalPaymentRequest, error) {
 	if cfg.Type != "sale" && cfg.Type != "authorize" {
 		return nil, fmt.Errorf("invalid config. type %s not recognized", cfg.Type)

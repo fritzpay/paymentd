@@ -132,6 +132,11 @@ func TransactionByPaymentIDAndNonceDB(db *sql.DB, paymentID payment.PaymentID, n
 	return scanTransactionRow(row)
 }
 
+func TransactionByPaymentIDAndTypeTx(db *sql.Tx, paymentID payment.PaymentID, t string) (*Transaction, error) {
+	row := db.QueryRow(selectTransactionByPaymentIDAndType, paymentID.ProjectID, paymentID.PaymentID, t)
+	return scanTransactionRow(row)
+}
+
 func TransactionByPaymentIDAndTypeDB(db *sql.DB, paymentID payment.PaymentID, t string) (*Transaction, error) {
 	row := db.QueryRow(selectTransactionByPaymentIDAndType, paymentID.ProjectID, paymentID.PaymentID, t)
 	return scanTransactionRow(row)
