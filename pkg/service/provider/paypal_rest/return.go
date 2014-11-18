@@ -135,7 +135,7 @@ func (d *Driver) executePayment(p *payment.Payment, payerID string) {
 		Links:     currentTx.Links,
 		Data:      execJSON,
 	}
-	currentTx.SetPayerID(payerID)
+	execTx.SetPayerID(payerID)
 	if currentTx.PaypalID.Valid {
 		currentTx.SetPaypalID(currentTx.PaypalID.String)
 	}
