@@ -15,6 +15,6 @@
 */
 
 /*
-Package env provides runtime environment related support for FritzPay applications
+Package decimal provides a decimal type, wrapping code.google.com/p/godec/dec
 */
-package env
+package decimal

@@ -15,6 +15,6 @@
 */
 
 /*
-Package env provides runtime environment related support for FritzPay applications
+Package payment_method provides types to represent Payment Methods
 */
-package env
+package payment_method

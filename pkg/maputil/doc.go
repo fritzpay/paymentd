@@ -15,6 +15,6 @@
 */
 
 /*
-Package env provides runtime environment related support for FritzPay applications
+Package maputil provides tools and utilites for maps, e.g. ordered serialization.
 */
-package env
+package maputil

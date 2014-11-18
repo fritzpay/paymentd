@@ -15,6 +15,6 @@
 */
 
 /*
-Package env provides runtime environment related support for FritzPay applications
+Package provider provides Provider types (haha).
 */
-package env
+package provider

@@ -15,6 +15,6 @@
 */
 
 /*
-Package env provides runtime environment related support for FritzPay applications
+Package payment provides test decorators for payment related tests
 */
-package env
+package payment

@@ -15,6 +15,9 @@
 */
 
 /*
-Package env provides runtime environment related support for FritzPay applications
+Package notification provides the Notification type for notifications in the
+version:
+
+2.x
 */
-package env
+package notification

@@ -15,6 +15,9 @@
 */
 
 /*
-Package env provides runtime environment related support for FritzPay applications
+Package fritzpay provides the Test-/Demo-Payment Service Provider (PSP) FritzPay
+
+This package demonstrates how to add new PSP drivers. This provider can also be used
+to test out the functionality of paymentd when interacting as an end-user with it.
 */
-package env
+package fritzpay
