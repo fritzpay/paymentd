@@ -178,11 +178,17 @@ func (d *Driver) redirectURLs(p *payment.Payment, mods ...urlModification) (PayP
 	q := url.Values(make(map[string][]string))
 	q.Set(paymentIDParam, d.paymentService.EncodedPaymentID(p.PaymentID()).String())
 
-	returnURL := &(*d.baseURL)
+	returnURL, err := d.baseURL()
+	if err != nil {
+		return u, err
+	}
 	returnURL.Path = returnRoute.Path
 	returnURL.RawQuery = q.Encode()
 
-	cancelURL := &(*d.baseURL)
+	cancelURL, err := d.baseURL()
+	if err != nil {
+		return u, err
+	}
 	cancelURL.Path = cancelRoute.Path
 	cancelURL.RawQuery = q.Encode()
 

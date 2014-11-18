@@ -42,7 +42,6 @@ type Driver struct {
 	mux *mux.Router
 	log log15.Logger
 
-	baseURL *url.URL
 	tmplDir string
 
 	paymentService *paymentService.Service
@@ -79,7 +78,7 @@ func (d *Driver) Attach(ctx *service.Context, mux *mux.Router) error {
 	if !dirInfo.IsDir() {
 		return fmt.Errorf("provider template dir %s is not a directory", d.tmplDir)
 	}
-	d.baseURL, err = url.Parse(cfg.Provider.URL)
+	_, err = url.Parse(cfg.Provider.URL)
 	if err != nil {
 		d.log.Error("error parsing provider base URL", log15.Ctx{"err": err})
 		return fmt.Errorf("error on provider base URL: %v", err)
@@ -104,6 +103,10 @@ func (d *Driver) Attach(ctx *service.Context, mux *mux.Router) error {
 	d.oauth = NewOAuthTransportStore()
 
 	return nil
+}
+
+func (d *Driver) baseURL() (*url.URL, error) {
+	return url.Parse(d.ctx.Config().Provider.URL)
 }
 
 // creates an error transaction
