@@ -147,6 +147,7 @@ func (d *Driver) executePayment(p *payment.Payment, payerID string) {
 		return
 	}
 
+	commit = true
 	err = tx.Commit()
 	if err != nil {
 		const msg = "error on commit tx"
