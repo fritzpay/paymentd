@@ -131,6 +131,7 @@ func (d *Driver) setPayPalError(p *payment.Payment, data []byte) {
 	}
 }
 
+// execute an HTTP request
 func httpDo(
 	ctx *service.Context,
 	createTr func() (*oauth.Transport, error),

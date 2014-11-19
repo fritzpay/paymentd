@@ -1,0 +1,23 @@
+<!doctype html>
+<html>
+	<head>
+		<meta charset="UTF-8">
+		<title>PayPal - Confirming...</title>
+	</head>
+	<body>
+		<h1>Confirming your payment with PayPal...</h1>
+		<h2>Your Payment</h2>
+		<dl>
+			<dt>Payment ID</dt>
+			<dd>{{.paymentID}}</dd>
+			<dt>Payment Amount</dt>
+			<dd>{{.payment.Currency}} {{.amount}}</dd>
+		</dl>
+		<p>
+			Please provide the &quot;Payment ID&quot; if you have any questions
+			in regard to this payment.
+		</p>
+		<p id="loading"><img src="{{staticPath}}/img/loading.gif" alt="loading..." /></p>
+		<script src="{{staticPath}}/js/loading.js"></script>
+	</body>
+</html>

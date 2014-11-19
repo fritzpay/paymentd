@@ -204,8 +204,32 @@ func (d *Driver) CancelPageHandler(p *payment.Payment) http.Handler {
 			"paymentID": p.PaymentID(),
 		})
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")
-		tmpl := template.New("init")
+		tmpl := template.New("cancel")
 		const baseName = "cancel.html.tmpl"
+		err := d.getTemplate(tmpl, d.tmplDir, p.Config.Locale.String, baseName)
+		if err != nil {
+			log.Error("error initializing template", log15.Ctx{"err": err})
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+		tmplData := d.templatePaymentData(p)
+		err = writeTemplateBuf(log, w, tmpl, tmplData)
+		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+		}
+	})
+}
+
+func (d *Driver) ReturnPageHandler(p *payment.Payment) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		log := d.log.New(log15.Ctx{
+			"method":    "ReturnPageHandler",
+			"projectID": p.ProjectID(),
+			"paymentID": p.PaymentID(),
+		})
+		w.Header().Set("Content-Type", "text/html; charset=utf-8")
+		tmpl := template.New("return")
+		const baseName = "return.html.tmpl"
 		err := d.getTemplate(tmpl, d.tmplDir, p.Config.Locale.String, baseName)
 		if err != nil {
 			log.Error("error initializing template", log15.Ctx{"err": err})
@@ -258,6 +282,8 @@ func (d *Driver) StatusHandler(tx *Transaction, p *payment.Payment) http.Handler
 		case TransactionTypeCreatePaymentResponse:
 			h = d.ApprovalHandler(tx, p)
 			cont = true
+		case TransactionTypeExecutePayment:
+			h = d.ReturnPageHandler(p)
 		default:
 			h = d.InitPageHandler(p)
 		}
