@@ -158,7 +158,7 @@ func (d *Driver) doInit(cfg *Config, reqURL *url.URL, p *payment.Payment, body s
 		}
 		if resp.StatusCode != http.StatusCreated && resp.StatusCode != http.StatusOK {
 			log.Error("error on HTTP request", log15.Ctx{"HTTPStatusCode": resp.StatusCode})
-			d.setPayPalError(p, nil)
+			d.setPayPalError(p, respBody)
 			return ErrHTTP
 		}
 		paypalP := &PaypalPayment{}
