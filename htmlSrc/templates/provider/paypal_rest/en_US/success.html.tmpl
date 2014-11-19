@@ -1,0 +1,22 @@
+<!doctype html>
+<html>
+	<head>
+		<meta charset="UTF-8">
+		<title>PayPal - Success</title>
+	</head>
+	<body>
+		<h1>Your payment is complete.</h1>
+		<p>Thank you for your payment.</p>
+		<h2>Your Payment</h2>
+		<dl>
+			<dt>Payment ID</dt>
+			<dd>{{.paymentID}}</dd>
+			<dt>Payment Amount</dt>
+			<dd>{{.payment.Currency}} {{.amount}}</dd>
+		</dl>
+		<p>
+			Please provide the &quot;Payment ID&quot; if you have any questions
+			in regard to this payment.
+		</p>
+	</body>
+</html>

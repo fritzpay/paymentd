@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net/http"
 	"os"
+	"runtime"
 
 	"github.com/fritzpay/paymentd/pkg/service"
 	"github.com/fritzpay/paymentd/pkg/service/payment"
@@ -116,7 +117,9 @@ func (h *Handler) registerPublic() error {
 func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	defer func() {
 		if err := recover(); err != nil {
-			h.log.Crit("panic on serving HTTP", log15.Ctx{"panic": err})
+			buf := make([]byte, 2048)
+			runtime.Stack(buf, true)
+			h.log.Crit("panic on serving HTTP", log15.Ctx{"panic": err, "stackTrace": string(buf)})
 			w.WriteHeader(http.StatusInternalServerError)
 		}
 	}()

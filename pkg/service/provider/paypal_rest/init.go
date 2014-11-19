@@ -56,7 +56,7 @@ func (d *Driver) InitPayment(p *payment.Payment, method *payment_method.Method) 
 		if Debug {
 			log.Debug("already initialized payment")
 		}
-		return d.StatusHandler(currentTx, p), nil
+		return d.statusHandler(currentTx, p, d.InitPageHandler(p)), nil
 	}
 
 	cfg, err := ConfigByPaymentMethodTx(tx, method)
@@ -118,7 +118,7 @@ func (d *Driver) InitPayment(p *payment.Payment, method *payment_method.Method) 
 
 	go d.doInit(cfg, endpoint, p, string(jsonBytes))
 
-	return d.InitPageHandler(p), nil
+	return d.statusHandler(currentTx, p, d.InitPageHandler(p)), nil
 }
 
 func (d *Driver) doInit(cfg *Config, reqURL *url.URL, p *payment.Payment, body string) {
@@ -169,49 +169,18 @@ func (d *Driver) doInit(cfg *Config, reqURL *url.URL, p *payment.Payment, body s
 			return ErrProvider
 		}
 
-		paypalTx := &Transaction{
-			ProjectID: p.ProjectID(),
-			PaymentID: p.ID(),
-			Timestamp: time.Now(),
-			Type:      TransactionTypeCreatePaymentResponse,
-		}
-		if paypalP.Intent != "" {
-			paypalTx.SetIntent(paypalP.Intent)
-		}
-		if paypalP.ID != "" {
-			paypalTx.SetPaypalID(paypalP.ID)
-		}
-		if paypalP.State != "" {
-			paypalTx.SetState(paypalP.State)
-		}
-		if paypalP.CreateTime != "" {
-			t, err := time.Parse(time.RFC3339, paypalP.CreateTime)
-			if err != nil {
-				log.Warn("error parsing paypal create time", log15.Ctx{"err": err})
-			} else {
-				paypalTx.PaypalCreateTime = &t
-			}
-		}
-		if paypalP.UpdateTime != "" {
-			t, err := time.Parse(time.RFC3339, paypalP.UpdateTime)
-			if err != nil {
-				log.Warn("error parsing paypal update time", log15.Ctx{"err": err})
-			} else {
-				paypalTx.PaypalUpdateTime = &t
-			}
-		}
-		paypalTx.Links, err = json.Marshal(paypalP.Links)
-		if err != nil {
-			log.Error("error on saving links on response", log15.Ctx{"err": err})
+		paypalTx, err := NewPayPalPaymentTransaction(paypalP)
+		if err != nil && paypalTx == nil {
+			log.Error("error on creating response transaction", log15.Ctx{"err": err})
 			d.setPayPalError(p, respBody)
 			return ErrProvider
 		}
-		paypalTx.Data, err = json.Marshal(paypalP)
 		if err != nil {
-			log.Error("error marshalling paypal payment response", log15.Ctx{"err": err})
-			d.setPayPalError(p, respBody)
-			return ErrProvider
+			log.Warn("error on parsing response for transaction", log15.Ctx{"err": err})
 		}
+		paypalTx.ProjectID = p.ProjectID()
+		paypalTx.PaymentID = p.ID()
+		paypalTx.Type = TransactionTypeCreatePaymentResponse
 		err = InsertTransactionDB(d.ctx.PaymentDB(), paypalTx)
 		if err != nil {
 			log.Error("error saving paypal response", log15.Ctx{"err": err})

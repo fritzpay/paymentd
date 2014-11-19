@@ -81,3 +81,42 @@ func (t *Transaction) PayPalLinks() (map[string]*PayPalLink, error) {
 	}
 	return ret, nil
 }
+
+func NewPayPalPaymentTransaction(paypalP *PaypalPayment) (*Transaction, error) {
+	var err error
+	paypalTx := &Transaction{
+		Timestamp: time.Now(),
+	}
+	if paypalP.Intent != "" {
+		paypalTx.SetIntent(paypalP.Intent)
+	}
+	if paypalP.ID != "" {
+		paypalTx.SetPaypalID(paypalP.ID)
+	}
+	if paypalP.State != "" {
+		paypalTx.SetState(paypalP.State)
+	}
+	if paypalP.CreateTime != "" {
+		var t time.Time
+		t, err = time.Parse(time.RFC3339, paypalP.CreateTime)
+		if err == nil {
+			paypalTx.PaypalCreateTime = &t
+		}
+	}
+	if paypalP.UpdateTime != "" {
+		var t time.Time
+		t, err = time.Parse(time.RFC3339, paypalP.UpdateTime)
+		if err == nil {
+			paypalTx.PaypalUpdateTime = &t
+		}
+	}
+	paypalTx.Links, err = json.Marshal(paypalP.Links)
+	if err != nil {
+		return nil, err
+	}
+	paypalTx.Data, err = json.Marshal(paypalP)
+	if err != nil {
+		return nil, err
+	}
+	return paypalTx, err
+}
