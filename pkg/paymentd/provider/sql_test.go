@@ -14,22 +14,21 @@ func TestProviderSQL(t *testing.T) {
 			db.Close()
 		})
 		Convey("When selecting the test provider", func() {
-			pr, err := ProviderByIDDB(db, 1)
+			pr, err := ProviderByNameDB(db, "fritzpay")
 
 			Convey("It should return the test provider", func() {
 				So(err, ShouldBeNil)
-				So(pr.ID, ShouldEqual, 1)
 				So(pr.Name, ShouldEqual, "fritzpay")
 			})
 		})
 
 		Convey("When selecting a nonexistent provider", func() {
-			pr, err := ProviderByIDDB(db, 0)
+			pr, err := ProviderByNameDB(db, "0")
 
 			Convey("It should return an error", func() {
 				So(err, ShouldNotBeNil)
 				So(err, ShouldEqual, ErrProviderNotFound)
-				So(pr.ID, ShouldEqual, 0)
+				So(pr.Name, ShouldEqual, "")
 			})
 		})
 	}))

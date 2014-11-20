@@ -40,19 +40,19 @@ func TestPaymentMethodSQL(t *testing.T) {
 						})
 
 						Convey("Given a test provider exists", func() {
-							pr, err := provider.ProviderByIDTx(tx, 1)
+							pr, err := provider.ProviderByNameTx(tx, "fritzpay")
 							So(err, ShouldBeNil)
-							So(pr.ID, ShouldEqual, 1)
+							So(pr.Name, ShouldEqual, "fritzpay")
 
 							Convey("When retrieving a nonexistent payment method", func() {
-								_, err = PaymentMethodByProjectIDProviderIDMethodKeyTx(tx, proj.ID, pr.ID, "nonexistent")
+								_, err = PaymentMethodByProjectIDProviderNameMethodKeyTx(tx, proj.ID, pr.Name, "nonexistent")
 								Convey("It should return a not found error", func() {
 									So(err, ShouldEqual, ErrPaymentMethodNotFound)
 								})
 							})
 
 							Convey("When retrieving an existent payment method", func() {
-								pm, err := PaymentMethodByProjectIDProviderIDMethodKeyTx(tx, proj.ID, pr.ID, "test")
+								pm, err := PaymentMethodByProjectIDProviderNameMethodKeyTx(tx, proj.ID, pr.Name, "test")
 								Convey("It should return a payment method", func() {
 									So(err, ShouldBeNil)
 									So(pm.MethodKey, ShouldEqual, "test")
@@ -62,7 +62,7 @@ func TestPaymentMethodSQL(t *testing.T) {
 							Convey("When inserting a new payment method", func() {
 								pm := &Method{}
 								pm.ProjectID = proj.ID
-								pm.Provider.ID = pr.ID
+								pm.Provider.Name = pr.Name
 								pm.MethodKey = "testInsert"
 								pm.CreatedBy = "test"
 
