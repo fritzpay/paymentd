@@ -9,7 +9,7 @@ FritzPay paymentd is the payment server of the FritzPay stack.
 
 Retrieve the sources for paymentd.
 
-`$ go get -d github.com/fritzpay/paymentd/cmd/paymentd`
+`$ go get -d github.com/fritzpay/paymentd`
 
 You can use the `make.go` script.
 
