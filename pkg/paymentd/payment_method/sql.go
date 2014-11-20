@@ -26,7 +26,7 @@ SELECT
 	s.created_by
 FROM payment_method AS m
 INNER JOIN provider AS p ON
-	p.id = m.provider_id
+	p.name = m.provider
 INNER JOIN payment_method_status AS s ON
 	s.payment_method_id = m.id
 	AND

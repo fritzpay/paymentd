@@ -9,9 +9,12 @@ import (
 	"github.com/gorilla/mux"
 )
 
+// Provider Driver Registry
+//
+// These names should match the provider names in the provider table
 const (
-	driverFritzpay   int64 = 1
-	driverPaypalREST       = 2
+	driverFritzpay   = "fritzpay"
+	driverPaypalREST = "paypal_rest"
 )
 
 type Driver interface {

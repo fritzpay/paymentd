@@ -26,7 +26,7 @@ type Service struct {
 	ctx *service.Context
 	log log15.Logger
 
-	drivers map[int64]Driver
+	drivers map[string]Driver
 }
 
 func NewService(ctx *service.Context) (*Service, error) {
@@ -36,7 +36,7 @@ func NewService(ctx *service.Context) (*Service, error) {
 			"pkg": "github.com/fritzpay/paymentd/pkg/service/provider",
 		}),
 
-		drivers: make(map[int64]Driver),
+		drivers: make(map[string]Driver),
 	}
 	return s, nil
 }
@@ -50,16 +50,15 @@ func (s *Service) AttachDrivers(mux *mux.Router) error {
 	// add drivers
 	for _, prov := range providers {
 		s.log.Info("attaching provider driver...", log15.Ctx{
-			"providerID":   prov.ID,
 			"providerName": prov.Name,
 		})
-		switch prov.ID {
+		switch prov.Name {
 		case driverFritzpay:
 			s.drivers[driverFritzpay] = &fritzpay.Driver{}
 		case driverPaypalREST:
 			s.drivers[driverPaypalREST] = &paypal_rest.Driver{}
 		default:
-			s.log.Error("unknown provider id in database", log15.Ctx{"providerID": prov.ID})
+			s.log.Error("unknown provider id in database", log15.Ctx{"providerName": prov.Name})
 			return ErrNoDriver
 		}
 	}
@@ -75,7 +74,7 @@ func (s *Service) AttachDrivers(mux *mux.Router) error {
 }
 
 func (s *Service) Driver(method *payment_method.Method) (Driver, error) {
-	if dr, ok := s.drivers[method.Provider.ID]; !ok {
+	if dr, ok := s.drivers[method.Provider.Name]; !ok {
 		return nil, ErrNoDriver
 	} else {
 		return dr, nil
