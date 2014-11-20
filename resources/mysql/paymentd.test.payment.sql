@@ -315,6 +315,7 @@ CREATE TABLE IF NOT EXISTS `provider_paypal_transaction` (
   INDEX `paypal_payer_id` (`payer_id` ASC),
   INDEX `paypal_intent` (`intent` ASC),
   INDEX `paypal_nonce` (`project_id` ASC, `payment_id` ASC, `nonce` ASC),
+  INDEX `type` (`project_id` ASC, `payment_id` ASC, `type` ASC),
   CONSTRAINT `fk_provider_paypal_transaction_payment_id`
     FOREIGN KEY (`payment_id`)
     REFERENCES `payment` (`id`)

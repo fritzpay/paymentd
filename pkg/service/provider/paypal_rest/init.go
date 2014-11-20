@@ -56,7 +56,7 @@ func (d *Driver) InitPayment(p *payment.Payment, method *payment_method.Method) 
 		if Debug {
 			log.Debug("already initialized payment")
 		}
-		return d.StatusHandler(currentTx, p), nil
+		return d.statusHandler(currentTx, p, d.InitPageHandler(p)), nil
 	}
 
 	cfg, err := ConfigByPaymentMethodTx(tx, method)
@@ -116,28 +116,12 @@ func (d *Driver) InitPayment(p *payment.Payment, method *payment_method.Method) 
 		return nil, ErrDatabase
 	}
 
-	errors := make(chan error)
-	go func() {
-		for {
-			select {
-			case err := <-errors:
-				if err == nil {
-					return
-				}
-				log.Error("error on initializing", log15.Ctx{"err": err})
-				return
-			case <-d.ctx.Done():
-				log.Warn("cancelled initialization", log15.Ctx{"err": d.ctx.Err()})
-				return
-			}
-		}
-	}()
-	go d.doInit(errors, cfg, endpoint, p, string(jsonBytes))
+	go d.doInit(cfg, endpoint, p, string(jsonBytes))
 
-	return d.InitPageHandler(p), nil
+	return d.statusHandler(currentTx, p, d.InitPageHandler(p)), nil
 }
 
-func (d *Driver) doInit(errors chan<- error, cfg *Config, reqURL *url.URL, p *payment.Payment, body string) {
+func (d *Driver) doInit(cfg *Config, reqURL *url.URL, p *payment.Payment, body string) {
 	log := d.log.New(log15.Ctx{
 		"method":      "doInit",
 		"projectID":   p.ProjectID(),
@@ -149,106 +133,65 @@ func (d *Driver) doInit(errors chan<- error, cfg *Config, reqURL *url.URL, p *pa
 		log.Debug("posting...")
 	}
 
-	tr, err := d.oAuthTransport(log)(p, cfg)
+	req, err := http.NewRequest("POST", reqURL.String(), strings.NewReader(body))
 	if err != nil {
-		log.Error("error on auth transport", log15.Ctx{"err": err})
-		errors <- err
+		log.Error("error creating HTTP request", log15.Ctx{"err": err})
 		return
 	}
-	err = tr.AuthenticateClient()
-	if err != nil {
-		log.Error("error authenticating", log15.Ctx{"err": err})
-		errors <- err
-		return
-	}
-	if Debug {
-		log.Debug("authenticated", log15.Ctx{"accessToken": tr.Token.AccessToken})
-	}
-	cl := tr.Client()
-	resp, err := cl.Post(reqURL.String(), "application/json", strings.NewReader(body))
-	if err != nil {
-		log.Error("error on HTTP POST", log15.Ctx{"err": err})
-		errors <- err
-		return
-	}
-	if resp.StatusCode != http.StatusCreated && resp.StatusCode != http.StatusOK {
-		log.Error("error on HTTP request", log15.Ctx{"HTTPStatusCode": resp.StatusCode})
-		d.setPayPalError(p, nil)
-		errors <- ErrHTTP
-		return
-	}
-	respBody, err := ioutil.ReadAll(resp.Body)
-	resp.Body.Close()
-	if err != nil {
-		log.Error("error reading response body", log15.Ctx{"err": err})
-		d.setPayPalError(p, nil)
-		errors <- ErrHTTP
-		return
-	}
-	log = log.New(log15.Ctx{"responseBody": string(respBody)})
-	if Debug {
-		log.Debug("received response")
-	}
-	paypalP := &PaypalPayment{}
-	err = json.Unmarshal(respBody, paypalP)
-	if err != nil {
-		log.Error("error decoding PayPal response", log15.Ctx{"err": err})
-		d.setPayPalError(p, respBody)
-		errors <- ErrProvider
+	req.Header.Set("Content-Type", "application/json")
+	responseFunc := func(resp *http.Response, err error) error {
+		if err != nil {
+			log.Error("error on HTTP", log15.Ctx{"err": err})
+			d.setPayPalError(p, nil)
+			return err
+		}
+		respBody, err := ioutil.ReadAll(resp.Body)
+		resp.Body.Close()
+		if err != nil {
+			log.Error("error reading response body", log15.Ctx{"err": err})
+			d.setPayPalError(p, nil)
+			return ErrHTTP
+		}
+		log = log.New(log15.Ctx{"responseBody": string(respBody)})
+		if Debug {
+			log.Debug("received response")
+		}
+		if resp.StatusCode != http.StatusCreated && resp.StatusCode != http.StatusOK {
+			log.Error("error on HTTP request", log15.Ctx{"HTTPStatusCode": resp.StatusCode})
+			d.setPayPalError(p, respBody)
+			return ErrHTTP
+		}
+		paypalP := &PaypalPayment{}
+		err = json.Unmarshal(respBody, paypalP)
+		if err != nil {
+			log.Error("error decoding PayPal response", log15.Ctx{"err": err})
+			d.setPayPalError(p, respBody)
+			return ErrProvider
+		}
+
+		paypalTx, err := NewPayPalPaymentTransaction(paypalP)
+		if err != nil && paypalTx == nil {
+			log.Error("error on creating response transaction", log15.Ctx{"err": err})
+			d.setPayPalError(p, respBody)
+			return ErrProvider
+		}
+		if err != nil {
+			log.Warn("error on parsing response for transaction", log15.Ctx{"err": err})
+		}
+		paypalTx.ProjectID = p.ProjectID()
+		paypalTx.PaymentID = p.ID()
+		paypalTx.Type = TransactionTypeCreatePaymentResponse
+		err = InsertTransactionDB(d.ctx.PaymentDB(), paypalTx)
+		if err != nil {
+			log.Error("error saving paypal response", log15.Ctx{"err": err})
+			d.setPayPalError(p, respBody)
+			return ErrProvider
+		}
+		return nil
 	}
 
-	paypalTx := &Transaction{
-		ProjectID: p.ProjectID(),
-		PaymentID: p.ID(),
-		Timestamp: time.Now(),
-		Type:      TransactionTypeCreatePaymentResponse,
-	}
-	if paypalP.Intent != "" {
-		paypalTx.SetIntent(paypalP.Intent)
-	}
-	if paypalP.ID != "" {
-		paypalTx.SetPaypalID(paypalP.ID)
-	}
-	if paypalP.State != "" {
-		paypalTx.SetState(paypalP.State)
-	}
-	if paypalP.CreateTime != "" {
-		t, err := time.Parse(time.RFC3339, paypalP.CreateTime)
-		if err != nil {
-			log.Warn("error parsing paypal create time", log15.Ctx{"err": err})
-		} else {
-			paypalTx.PaypalCreateTime = &t
-		}
-	}
-	if paypalP.UpdateTime != "" {
-		t, err := time.Parse(time.RFC3339, paypalP.UpdateTime)
-		if err != nil {
-			log.Warn("error parsing paypal update time", log15.Ctx{"err": err})
-		} else {
-			paypalTx.PaypalUpdateTime = &t
-		}
-	}
-	paypalTx.Links, err = json.Marshal(paypalP.Links)
+	err = httpDo(d.ctx, d.oAuthTransportFunc(p, cfg), req, responseFunc)
 	if err != nil {
-		log.Error("error on saving links on response", log15.Ctx{"err": err})
-		d.setPayPalError(p, respBody)
-		errors <- ErrProvider
-		return
+		log.Error("error on create payment request", log15.Ctx{"err": err})
 	}
-	paypalTx.Data, err = json.Marshal(paypalP)
-	if err != nil {
-		log.Error("error marshalling paypal payment response", log15.Ctx{"err": err})
-		d.setPayPalError(p, respBody)
-		errors <- ErrProvider
-		return
-	}
-	err = InsertTransactionDB(d.ctx.PaymentDB(), paypalTx)
-	if err != nil {
-		log.Error("error saving paypal response", log15.Ctx{"err": err})
-		d.setPayPalError(p, respBody)
-		errors <- ErrProvider
-		return
-	}
-
-	close(errors)
 }

@@ -1,6 +1,7 @@
 package paypal_rest
 
 import (
+	"code.google.com/p/goauth2/oauth"
 	"errors"
 	"fmt"
 	"net/http"
@@ -41,7 +42,6 @@ type Driver struct {
 	mux *mux.Router
 	log log15.Logger
 
-	baseURL *url.URL
 	tmplDir string
 
 	paymentService *paymentService.Service
@@ -78,7 +78,7 @@ func (d *Driver) Attach(ctx *service.Context, mux *mux.Router) error {
 	if !dirInfo.IsDir() {
 		return fmt.Errorf("provider template dir %s is not a directory", d.tmplDir)
 	}
-	d.baseURL, err = url.Parse(cfg.Provider.URL)
+	_, err = url.Parse(cfg.Provider.URL)
 	if err != nil {
 		d.log.Error("error parsing provider base URL", log15.Ctx{"err": err})
 		return fmt.Errorf("error on provider base URL: %v", err)
@@ -105,6 +105,10 @@ func (d *Driver) Attach(ctx *service.Context, mux *mux.Router) error {
 	return nil
 }
 
+func (d *Driver) baseURL() (*url.URL, error) {
+	return url.Parse(d.ctx.Config().Provider.URL)
+}
+
 // creates an error transaction
 func (d *Driver) setPayPalError(p *payment.Payment, data []byte) {
 	log := d.log.New(log15.Ctx{
@@ -124,5 +128,40 @@ func (d *Driver) setPayPalError(p *payment.Payment, data []byte) {
 	err := InsertTransactionDB(d.ctx.PaymentDB(), paypalTx)
 	if err != nil {
 		log.Error("error saving paypal transaction", log15.Ctx{"err": err})
+	}
+}
+
+// execute an HTTP request
+func httpDo(
+	ctx *service.Context,
+	createTr func() (*oauth.Transport, error),
+	req *http.Request,
+	f func(*http.Response, error) error) error {
+
+	tr, err := createTr()
+	if err != nil {
+		ctx.Log().Error("error on auth transport", log15.Ctx{"err": err})
+		return err
+	}
+	err = tr.AuthenticateClient()
+	if err != nil {
+		ctx.Log().Error("error authenticating", log15.Ctx{"err": err})
+		return err
+	}
+	if Debug {
+		ctx.Log().Debug("authenticated", log15.Ctx{"accessToken": tr.Token.AccessToken})
+	}
+	cl := tr.Client()
+	c := make(chan error, 1)
+	go func() { c <- f(cl.Do(req)) }()
+	select {
+	case <-ctx.Done():
+		if httpTr, ok := tr.Transport.(*http.Transport); ok {
+			httpTr.CancelRequest(req)
+		}
+		<-c
+		return ctx.Err()
+	case err := <-c:
+		return err
 	}
 }

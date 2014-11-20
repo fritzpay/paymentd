@@ -14,7 +14,9 @@ import (
 type PayPalPaymentMethod string
 
 const (
-	paymentIDParam = "paymentID"
+	paymentIDParam         = "paymentID"
+	nonceParam             = "nonce"
+	paypalPayerIDParameter = "PayerID"
 )
 
 const (
@@ -115,6 +117,11 @@ type PaypalPayment struct {
 	Links      []PayPalLink `json:"links"`
 }
 
+type PayPalPaymentExecution struct {
+	PayerID      string              `json:"payer_id"`
+	Transactions []PayPalTransaction `json:"transactions,omitempty"`
+}
+
 func (d *Driver) createPaypalPaymentRequest(p *payment.Payment, cfg *Config, non *nonce.Nonce) (*PayPalPaymentRequest, error) {
 	if cfg.Type != "sale" && cfg.Type != "authorize" {
 		return nil, fmt.Errorf("invalid config. type %s not recognized", cfg.Type)
@@ -171,11 +178,17 @@ func (d *Driver) redirectURLs(p *payment.Payment, mods ...urlModification) (PayP
 	q := url.Values(make(map[string][]string))
 	q.Set(paymentIDParam, d.paymentService.EncodedPaymentID(p.PaymentID()).String())
 
-	returnURL := &(*d.baseURL)
+	returnURL, err := d.baseURL()
+	if err != nil {
+		return u, err
+	}
 	returnURL.Path = returnRoute.Path
 	returnURL.RawQuery = q.Encode()
 
-	cancelURL := &(*d.baseURL)
+	cancelURL, err := d.baseURL()
+	if err != nil {
+		return u, err
+	}
 	cancelURL.Path = cancelRoute.Path
 	cancelURL.RawQuery = q.Encode()
 
