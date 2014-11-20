@@ -19,11 +19,11 @@ import (
 // PaymentMethodRequest is the request JSON struct for POST - PUT
 // project/(id)/method/
 type PaymentMethodRequest struct {
-	MethodKey  string
-	ProviderID int64 `json:",string"`
-	Status     string
-	CreatedBy  string
-	Metadata   map[string]string
+	MethodKey string
+	Provider  string
+	Status    string
+	CreatedBy string
+	Metadata  map[string]string
 }
 
 func (a *AdminAPI) PaymentMethodGetRequest() http.Handler {
@@ -36,7 +36,7 @@ func (a *AdminAPI) PaymentMethodGetRequest() http.Handler {
 		vars := mux.Vars(r)
 		projectIDParam := vars["projectid"]
 		methodKey := vars["methodkey"]
-		providerIDParam := vars["providerid"]
+		providerParam := vars["provider"]
 
 		projectID, err := strconv.ParseInt(projectIDParam, 10, 64)
 		if err != nil {
@@ -49,16 +49,10 @@ func (a *AdminAPI) PaymentMethodGetRequest() http.Handler {
 			log.Error("param conversion error", log15.Ctx{"methodkey": methodKey})
 			return
 		}
-		providerID, err := strconv.ParseInt(providerIDParam, 10, 64)
-		if err != nil {
-			ErrReadParam.Write(w)
-			log.Error("param conversion error", log15.Ctx{"err": err})
-			return
-		}
 
 		// get payment method
 		db := a.ctx.PaymentDB(service.ReadOnly)
-		pm, err := payment_method.PaymentMethodByProjectIDProviderIDMethodKeyDB(db, projectID, providerID, methodKey)
+		pm, err := payment_method.PaymentMethodByProjectIDProviderNameMethodKeyDB(db, projectID, providerParam, methodKey)
 		if err == payment_method.ErrPaymentMethodNotFound {
 			ErrNotFound.Write(w)
 			log.Error("error retrieving payment method", log15.Ctx{"err": err})
@@ -172,7 +166,7 @@ func (a *AdminAPI) putNewPaymentMethod(w http.ResponseWriter, r *http.Request) {
 	}()
 	// get Provider
 	tx, err = a.ctx.PaymentDB().Begin()
-	prov, err := provider.ProviderByIDTx(tx, pmr.ProviderID)
+	prov, err := provider.ProviderByNameTx(tx, pmr.Provider)
 	if err != nil {
 		commit = true
 		ErrDatabase.Write(w)
@@ -199,7 +193,7 @@ func (a *AdminAPI) putNewPaymentMethod(w http.ResponseWriter, r *http.Request) {
 	pm.Metadata = pmr.Metadata
 
 	// check if payment_method already exists
-	_, err = payment_method.PaymentMethodByProjectIDProviderIDMethodKeyTx(tx, pm.ProjectID, pm.Provider.ID, pm.MethodKey)
+	_, err = payment_method.PaymentMethodByProjectIDProviderNameMethodKeyTx(tx, pm.ProjectID, pm.Provider.Name, pm.MethodKey)
 	if err != nil && err != payment_method.ErrPaymentMethodNotFound {
 		ErrDatabase.Write(w)
 		log.Error("database error", log15.Ctx{"err": err})
@@ -241,7 +235,7 @@ func (a *AdminAPI) putNewPaymentMethod(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// get payment_method from db with all set values like status created
-	pmdb, err := payment_method.PaymentMethodByProjectIDProviderIDMethodKeyTx(tx, pm.ProjectID, pm.Provider.ID, pm.MethodKey)
+	pmdb, err := payment_method.PaymentMethodByProjectIDProviderNameMethodKeyTx(tx, pm.ProjectID, pm.Provider.Name, pm.MethodKey)
 	if err != nil {
 		ErrDatabase.Write(w)
 		log.Error("database error", log15.Ctx{"err": err})
@@ -309,7 +303,7 @@ func (a *AdminAPI) postChangePaymentMethod(w http.ResponseWriter, r *http.Reques
 
 	tx, err = a.ctx.PaymentDB().Begin()
 	// check if payment_method exists
-	pm, err := payment_method.PaymentMethodByProjectIDProviderIDMethodKeyTx(tx, projectID, pmr.ProviderID, methodKey)
+	pm, err := payment_method.PaymentMethodByProjectIDProviderNameMethodKeyTx(tx, projectID, pmr.Provider, methodKey)
 	if err == payment_method.ErrPaymentMethodNotFound {
 		ErrNotFound.Write(w)
 		log.Error("payment method not found", log15.Ctx{"err": err})
@@ -337,7 +331,7 @@ func (a *AdminAPI) postChangePaymentMethod(w http.ResponseWriter, r *http.Reques
 		pm.StatusCreatedBy = auth[AuthUserIDKey].(string)
 		payment_method.InsertPaymentMethodStatusTx(tx, pm)
 		// reload payment_method
-		pm, err = payment_method.PaymentMethodByProjectIDProviderIDMethodKeyTx(tx, pm.ProjectID, pm.ProjectID, pm.MethodKey)
+		pm, err = payment_method.PaymentMethodByProjectIDProviderNameMethodKeyTx(tx, pm.ProjectID, pm.Provider.Name, pm.MethodKey)
 		if err == payment_method.ErrPaymentMethodNotFound {
 			ErrNotFound.Write(w)
 			log.Error("payment method not found", log15.Ctx{"err": err})

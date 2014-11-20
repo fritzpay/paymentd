@@ -2,7 +2,6 @@ package v1
 
 import (
 	"net/http"
-	"strconv"
 
 	"github.com/fritzpay/paymentd/pkg/paymentd/provider"
 	"github.com/fritzpay/paymentd/pkg/service"
@@ -27,20 +26,14 @@ func (a *AdminAPI) ProviderGetRequest() http.Handler {
 		}
 
 		vars := mux.Vars(r)
-		providerIDParam := vars["providerid"]
-		providerID, err := strconv.ParseInt(providerIDParam, 10, 64)
-		if err != nil {
-			ErrReadParam.Write(w)
-			log.Error("param conversion error", log15.Ctx{"err": err})
-			return
-		}
+		providerParam := vars["provider"]
 
 		// get one Provider
 		db := a.ctx.PaymentDB(service.ReadOnly)
-		pr, err := provider.ProviderByIDDB(db, providerID)
+		pr, err := provider.ProviderByNameDB(db, providerParam)
 		if err == provider.ErrProviderNotFound {
 			ErrNotFound.Write(w)
-			log.Info("provider not found", log15.Ctx{"providerID": providerIDParam})
+			log.Info("provider not found", log15.Ctx{"providerName": providerParam})
 			return
 		} else if err != nil {
 			ErrDatabase.Write(w)

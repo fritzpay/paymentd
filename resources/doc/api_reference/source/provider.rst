@@ -29,18 +29,16 @@ Available providers
             "Info": "providers found",
             "Response": [
                 {
-                    "ID": 1,
                     "Name": "fritzpay"
                 }
             ],
             "Error": null
         }
 
-    :statuscode 200: No error, provider datadata served.
-    :statuscode 401: Unauthorized, either the username does not exist or the credentials
+    :statuscode 200: No error, provider data served.
+    :statuscode 401: Unauthorized, either the username does not exist or the credentials were incorrect.
 
     :reqheader Authorization: A valid authorization token.
-
 
     .. note:: 
     
@@ -49,20 +47,20 @@ Available providers
 Check provider
 --------------
 
-.. http:get:: /v1/provider/(providerid)
+.. http:get:: /v1/provider/(provider)
 
-    Check if a specific providerid is available in the system.
+    Check if a specific provider is available in the system.
 
     **Example request**:
 
     .. sourcecode:: http
 
-        GET /v1/provider/1 HTTP/1.1
+        GET /v1/provider/fritzpay HTTP/1.1
         Host: example.com
         Authorization: MTQxNTA5NTI5MHxYaCVyOkp7RNaMujhp...
         Accept: application/json
 
-    :param providerid: string [0-9]
+    :param provider: string
 
     **Example response**:
 
@@ -76,16 +74,14 @@ Check provider
             "Info": "provider fritzpay found",
             "Response": [
                 {
-                    "ID": 1,
                     "Name": "fritzpay"
                 }
             ],
             "Error": null
         }
 
-    :statuscode 200: No error, provider datadata served.
-    :statuscode 400: The request was malformed; the given providerID could not be understood.
-    :statuscode 401: Unauthorized, either the username does not exist or the credentials
-    :statuscode 404: provider not available
+    :statuscode 200: No error, provider data served.
+    :statuscode 401: Unauthorized, either the username does not exist or the credentials were incorrect.
+    :statuscode 404: provider not found
 
     :reqheader Authorization: A valid authorization token.

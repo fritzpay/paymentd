@@ -11,19 +11,18 @@ var (
 
 const selectProvider = `
 SELECT
-	id,
 	name
 FROM provider
 `
 
-const selectProviderByID = selectProvider + `
+const selectProviderByName = selectProvider + `
 WHERE
-	id = ?
+	name = ?
 `
 
 func scanSingleRow(row *sql.Row) (Provider, error) {
 	p := Provider{}
-	err := row.Scan(&p.ID, &p.Name)
+	err := row.Scan(&p.Name)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return p, ErrProviderNotFound
@@ -40,7 +39,7 @@ func ProviderAllDB(db *sql.DB) ([]Provider, error) {
 
 	for rows.Next() {
 		pr := Provider{}
-		err := rows.Scan(&pr.ID, &pr.Name)
+		err := rows.Scan(&pr.Name)
 		if err != nil {
 			return d, err
 		}
@@ -50,12 +49,12 @@ func ProviderAllDB(db *sql.DB) ([]Provider, error) {
 	return d, err
 }
 
-func ProviderByIDDB(db *sql.DB, id int64) (Provider, error) {
-	row := db.QueryRow(selectProviderByID, id)
+func ProviderByNameDB(db *sql.DB, name string) (Provider, error) {
+	row := db.QueryRow(selectProviderByName, name)
 	return scanSingleRow(row)
 }
 
-func ProviderByIDTx(db *sql.Tx, id int64) (Provider, error) {
-	row := db.QueryRow(selectProviderByID, id)
+func ProviderByNameTx(db *sql.Tx, name string) (Provider, error) {
+	row := db.QueryRow(selectProviderByName, name)
 	return scanSingleRow(row)
 }

@@ -17,7 +17,6 @@ const selectPaymentMethod = `
 SELECT
 	m.id,
 	m.project_id,
-	p.id,
 	p.name,
 	m.method_key,
 	m.created,
@@ -27,7 +26,7 @@ SELECT
 	s.created_by
 FROM payment_method AS m
 INNER JOIN provider AS p ON
-	p.id = m.provider_id
+	p.name = m.provider
 INNER JOIN payment_method_status AS s ON
 	s.payment_method_id = m.id
 	AND
@@ -46,7 +45,7 @@ const selectPaymentMethodByProjectIDProviderIDMethodKey = selectPaymentMethod + 
 WHERE
 	m.project_id = ?
 AND
-	p.id = ?
+	p.name = ?
 AND
 	m.method_key = ?
 `
@@ -57,7 +56,6 @@ func scanSinglePaymentMethod(row *sql.Row) (*Method, error) {
 	err := row.Scan(
 		&pm.ID,
 		&pm.ProjectID,
-		&pm.Provider.ID,
 		&pm.Provider.Name,
 		&pm.MethodKey,
 		&pm.Created,
@@ -81,13 +79,13 @@ func PaymentMethodByIDDB(db *sql.DB, id int64) (*Method, error) {
 	return scanSinglePaymentMethod(row)
 }
 
-func PaymentMethodByProjectIDProviderIDMethodKeyDB(db *sql.DB, project_id int64, provider_id int64, method_key string) (*Method, error) {
-	row := db.QueryRow(selectPaymentMethodByProjectIDProviderIDMethodKey, project_id, provider_id, method_key)
+func PaymentMethodByProjectIDProviderNameMethodKeyDB(db *sql.DB, project_id int64, provider string, method_key string) (*Method, error) {
+	row := db.QueryRow(selectPaymentMethodByProjectIDProviderIDMethodKey, project_id, provider, method_key)
 	return scanSinglePaymentMethod(row)
 }
 
-func PaymentMethodByProjectIDProviderIDMethodKeyTx(tx *sql.Tx, project_id int64, provider_id int64, method_key string) (*Method, error) {
-	row := tx.QueryRow(selectPaymentMethodByProjectIDProviderIDMethodKey, project_id, provider_id, method_key)
+func PaymentMethodByProjectIDProviderNameMethodKeyTx(tx *sql.Tx, project_id int64, provider string, method_key string) (*Method, error) {
+	row := tx.QueryRow(selectPaymentMethodByProjectIDProviderIDMethodKey, project_id, provider, method_key)
 	return scanSinglePaymentMethod(row)
 }
 
@@ -98,7 +96,7 @@ func PaymentMethodByIDTx(db *sql.Tx, id int64) (*Method, error) {
 
 const insertPaymentMethod = `
 INSERT INTO payment_method
-(project_id, provider_id, method_key, created, created_by)
+(project_id, provider, method_key, created, created_by)
 VALUES
 (?, ?, ?, ?, ?)
 `
@@ -108,7 +106,7 @@ func InsertPaymentMethodTx(db *sql.Tx, pm *Method) error {
 	if err != nil {
 		return err
 	}
-	res, err := stmt.Exec(pm.ProjectID, pm.Provider.ID, pm.MethodKey, pm.Created, pm.CreatedBy)
+	res, err := stmt.Exec(pm.ProjectID, pm.Provider.Name, pm.MethodKey, pm.Created, pm.CreatedBy)
 	stmt.Close()
 	if err != nil {
 		return err

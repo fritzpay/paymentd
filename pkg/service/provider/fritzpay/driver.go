@@ -23,9 +23,9 @@ const (
 )
 
 const (
-	providerIDFritzpay     int64 = 1
-	defaultLocale                = "en_US"
-	fritzpayDefaultTimeout       = 30 * time.Second
+	providerIDFritzpay     = "fritzpay"
+	defaultLocale          = "en_US"
+	fritzpayDefaultTimeout = 30 * time.Second
 )
 
 var (
@@ -161,8 +161,8 @@ func (d *Driver) Callback(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
 		return
 	}
-	if method.Provider.ID != providerIDFritzpay {
-		log.Warn("invalid payment method provider", log15.Ctx{"providerID": method.Provider.ID})
+	if method.Provider.Name != providerIDFritzpay {
+		log.Warn("invalid payment method provider", log15.Ctx{"providerName": method.Provider.Name})
 		w.WriteHeader(http.StatusOK)
 		return
 	}

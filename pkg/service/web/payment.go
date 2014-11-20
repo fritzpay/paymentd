@@ -491,7 +491,7 @@ func (h *Handler) servePaymentHandler(p *payment.Payment, method *payment_method
 			"projectID":       p.ProjectID(),
 			"paymentID":       p.ID(),
 			"paymentMethodID": method.ID,
-			"providerID":      method.Provider.ID,
+			"providerName":    method.Provider.Name,
 		})
 		driver, err := h.providerService.Driver(method)
 		if err != nil {

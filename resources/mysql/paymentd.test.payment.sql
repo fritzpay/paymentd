@@ -31,10 +31,8 @@ ENGINE = InnoDB;
 DROP TABLE IF EXISTS `provider` ;
 
 CREATE TABLE IF NOT EXISTS `provider` (
-  `id` INT UNSIGNED NOT NULL,
   `name` VARCHAR(64) NOT NULL,
-  PRIMARY KEY (`id`),
-  UNIQUE INDEX `name_UNIQUE` (`name` ASC))
+  PRIMARY KEY (`name`))
 ENGINE = InnoDB;
 
 
@@ -46,17 +44,17 @@ DROP TABLE IF EXISTS `payment_method` ;
 CREATE TABLE IF NOT EXISTS `payment_method` (
   `id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
   `project_id` INT UNSIGNED NOT NULL,
-  `provider_id` INT UNSIGNED NOT NULL,
+  `provider` VARCHAR(64) NOT NULL,
   `method_key` VARCHAR(64) NOT NULL,
   `created` DATETIME NOT NULL,
   `created_by` VARCHAR(64) NOT NULL,
   PRIMARY KEY (`id`),
   INDEX `fk_payment_method_project_id_idx` (`project_id` ASC),
-  INDEX `fk_payment_method_provider_id_idx` (`provider_id` ASC),
-  UNIQUE INDEX `method_key` (`project_id` ASC, `provider_id` ASC, `method_key` ASC),
-  CONSTRAINT `fk_payment_method_provider_id`
-    FOREIGN KEY (`provider_id`)
-    REFERENCES `provider` (`id`)
+  UNIQUE INDEX `method_key` (`project_id` ASC, `provider` ASC, `method_key` ASC),
+  INDEX `fk_payment_method_provider_idx` (`provider` ASC),
+  CONSTRAINT `fk_payment_method_provider`
+    FOREIGN KEY (`provider`)
+    REFERENCES `provider` (`name`)
     ON DELETE RESTRICT
     ON UPDATE CASCADE)
 ENGINE = InnoDB;
@@ -331,7 +329,7 @@ SET UNIQUE_CHECKS=@OLD_UNIQUE_CHECKS;
 -- Data for table `provider`
 -- -----------------------------------------------------
 START TRANSACTION;
-INSERT INTO `provider` (`id`, `name`) VALUES (1, 'fritzpay');
+INSERT INTO `provider` (`name`) VALUES ('fritzpay');
 INSERT INTO `currency` (`code_iso_4217`) VALUES ('EUR');
 
 COMMIT;
