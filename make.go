@@ -15,6 +15,11 @@ import (
 	"log"
 	"os"
 	"os/exec"
+	"path/filepath"
+)
+
+const (
+	paymentdPkg = "github.com/fritzpay/paymentd"
 )
 
 var (
@@ -31,9 +36,11 @@ var dependencies = []string{
 	"github.com/tools/godep",
 }
 
+var pkgPath string
+
 var installPkgs = []string{
-	"github.com/fritzpay/paymentd/cmd/paymentd",
-	"github.com/fritzpay/paymentd/cmd/paymentdctl",
+	paymentdPkg + "/cmd/paymentd",
+	paymentdPkg + "/cmd/paymentdctl",
 }
 
 func main() {
@@ -44,6 +51,13 @@ func main() {
 	flag.Parse()
 
 	log.SetFlags(0)
+
+	var err error
+	pkgPath, err = goPkgPath(paymentdPkg)
+	if err != nil {
+		log.Printf("error determining pkg path: %v", err)
+		os.Exit(1)
+	}
 
 	installDependencies()
 	if test {
@@ -90,7 +104,13 @@ func installDependencies() {
 	if verbose {
 		log.Print("resolving dependencies...")
 	}
-	cmd := exec.Command("godep", args...)
+	godepBin, err := goBin("godep")
+	if err != nil {
+		log.Printf("error on Godep install. cannot find binary: %v", err)
+		os.Exit(1)
+	}
+	cmd := exec.Command(godepBin, args...)
+	cmd.Dir = pkgPath
 	setCmdIO(cmd)
 	if err := cmd.Run(); err != nil {
 		log.Printf("error resolving dependencies: %v\n%s", err, output.String())
@@ -115,6 +135,7 @@ func runTests() {
 	for _, cArgs := range cmds {
 		a := append(cArgs, "./...")
 		cmd := exec.Command("go", a...)
+		cmd.Dir = pkgPath
 		setCmdIO(cmd)
 		if err := cmd.Run(); err != nil {
 			log.Printf("error on tests: %v\n%s", err, output.String())
@@ -142,4 +163,47 @@ func installBinaries() {
 			os.Exit(1)
 		}
 	}
+}
+
+func goBin(bin string) (string, error) {
+	gopath := os.Getenv("GOPATH")
+	if gopath == "" {
+		return "", os.ErrNotExist
+	}
+	for _, p := range filepath.SplitList(gopath) {
+		dir := filepath.Join(p, "bin", filepath.FromSlash(bin))
+		fi, err := os.Stat(dir)
+		if os.IsNotExist(err) {
+			continue
+		}
+		if err != nil {
+			return "", err
+		}
+		if m := fi.Mode(); !m.IsDir() && m&0111 != 0 {
+			return dir, nil
+		}
+	}
+	return "", os.ErrNotExist
+}
+
+func goPkgPath(pkg string) (string, error) {
+	gopath := os.Getenv("GOPATH")
+	if gopath == "" {
+		return "", os.ErrNotExist
+	}
+	for _, p := range filepath.SplitList(gopath) {
+		dir := filepath.Join(p, "src", filepath.FromSlash(pkg))
+		fi, err := os.Stat(dir)
+		if os.IsNotExist(err) {
+			continue
+		}
+		if err != nil {
+			return "", err
+		}
+		if !fi.IsDir() {
+			continue
+		}
+		return dir, nil
+	}
+	return "", os.ErrNotExist
 }
