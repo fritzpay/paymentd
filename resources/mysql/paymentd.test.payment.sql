@@ -181,6 +181,7 @@ CREATE TABLE IF NOT EXISTS `payment_metadata` (
   `value` TEXT NULL,
   PRIMARY KEY (`project_id`, `payment_id`, `name`, `timestamp`),
   INDEX `fk_payment_metadata_payment_id_idx` (`payment_id` ASC),
+  INDEX `timestamp` (`project_id` ASC, `payment_id` ASC, `timestamp` ASC),
   CONSTRAINT `fk_payment_metadata_payment_id`
     FOREIGN KEY (`payment_id`)
     REFERENCES `payment` (`id`)
