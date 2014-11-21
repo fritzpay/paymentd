@@ -47,7 +47,7 @@ func main() {
 	flag.StringVar(&cfgFileName, "c", "", "config file name to use")
 	flag.Parse()
 
-	env.SetRuntime()
+	setEnv()
 
 	log = env.Log.New(log15.Ctx{
 		"AppName":    AppName,
