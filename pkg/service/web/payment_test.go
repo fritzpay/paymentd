@@ -164,8 +164,10 @@ func TestPayment(t *testing.T) {
 														So(wr.StatusCode, ShouldEqual, http.StatusOK)
 													})
 
-													Convey("When retrieving the payment", func() {
+													Convey("When retrieving the payment with metadata", func() {
 														pRet, err := payment.PaymentByIDDB(db, p.PaymentID())
+														So(err, ShouldBeNil)
+														err = payment.PaymentMetadataDB(db, pRet)
 														So(err, ShouldBeNil)
 
 														Convey("The metadata should be preserved", func() {

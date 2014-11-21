@@ -291,6 +291,12 @@ func (h *Handler) PaymentHandler() http.Handler {
 			"projectID": p.ProjectID(),
 			"paymentID": p.ID(),
 		})
+		err = payment.PaymentMetadataTx(tx, p)
+		if err != nil {
+			log.Error("error retrieving payment metadata", log15.Ctx{"err": err})
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
 		if Debug {
 			log.Debug("handling payment...")
 		}

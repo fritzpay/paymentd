@@ -208,11 +208,8 @@ WHERE
 	)
 `
 
-func PaymentMetadataTx(db *sql.Tx, p *Payment) error {
-	rows, err := db.Query(selectPaymentMetadata, p.ProjectID(), p.ID())
-	if err != nil {
-		return err
-	}
+func scanPaymentMetadata(rows *sql.Rows, p *Payment) error {
+	var err error
 	meta := make(map[string]string)
 	var k, v string
 	for rows.Next() {
@@ -227,6 +224,22 @@ func PaymentMetadataTx(db *sql.Tx, p *Payment) error {
 	err = rows.Err()
 	rows.Close()
 	return err
+}
+
+func PaymentMetadataTx(db *sql.Tx, p *Payment) error {
+	rows, err := db.Query(selectPaymentMetadata, p.ProjectID(), p.ID())
+	if err != nil {
+		return err
+	}
+	return scanPaymentMetadata(rows, p)
+}
+
+func PaymentMetadataDB(db *sql.DB, p *Payment) error {
+	rows, err := db.Query(selectPaymentMetadata, p.ProjectID(), p.ID())
+	if err != nil {
+		return err
+	}
+	return scanPaymentMetadata(rows, p)
 }
 
 const insertPaymentMetadata = `
