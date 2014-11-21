@@ -67,16 +67,6 @@ func (s *Service) doNotify(c Callbacker, paymentTx *payment.PaymentTransaction) 
 		"callbackProjectKey":          cbProjectKey,
 	})
 	log.Info("notifying...")
-	notF, err := notification.NotificationByVersion(cbAPIVersion)
-	if err != nil {
-		log.Error("error retrieving notification by version", log15.Ctx{"err": err})
-		return
-	}
-	not, err := notF(s.EncodedPaymentID(paymentTx.Payment.PaymentID()), paymentTx.Payment)
-	if err != nil {
-		log.Error("error creating notification", log15.Ctx{"err": err})
-		return
-	}
 	projectKey, err := project.ProjectKeyByKeyDB(s.ctx.PrincipalDB(service.ReadOnly), cbProjectKey)
 	if err != nil {
 		if err == project.ErrProjectKeyNotFound {
@@ -88,6 +78,23 @@ func (s *Service) doNotify(c Callbacker, paymentTx *payment.PaymentTransaction) 
 	}
 	if !projectKey.IsValid() {
 		log.Warn("cannot notify with invalid project key", log15.Ctx{"projectKey": projectKey})
+		return
+	}
+	// metadata
+	err = payment.PaymentMetadataDB(s.ctx.PaymentDB(service.ReadOnly), paymentTx.Payment)
+	if err != nil {
+		log.Error("error retrieving payment metadata", log15.Ctx{"err": err})
+		return
+	}
+	// create new notification
+	notF, err := notification.NotificationByVersion(cbAPIVersion)
+	if err != nil {
+		log.Error("error retrieving notification by version", log15.Ctx{"err": err})
+		return
+	}
+	not, err := notF(s.EncodedPaymentID(paymentTx.Payment.PaymentID()), paymentTx.Payment)
+	if err != nil {
+		log.Error("error creating notification", log15.Ctx{"err": err})
 		return
 	}
 	// balance

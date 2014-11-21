@@ -83,49 +83,47 @@ func TestPaymentNotification(t *testing.T) {
 
 										Convey("When creating a transaction", func() {
 											So(s.IsProcessablePayment(p), ShouldBeTrue)
-											paymentTx = p.NewTransaction(payment.PaymentStatusOpen)
+											var commitIntent paymentService.CommitIntentFunc
+											paymentTx, commitIntent, err = s.IntentOpen(p, 500*time.Millisecond)
+											So(err, ShouldBeNil)
+											So(commitIntent, ShouldNotBeNil)
 											So(paymentTx.Timestamp.UnixNano(), ShouldNotEqual, 0)
 											err = s.SetPaymentTransaction(tx, paymentTx)
+											So(err, ShouldBeNil)
 
-											Convey("It should succeed", func() {
+											Convey("When committing the transaction", func() {
+												err = tx.Commit()
 												So(err, ShouldBeNil)
 
-												Convey("When committing the transaction", func() {
-													err = tx.Commit()
-													Convey("It should succeed", func() {
-														So(err, ShouldBeNil)
+												Convey("When requesting a notification", func() {
+													commitIntent()
 
-														Convey("When requesting a notification", func() {
-															s.Notify <- paymentTx
-
-															Convey("A notification should be sent", func() {
+													Convey("A notification should be sent", func() {
+														select {
+														case <-srvOk:
+															So(req, ShouldNotBeNil)
+														case <-time.After(time.Second):
+															t.Errorf("request timeout on %s", testSrv.URL)
+															close(srvOk)
+														drain:
+															for {
 																select {
-																case <-srvOk:
-																	So(req, ShouldNotBeNil)
-																case <-time.After(time.Second):
-																	t.Errorf("request timeout on %s", testSrv.URL)
-																	close(srvOk)
-																drain:
-																	for {
-																		select {
-																		case msg := <-logs:
-																			t.Logf("%v", msg)
-																		default:
-																			break drain
-																		}
-																	}
+																case msg := <-logs:
+																	t.Logf("%v", msg)
+																default:
+																	break drain
 																}
+															}
+														}
 
-																Convey("The notification should contain the transaction", func() {
-																	not := &notification.Notification{}
-																	dec := json.NewDecoder(bytes.NewBuffer(body))
-																	err := dec.Decode(not)
-																	So(err, ShouldBeNil)
+														Convey("The notification should contain the transaction", func() {
+															not := &notification.Notification{}
+															dec := json.NewDecoder(bytes.NewBuffer(body))
+															err := dec.Decode(not)
+															So(err, ShouldBeNil)
 
-																	So(not.TransactionTimestamp, ShouldNotEqual, 0)
-																	So(not.Status, ShouldEqual, payment.PaymentStatusOpen)
-																})
-															})
+															So(not.TransactionTimestamp, ShouldNotEqual, 0)
+															So(not.Status, ShouldEqual, payment.PaymentStatusOpen)
 														})
 													})
 												})

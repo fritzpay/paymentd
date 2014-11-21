@@ -2,6 +2,7 @@ package paypal_rest
 
 import (
 	"database/sql"
+	paymentService "github.com/fritzpay/paymentd/pkg/service/payment"
 	"net/http"
 	"time"
 
@@ -90,9 +91,17 @@ func (d *Driver) CancelHandler() http.Handler {
 			}
 		}
 		var paymentTx *payment.PaymentTransaction
+		var commitIntent paymentService.CommitIntentFunc
 		if p.Status != payment.PaymentStatusCancelled {
-			paymentTx = p.NewTransaction(payment.PaymentStatusCancelled)
-			paymentTx.Amount = 0
+			if Debug {
+				log.Debug("intent cancel")
+			}
+			paymentTx, commitIntent, err = d.paymentService.IntentCancel(p, 500*time.Millisecond)
+			if err != nil {
+				log.Error("error on intent payment cancel", log15.Ctx{"err": err})
+				d.PaymentErrorHandler(p).ServeHTTP(w, r)
+				return
+			}
 			err = d.paymentService.SetPaymentTransaction(tx, paymentTx)
 			if err != nil {
 				log.Error("error creating payment transaction", log15.Ctx{"err": err})
@@ -110,8 +119,11 @@ func (d *Driver) CancelHandler() http.Handler {
 		}
 
 		// do notify on new payment tx
-		if paymentTx != nil {
-			d.paymentService.Notify <- paymentTx
+		if commitIntent != nil {
+			if Debug {
+				log.Debug("intent commit", log15.Ctx{"commitIntent": commitIntent})
+			}
+			commitIntent()
 		}
 
 		d.CancelPageHandler(p).ServeHTTP(w, r)
