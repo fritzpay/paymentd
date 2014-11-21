@@ -271,3 +271,63 @@ func TestPaymentTokenGenerationSQL(t *testing.T) {
 		}))
 	}))
 }
+
+func TestPaymentMetadata(t *testing.T) {
+	Convey("Given a payment DB", t, testutil.WithPaymentDB(t, func(db *sql.DB) {
+		Reset(func() {
+			db.Close()
+		})
+		Convey("Given a principal DB", testutil.WithPrincipalDB(t, func(prDB *sql.DB) {
+			Reset(func() {
+				prDB.Close()
+			})
+			Convey("Given a test project", WithTestProject(db, prDB, func(proj *project.Project) {
+				Convey("Given a transaction", func() {
+					tx, err := db.Begin()
+					So(err, ShouldBeNil)
+
+					Reset(func() {
+						err = tx.Rollback()
+						So(err, ShouldBeNil)
+					})
+
+					Convey("Given a test payment", WithTestPayment(tx, proj, func(p *payment.Payment) {
+						Convey("When adding metadata", func() {
+							p.Metadata = map[string]string{"metadataEntry": "metadataValue"}
+							err = payment.InsertPaymentMetadataTx(tx, p)
+							So(err, ShouldBeNil)
+
+							Convey("When retrieving the payment", func() {
+								pRet, err := payment.PaymentByIDTx(tx, p.PaymentID())
+								So(err, ShouldBeNil)
+
+								Convey("It should return the metadata", func() {
+									So(pRet.Metadata, ShouldNotBeNil)
+									So(pRet.Metadata["metadataEntry"], ShouldEqual, "metadataValue")
+
+									Convey("When adding an additional metadata entry", func() {
+										pRet.Metadata["second"] = "me"
+										err = payment.InsertPaymentMetadataTx(tx, pRet)
+										So(err, ShouldBeNil)
+
+										Convey("When retrieving the payment", func() {
+											p, err = payment.PaymentByIDTx(tx, pRet.PaymentID())
+											So(err, ShouldBeNil)
+
+											Convey("It should have both entries", func() {
+												So(p.Metadata, ShouldNotBeNil)
+												So(len(p.Metadata), ShouldEqual, 2)
+												So(p.Metadata["metadataEntry"], ShouldEqual, "metadataValue")
+												So(p.Metadata["second"], ShouldEqual, "me")
+											})
+										})
+									})
+								})
+							})
+						})
+					}))
+				})
+			}))
+		}))
+	}))
+}
