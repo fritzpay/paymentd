@@ -291,6 +291,12 @@ func (h *Handler) PaymentHandler() http.Handler {
 			"projectID": p.ProjectID(),
 			"paymentID": p.ID(),
 		})
+		err = payment.PaymentMetadataTx(tx, p)
+		if err != nil {
+			log.Error("error retrieving payment metadata", log15.Ctx{"err": err})
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
 		if Debug {
 			log.Debug("handling payment...")
 		}
@@ -361,15 +367,18 @@ func (h *Handler) PaymentHandler() http.Handler {
 		// cannot process payment with the information we collected
 		if !h.paymentService.IsProcessablePayment(p) {
 			log.Error("payment requested but not processable. not recoverable")
-			w.WriteHeader(http.StatusConflict)
+			w.WriteHeader(http.StatusInternalServerError)
 			return
 		}
 		var paymentTx *payment.PaymentTransaction
 		// payment is not initialized, set open status
 		if !h.paymentService.IsInitialized(p) {
-			// open transaction, ledger is -1 * amount (open payment has negative balance)
-			paymentTx = p.NewTransaction(payment.PaymentStatusOpen)
-			paymentTx.Amount *= -1
+			paymentTx, err = h.paymentService.IntentOpen(p, 500*time.Millisecond)
+			if err != nil {
+				log.Error("error opening payment", log15.Ctx{"err": err})
+				w.WriteHeader(http.StatusConflict)
+				return
+			}
 			err = h.paymentService.SetPaymentTransaction(tx, paymentTx)
 			if err != nil {
 				if err == paymentService.ErrDBLockTimeout {
