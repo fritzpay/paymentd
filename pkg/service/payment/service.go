@@ -73,6 +73,24 @@ const (
 	PaymentTokenMaxAgeDefault = time.Minute * 15
 )
 
+// IntentWorker is the primary means of synchronizing and controlling changes on payment
+// states.
+//
+// IntentWorkers are registered with the payment service via the Service.RegiserIntentWorker
+// method.
+//
+// Whenever another service or process wishes to change the state of a payment, it should
+// do so by invoking one of the Intent* methods. These methods will create the
+// matching PaymentTransaction types and start the intent procedure.
+//
+// PreIntent is invoked prior to the intent creation. Any errors sent through the res channel
+// will cancel the intent procedure and the calling service will receive the first
+// encountered error. Once the done channel is closed, the intent procedure won't accept any
+// results of the IntentWorker anymore. This is usually due to timeout.
+//
+// PostIntent is invoked concurrently right before the Intent* methods will return the
+// matching Transaction. At this point the intent cannot be cancelled. Any errors sent
+// through the returned channel will be logged.
 type IntentWorker interface {
 	PreIntent(p payment.Payment, paymentTx payment.PaymentTransaction, done <-chan struct{}, res chan<- error)
 	PostIntent(p payment.Payment, paymentTx payment.PaymentTransaction) <-chan error
@@ -352,21 +370,18 @@ func (s *Service) PaymentTransaction(tx *sql.Tx, p *payment.Payment) (*payment.P
 	return payment.PaymentTransactionCurrentTx(tx, p)
 }
 
-func (s *Service) IntentOpen(p *payment.Payment, timeout time.Duration) (*payment.PaymentTransaction, error) {
+func (s *Service) handleIntent(p *payment.Payment, paymentTx *payment.PaymentTransaction, timeout time.Duration) (*payment.PaymentTransaction, error) {
 	if deadline, ok := s.ctx.Deadline(); ok {
 		if time.Now().Add(timeout).After(deadline) {
 			return nil, ErrIntentTimeout
 		}
 	}
 
-	paymentTx := p.NewTransaction(payment.PaymentStatusOpen)
-	paymentTx.Amount = paymentTx.Amount * -1
-
 	s.mIntent.RLock()
-	if len(s.intents["open"]) > 0 {
+	if len(s.intents[paymentTx.Status.String()]) > 0 {
 		done := make(chan struct{})
 		c := make(chan error, 1)
-		for _, w := range s.intents["open"] {
+		for _, w := range s.intents[paymentTx.Status.String()] {
 			go w.PreIntent(*p, *paymentTx, done, c)
 		}
 		select {
@@ -396,7 +411,7 @@ func (s *Service) IntentOpen(p *payment.Payment, timeout time.Duration) (*paymen
 					err, ok := <-c
 					if ok && err != nil {
 						s.log.Warn("error on post intent action", log15.Ctx{
-							"intent": "open",
+							"intent": paymentTx.Status.String(),
 							"err":    err,
 						})
 					}
@@ -410,6 +425,17 @@ func (s *Service) IntentOpen(p *payment.Payment, timeout time.Duration) (*paymen
 	s.mIntent.RUnlock()
 
 	return paymentTx, nil
+}
+
+func (s *Service) IntentOpen(p *payment.Payment, timeout time.Duration) (*payment.PaymentTransaction, error) {
+	paymentTx := p.NewTransaction(payment.PaymentStatusOpen)
+	paymentTx.Amount = paymentTx.Amount * -1
+	return s.handleIntent(p, paymentTx, timeout)
+}
+
+func (s *Service) IntentPaid(p *payment.Payment, timeout time.Duration) (*payment.PaymentTransaction, error) {
+	paymentTx := p.NewTransaction(payment.PaymentStatusPaid)
+	return s.handleIntent(p, paymentTx, timeout)
 }
 
 // CreatePaymentToken creates a new random payment token

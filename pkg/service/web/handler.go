@@ -136,6 +136,9 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	h.router.ServeHTTP(wr, r)
 }
 
+// debug intent worker
+//
+// This is a demo intent worker for the payment service
 type logIntentWorker struct {
 	log log15.Logger
 }
@@ -145,6 +148,7 @@ func (l *logIntentWorker) PreIntent(
 	paymentTx payment.PaymentTransaction,
 	done <-chan struct{},
 	res chan<- error) {
+	// create a channel to receive errors from the background task
 	c := make(chan error, 1)
 	go func() {
 		l.log.Debug("intent", log15.Ctx{
@@ -153,10 +157,18 @@ func (l *logIntentWorker) PreIntent(
 			"metadata":  p.Metadata,
 		})
 		if p.Metadata != nil && p.Metadata["_fBreakOpen"] != "" {
+			time.Sleep(200 * time.Millisecond)
 			l.log.Debug("breaking")
 			c <- fmt.Errorf("breaking open")
 		}
+		if p.Metadata != nil && p.Metadata["_fBreakOpenLong"] != "" {
+			time.Sleep(time.Second)
+			c <- fmt.Errorf("break long")
+		}
 	}()
+	// either wait for an error from the background task (this could be
+	// unapproved payments, risk violations etc.)
+	// or wait for the done channel to be closed and return
 	select {
 	case err := <-c:
 		res <- err
