@@ -370,21 +370,18 @@ func (s *Service) PaymentTransaction(tx *sql.Tx, p *payment.Payment) (*payment.P
 	return payment.PaymentTransactionCurrentTx(tx, p)
 }
 
-func (s *Service) IntentOpen(p *payment.Payment, timeout time.Duration) (*payment.PaymentTransaction, error) {
+func (s *Service) handleIntent(p *payment.Payment, paymentTx *payment.PaymentTransaction, timeout time.Duration) (*payment.PaymentTransaction, error) {
 	if deadline, ok := s.ctx.Deadline(); ok {
 		if time.Now().Add(timeout).After(deadline) {
 			return nil, ErrIntentTimeout
 		}
 	}
 
-	paymentTx := p.NewTransaction(payment.PaymentStatusOpen)
-	paymentTx.Amount = paymentTx.Amount * -1
-
 	s.mIntent.RLock()
-	if len(s.intents["open"]) > 0 {
+	if len(s.intents[paymentTx.Status.String()]) > 0 {
 		done := make(chan struct{})
 		c := make(chan error, 1)
-		for _, w := range s.intents["open"] {
+		for _, w := range s.intents[paymentTx.Status.String()] {
 			go w.PreIntent(*p, *paymentTx, done, c)
 		}
 		select {
@@ -414,7 +411,7 @@ func (s *Service) IntentOpen(p *payment.Payment, timeout time.Duration) (*paymen
 					err, ok := <-c
 					if ok && err != nil {
 						s.log.Warn("error on post intent action", log15.Ctx{
-							"intent": "open",
+							"intent": paymentTx.Status.String(),
 							"err":    err,
 						})
 					}
@@ -428,6 +425,17 @@ func (s *Service) IntentOpen(p *payment.Payment, timeout time.Duration) (*paymen
 	s.mIntent.RUnlock()
 
 	return paymentTx, nil
+}
+
+func (s *Service) IntentOpen(p *payment.Payment, timeout time.Duration) (*payment.PaymentTransaction, error) {
+	paymentTx := p.NewTransaction(payment.PaymentStatusOpen)
+	paymentTx.Amount = paymentTx.Amount * -1
+	return s.handleIntent(p, paymentTx, timeout)
+}
+
+func (s *Service) IntentPaid(p *payment.Payment, timeout time.Duration) (*payment.PaymentTransaction, error) {
+	paymentTx := p.NewTransaction(payment.PaymentStatusPaid)
+	return s.handleIntent(p, paymentTx, timeout)
 }
 
 // CreatePaymentToken creates a new random payment token
