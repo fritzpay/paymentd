@@ -2,12 +2,14 @@ package web
 
 import (
 	"fmt"
+	"github.com/fritzpay/paymentd/pkg/paymentd/payment"
 	"net/http"
 	"os"
 	"runtime"
+	"time"
 
 	"github.com/fritzpay/paymentd/pkg/service"
-	"github.com/fritzpay/paymentd/pkg/service/payment"
+	paymentService "github.com/fritzpay/paymentd/pkg/service/payment"
 	"github.com/fritzpay/paymentd/pkg/service/provider"
 	"github.com/gorilla/mux"
 	"gopkg.in/inconshreveable/log15.v2"
@@ -23,7 +25,7 @@ type Handler struct {
 
 	router *mux.Router
 
-	paymentService *payment.Service
+	paymentService *paymentService.Service
 	templateDir    string
 	keyChain       *service.Keychain
 
@@ -43,9 +45,14 @@ func NewHandler(ctx *service.Context) (*Handler, error) {
 	var err error
 	cfg := h.ctx.Config()
 
-	h.paymentService, err = payment.NewService(ctx)
+	h.paymentService, err = paymentService.NewService(ctx)
 	if err != nil {
 		return nil, err
+	}
+
+	if Debug {
+		w := &logIntentWorker{log: h.log}
+		h.paymentService.RegisterIntentWorker("open", w)
 	}
 
 	h.providerService, err = provider.NewService(ctx)
@@ -127,4 +134,42 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	service.SetRequestContext(r, h.ctx)
 	defer service.ClearRequestContext(r)
 	h.router.ServeHTTP(wr, r)
+}
+
+type logIntentWorker struct {
+	log log15.Logger
+}
+
+func (l *logIntentWorker) PreIntent(
+	p payment.Payment,
+	paymentTx payment.PaymentTransaction,
+	done <-chan struct{},
+	res chan<- error) {
+	c := make(chan error, 1)
+	go func() {
+		l.log.Debug("intent", log15.Ctx{
+			"paymentID": p.PaymentID(),
+			"status":    paymentTx.Status,
+			"metadata":  p.Metadata,
+		})
+		if p.Metadata != nil && p.Metadata["_fBreakOpen"] != "" {
+			l.log.Debug("breaking")
+			c <- fmt.Errorf("breaking open")
+		}
+	}()
+	select {
+	case err := <-c:
+		res <- err
+	case <-done:
+	}
+}
+
+func (l *logIntentWorker) PostIntent(p payment.Payment, paymentTx payment.PaymentTransaction) <-chan error {
+	l.log.Debug("post intent", log15.Ctx{"paymentID": p.PaymentID(), "status": paymentTx.Status})
+	errors := make(chan error)
+	go func() {
+		<-time.After(100 * time.Millisecond)
+		close(errors)
+	}()
+	return errors
 }

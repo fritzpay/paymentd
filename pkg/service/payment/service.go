@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"errors"
 	"net/http"
+	"sync"
 	"time"
 
 	"github.com/fritzpay/paymentd/pkg/paymentd/payment"
@@ -35,6 +36,8 @@ func (e errorID) Error() string {
 		return "payment method inactive"
 	case ErrInternal:
 		return "internal error"
+	case ErrIntentTimeout:
+		return "intent timeout"
 	default:
 		return "unknown error"
 	}
@@ -57,6 +60,8 @@ const (
 	ErrPaymentMethodInactive
 	// internal error
 	ErrInternal
+	// intent timeout
+	ErrIntentTimeout
 )
 
 const (
@@ -67,6 +72,11 @@ const (
 	// PaymentTokenMaxAgeDefault is the default maximum age of payment tokens
 	PaymentTokenMaxAgeDefault = time.Minute * 15
 )
+
+type IntentWorker interface {
+	PreIntent(p payment.Payment, paymentTx payment.PaymentTransaction, done <-chan struct{}, res chan<- error)
+	PostIntent(p payment.Payment, paymentTx payment.PaymentTransaction) <-chan error
+}
 
 // Service is the payment service
 type Service struct {
@@ -79,6 +89,9 @@ type Service struct {
 
 	tr *http.Transport
 	cl *http.Client
+
+	mIntent sync.RWMutex
+	intents map[string][]IntentWorker
 }
 
 // NewService creates a new payment service
@@ -88,6 +101,8 @@ func NewService(ctx *service.Context) (*Service, error) {
 		log: ctx.Log().New(log15.Ctx{
 			"pkg": "github.com/fritzpay/paymentd/pkg/service/payment",
 		}),
+
+		intents: make(map[string][]IntentWorker),
 	}
 
 	var err error
@@ -147,6 +162,15 @@ func (s *Service) handleBackground() {
 			}
 		}
 	}
+}
+
+func (s *Service) RegisterIntentWorker(intent string, worker IntentWorker) {
+	s.mIntent.Lock()
+	if s.intents[intent] == nil {
+		s.intents[intent] = make([]IntentWorker, 0, 16)
+	}
+	s.intents[intent] = append(s.intents[intent], worker)
+	s.mIntent.Unlock()
 }
 
 // EncodedPaymentID returns a payment id with the id part encoded
@@ -326,6 +350,66 @@ func (s *Service) SetPaymentTransaction(tx *sql.Tx, paymentTx *payment.PaymentTr
 // transaction exists (i.e. the payment is uninitialized)
 func (s *Service) PaymentTransaction(tx *sql.Tx, p *payment.Payment) (*payment.PaymentTransaction, error) {
 	return payment.PaymentTransactionCurrentTx(tx, p)
+}
+
+func (s *Service) IntentOpen(p *payment.Payment, timeout time.Duration) (*payment.PaymentTransaction, error) {
+	if deadline, ok := s.ctx.Deadline(); ok {
+		if time.Now().Add(timeout).After(deadline) {
+			return nil, ErrIntentTimeout
+		}
+	}
+
+	paymentTx := p.NewTransaction(payment.PaymentStatusOpen)
+	paymentTx.Amount = paymentTx.Amount * -1
+
+	s.mIntent.RLock()
+	if len(s.intents["open"]) > 0 {
+		done := make(chan struct{})
+		c := make(chan error, 1)
+		for _, w := range s.intents["open"] {
+			go w.PreIntent(*p, *paymentTx, done, c)
+		}
+		select {
+		case <-s.ctx.Done():
+			close(done)
+			s.mIntent.RUnlock()
+			return nil, s.ctx.Err()
+
+		case err := <-c:
+			close(done)
+			s.mIntent.RUnlock()
+			return nil, err
+
+		case <-time.After(timeout):
+			close(done)
+		}
+
+		postDone := make([]<-chan error, len(s.intents["open"]))
+		for i, w := range s.intents["open"] {
+			postDone[i] = w.PostIntent(*p, *paymentTx)
+		}
+		waitFunc := func(wait []<-chan error) {
+			var wg sync.WaitGroup
+			for _, w := range wait {
+				wg.Add(1)
+				go func(c <-chan error) {
+					err, ok := <-c
+					if ok && err != nil {
+						s.log.Warn("error on post intent action", log15.Ctx{
+							"intent": "open",
+							"err":    err,
+						})
+					}
+					wg.Done()
+				}(w)
+			}
+			wg.Wait()
+		}
+		go waitFunc(postDone)
+	}
+	s.mIntent.RUnlock()
+
+	return paymentTx, nil
 }
 
 // CreatePaymentToken creates a new random payment token
