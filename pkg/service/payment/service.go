@@ -464,7 +464,7 @@ func (s *Service) handleIntent(
 				s.mIntent.RLock()
 				for _, w := range s.commitIntents {
 					wg.Add(1)
-					go func() { errC <- w.CommitIntent(paymentTx) }()
+					go func(w CommitIntentWorker) { errC <- w.CommitIntent(paymentTx) }(w)
 				}
 				s.mIntent.RUnlock()
 				go func() {
