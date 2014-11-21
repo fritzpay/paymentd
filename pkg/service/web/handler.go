@@ -52,7 +52,8 @@ func NewHandler(ctx *service.Context) (*Handler, error) {
 
 	if Debug {
 		w := &logIntentWorker{log: h.log}
-		h.paymentService.RegisterIntentWorker("open", w)
+		h.paymentService.RegisterPreIntentWorker(w)
+		h.paymentService.RegisterPostIntentWorker(w)
 	}
 
 	h.providerService, err = provider.NewService(ctx)
@@ -148,6 +149,9 @@ func (l *logIntentWorker) PreIntent(
 	paymentTx payment.PaymentTransaction,
 	done <-chan struct{},
 	res chan<- error) {
+	if paymentTx.Status != payment.PaymentStatusOpen {
+		return
+	}
 	// create a channel to receive errors from the background task
 	c := make(chan error, 1)
 	go func() {

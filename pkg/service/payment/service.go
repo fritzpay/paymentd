@@ -66,6 +66,7 @@ const (
 
 const (
 	notificationBufferSize = 16
+	commitIntentTimeout    = time.Minute
 )
 
 const (
@@ -91,10 +92,19 @@ const (
 // PostIntent is invoked concurrently right before the Intent* methods will return the
 // matching Transaction. At this point the intent cannot be cancelled. Any errors sent
 // through the returned channel will be logged.
-type IntentWorker interface {
+type PreIntentWorker interface {
 	PreIntent(p payment.Payment, paymentTx payment.PaymentTransaction, done <-chan struct{}, res chan<- error)
+}
+
+type PostIntentWorker interface {
 	PostIntent(p payment.Payment, paymentTx payment.PaymentTransaction) <-chan error
 }
+
+type CommitIntentWorker interface {
+	CommitIntent(paymentTx *payment.PaymentTransaction) error
+}
+
+type CommitIntentFunc func()
 
 // Service is the payment service
 type Service struct {
@@ -103,13 +113,13 @@ type Service struct {
 
 	idCoder *payment.IDEncoder
 
-	Notify chan *payment.PaymentTransaction
-
 	tr *http.Transport
 	cl *http.Client
 
-	mIntent sync.RWMutex
-	intents map[string][]IntentWorker
+	mIntent       sync.RWMutex
+	preIntents    []PreIntentWorker
+	postIntents   []PostIntentWorker
+	commitIntents []CommitIntentWorker
 }
 
 // NewService creates a new payment service
@@ -120,7 +130,9 @@ func NewService(ctx *service.Context) (*Service, error) {
 			"pkg": "github.com/fritzpay/paymentd/pkg/service/payment",
 		}),
 
-		intents: make(map[string][]IntentWorker),
+		preIntents:    make([]PreIntentWorker, 0, 16),
+		postIntents:   make([]PostIntentWorker, 0, 16),
+		commitIntents: make([]CommitIntentWorker, 0, 16),
 	}
 
 	var err error
@@ -131,8 +143,6 @@ func NewService(ctx *service.Context) (*Service, error) {
 		s.log.Error("error initializing payment ID encoder", log15.Ctx{"err": err})
 		return nil, err
 	}
-
-	s.Notify = make(chan *payment.PaymentTransaction, notificationBufferSize)
 
 	s.tr = &http.Transport{}
 	s.cl = &http.Client{
@@ -152,6 +162,8 @@ func NewService(ctx *service.Context) (*Service, error) {
 		},
 	}
 
+	s.RegisterCommitIntentWorker(&intentNotify{s})
+
 	go s.handleBackground()
 
 	return s, nil
@@ -169,25 +181,25 @@ func (s *Service) handleBackground() {
 			s.log.Info("closing idle connections...")
 			s.tr.CloseIdleConnections()
 			return
-
-		case paymentTx := <-s.Notify:
-			if paymentTx == nil {
-				break
-			}
-			err := s.notify(paymentTx)
-			if err != nil {
-				s.log.Error("error on callback", log15.Ctx{"err": err})
-			}
 		}
 	}
 }
 
-func (s *Service) RegisterIntentWorker(intent string, worker IntentWorker) {
+func (s *Service) RegisterPreIntentWorker(worker PreIntentWorker) {
 	s.mIntent.Lock()
-	if s.intents[intent] == nil {
-		s.intents[intent] = make([]IntentWorker, 0, 16)
-	}
-	s.intents[intent] = append(s.intents[intent], worker)
+	s.preIntents = append(s.preIntents, worker)
+	s.mIntent.Unlock()
+}
+
+func (s *Service) RegisterPostIntentWorker(worker PostIntentWorker) {
+	s.mIntent.Lock()
+	s.postIntents = append(s.postIntents, worker)
+	s.mIntent.Unlock()
+}
+
+func (s *Service) RegisterCommitIntentWorker(worker CommitIntentWorker) {
+	s.mIntent.Lock()
+	s.commitIntents = append(s.commitIntents, worker)
 	s.mIntent.Unlock()
 }
 
@@ -370,40 +382,56 @@ func (s *Service) PaymentTransaction(tx *sql.Tx, p *payment.Payment) (*payment.P
 	return payment.PaymentTransactionCurrentTx(tx, p)
 }
 
-func (s *Service) handleIntent(p *payment.Payment, paymentTx *payment.PaymentTransaction, timeout time.Duration) (*payment.PaymentTransaction, error) {
+func (s *Service) handleIntent(
+	p *payment.Payment,
+	paymentTx *payment.PaymentTransaction,
+	timeout time.Duration) (*payment.PaymentTransaction, CommitIntentFunc, error) {
+
 	if deadline, ok := s.ctx.Deadline(); ok {
 		if time.Now().Add(timeout).After(deadline) {
-			return nil, ErrIntentTimeout
+			return nil, nil, ErrIntentTimeout
 		}
 	}
 
+	// no-op
+	var commitFunc CommitIntentFunc
+
 	s.mIntent.RLock()
-	if len(s.intents[paymentTx.Status.String()]) > 0 {
+	if len(s.preIntents) > 0 {
+		// pre-intent
 		done := make(chan struct{})
 		c := make(chan error, 1)
-		for _, w := range s.intents[paymentTx.Status.String()] {
+		for _, w := range s.preIntents {
+			// run all preintents in goroutines
 			go w.PreIntent(*p, *paymentTx, done, c)
 		}
+		// wait
 		select {
+		// context cancelled
 		case <-s.ctx.Done():
 			close(done)
 			s.mIntent.RUnlock()
-			return nil, s.ctx.Err()
+			return nil, nil, s.ctx.Err()
 
+		// error received
 		case err := <-c:
 			close(done)
 			s.mIntent.RUnlock()
-			return nil, err
+			return nil, nil, err
 
+		// continue
 		case <-time.After(timeout):
 			close(done)
 		}
+	}
 
-		postDone := make([]<-chan error, len(s.intents["open"]))
-		for i, w := range s.intents["open"] {
+	if len(s.postIntents) > 0 {
+		// post-intent
+		postDone := make([]<-chan error, len(s.postIntents))
+		for i, w := range s.postIntents {
 			postDone[i] = w.PostIntent(*p, *paymentTx)
 		}
-		waitFunc := func(wait []<-chan error) {
+		go func(wait []<-chan error) {
 			var wg sync.WaitGroup
 			for _, w := range wait {
 				wg.Add(1)
@@ -419,21 +447,64 @@ func (s *Service) handleIntent(p *payment.Payment, paymentTx *payment.PaymentTra
 				}(w)
 			}
 			wg.Wait()
-		}
-		go waitFunc(postDone)
+		}(postDone)
+	}
+
+	if len(s.commitIntents) > 0 {
+		// commit intent
+		commit := make(chan struct{})
+		commitFunc = CommitIntentFunc(func() {
+			close(commit)
+		})
+		errC := make(chan error)
+		go func() {
+			select {
+			case <-commit:
+				var wg sync.WaitGroup
+				s.mIntent.RLock()
+				for _, w := range s.commitIntents {
+					wg.Add(1)
+					go func() { errC <- w.CommitIntent(paymentTx) }()
+				}
+				s.mIntent.RUnlock()
+				go func() {
+					for {
+						err, ok := <-errC
+						if !ok {
+							return
+						}
+						wg.Done()
+						if err != nil {
+							s.log.Warn("error on commit intent action", log15.Ctx{
+								"intent": paymentTx.Status.String(),
+								"err":    err,
+							})
+						}
+					}
+				}()
+				wg.Wait()
+			case <-time.After(commitIntentTimeout):
+			}
+		}()
 	}
 	s.mIntent.RUnlock()
 
-	return paymentTx, nil
+	return paymentTx, commitFunc, nil
 }
 
-func (s *Service) IntentOpen(p *payment.Payment, timeout time.Duration) (*payment.PaymentTransaction, error) {
+func (s *Service) IntentOpen(p *payment.Payment, timeout time.Duration) (*payment.PaymentTransaction, CommitIntentFunc, error) {
 	paymentTx := p.NewTransaction(payment.PaymentStatusOpen)
 	paymentTx.Amount = paymentTx.Amount * -1
 	return s.handleIntent(p, paymentTx, timeout)
 }
 
-func (s *Service) IntentPaid(p *payment.Payment, timeout time.Duration) (*payment.PaymentTransaction, error) {
+func (s *Service) IntentCancel(p *payment.Payment, timeout time.Duration) (*payment.PaymentTransaction, CommitIntentFunc, error) {
+	paymentTx := p.NewTransaction(payment.PaymentStatusCancelled)
+	paymentTx.Amount = 0
+	return s.handleIntent(p, paymentTx, timeout)
+}
+
+func (s *Service) IntentPaid(p *payment.Payment, timeout time.Duration) (*payment.PaymentTransaction, CommitIntentFunc, error) {
 	paymentTx := p.NewTransaction(payment.PaymentStatusPaid)
 	return s.handleIntent(p, paymentTx, timeout)
 }
@@ -481,4 +552,12 @@ func (s *Service) DeletePaymentToken(tx *sql.Tx, token string) error {
 		return ErrDB
 	}
 	return nil
+}
+
+type intentNotify struct {
+	s *Service
+}
+
+func (n *intentNotify) CommitIntent(paymentTx *payment.PaymentTransaction) error {
+	return n.s.notify(paymentTx)
 }

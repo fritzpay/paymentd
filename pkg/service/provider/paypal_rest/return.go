@@ -185,6 +185,13 @@ func (d *Driver) executePayment(cfg *Config, reqURL *url.URL, p *payment.Payment
 	})
 	log.Debug("executing payment...")
 
+	paymentTx, commitIntent, err := d.paymentService.IntentPaid(p, 500*time.Millisecond)
+	if err != nil {
+		log.Error("error on intent paid", log15.Ctx{"err": err})
+		d.setPayPalError(p, nil)
+		return
+	}
+
 	req, err := http.NewRequest("POST", reqURL.String(), strings.NewReader(body))
 	if err != nil {
 		log.Error("error creating execute payment request", log15.Ctx{"err": err})
@@ -250,7 +257,7 @@ func (d *Driver) executePayment(cfg *Config, reqURL *url.URL, p *payment.Payment
 			log.Error("error saving paypal transaction", log15.Ctx{"err": err})
 			return ErrDatabase
 		}
-		paymentTx := p.NewTransaction(payment.PaymentStatusPaid)
+
 		paymentTx.Comment.String, paymentTx.Comment.Valid = "PayPal PaymentID: "+pay.ID, true
 		err = d.paymentService.SetPaymentTransaction(tx, paymentTx)
 		if err != nil {
@@ -264,8 +271,7 @@ func (d *Driver) executePayment(cfg *Config, reqURL *url.URL, p *payment.Payment
 			log.Crit("error on commit", log15.Ctx{"err": err})
 			return ErrDatabase
 		}
-
-		d.paymentService.Notify <- paymentTx
+		commitIntent()
 
 		return nil
 	}
@@ -273,4 +279,5 @@ func (d *Driver) executePayment(cfg *Config, reqURL *url.URL, p *payment.Payment
 	if err != nil {
 		log.Error("error on executing HTTP request", log15.Ctx{"err": err})
 	}
+
 }

@@ -372,8 +372,9 @@ func (h *Handler) PaymentHandler() http.Handler {
 		}
 		var paymentTx *payment.PaymentTransaction
 		// payment is not initialized, set open status
+		var commitIntent paymentService.CommitIntentFunc
 		if !h.paymentService.IsInitialized(p) {
-			paymentTx, err = h.paymentService.IntentOpen(p, 500*time.Millisecond)
+			paymentTx, commitIntent, err = h.paymentService.IntentOpen(p, 500*time.Millisecond)
 			if err != nil {
 				log.Error("error opening payment", log15.Ctx{"err": err})
 				w.WriteHeader(http.StatusConflict)
@@ -408,10 +409,8 @@ func (h *Handler) PaymentHandler() http.Handler {
 			return
 		}
 		commit = true
-
-		// do callback notification when a new payment transaction was created
-		if paymentTx != nil {
-			h.paymentService.Notify <- paymentTx
+		if commitIntent != nil {
+			commitIntent()
 		}
 
 		h.servePaymentHandler(p, method).ServeHTTP(w, r)
