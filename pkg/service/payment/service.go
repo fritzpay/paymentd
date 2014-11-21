@@ -73,6 +73,24 @@ const (
 	PaymentTokenMaxAgeDefault = time.Minute * 15
 )
 
+// IntentWorker is the primary means of synchronizing and controlling changes on payment
+// states.
+//
+// IntentWorkers are registered with the payment service via the Service.RegiserIntentWorker
+// method.
+//
+// Whenever another service or process wishes to change the state of a payment, it should
+// do so by invoking one of the Intent* methods. These methods will create the
+// matching PaymentTransaction types and start the intent procedure.
+//
+// PreIntent is invoked prior to the intent creation. Any errors sent through the res channel
+// will cancel the intent procedure and the calling service will receive the first
+// encountered error. Once the done channel is closed, the intent procedure won't accept any
+// results of the IntentWorker anymore. This is usually due to timeout.
+//
+// PostIntent is invoked concurrently right before the Intent* methods will return the
+// matching Transaction. At this point the intent cannot be cancelled. Any errors sent
+// through the returned channel will be logged.
 type IntentWorker interface {
 	PreIntent(p payment.Payment, paymentTx payment.PaymentTransaction, done <-chan struct{}, res chan<- error)
 	PostIntent(p payment.Payment, paymentTx payment.PaymentTransaction) <-chan error
