@@ -297,8 +297,10 @@ func TestPaymentMetadata(t *testing.T) {
 							err = payment.InsertPaymentMetadataTx(tx, p)
 							So(err, ShouldBeNil)
 
-							Convey("When retrieving the payment", func() {
+							Convey("When retrieving the payment with metadata", func() {
 								pRet, err := payment.PaymentByIDTx(tx, p.PaymentID())
+								So(err, ShouldBeNil)
+								err = payment.PaymentMetadataTx(tx, pRet)
 								So(err, ShouldBeNil)
 
 								Convey("It should return the metadata", func() {
@@ -310,8 +312,10 @@ func TestPaymentMetadata(t *testing.T) {
 										err = payment.InsertPaymentMetadataTx(tx, pRet)
 										So(err, ShouldBeNil)
 
-										Convey("When retrieving the payment", func() {
+										Convey("When retrieving the payment with metadata", func() {
 											p, err = payment.PaymentByIDTx(tx, pRet.PaymentID())
+											So(err, ShouldBeNil)
+											err = payment.PaymentMetadataTx(tx, p)
 											So(err, ShouldBeNil)
 
 											Convey("It should have both entries", func() {

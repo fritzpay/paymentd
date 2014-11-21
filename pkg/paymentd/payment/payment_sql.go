@@ -189,6 +189,46 @@ func InsertPaymentConfigTx(db *sql.Tx, p *Payment) error {
 	return err
 }
 
+const selectPaymentMetadata = `
+SELECT
+	m.name,
+	m.value
+FROM payment_metadata AS m
+WHERE
+	m.project_id = ?
+	AND
+	m.payment_id = ?
+	AND
+	m.timestamp = (
+		SELECT MAX(timestamp) FROM payment_metadata
+		WHERE
+			project_id = m.project_id
+			AND
+			payment_id = m.payment_id
+	)
+`
+
+func PaymentMetadataTx(db *sql.Tx, p *Payment) error {
+	rows, err := db.Query(selectPaymentMetadata, p.ProjectID(), p.ID())
+	if err != nil {
+		return err
+	}
+	meta := make(map[string]string)
+	var k, v string
+	for rows.Next() {
+		err = rows.Scan(&k, &v)
+		if err != nil {
+			rows.Close()
+			return err
+		}
+		meta[k] = v
+	}
+	p.Metadata = meta
+	err = rows.Err()
+	rows.Close()
+	return err
+}
+
 const insertPaymentMetadata = `
 INSERT INTO payment_metadata
 (project_id, payment_id, name, timestamp, value)
