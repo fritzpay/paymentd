@@ -83,8 +83,7 @@ func (a *AdminAPI) PaymentMethodGetRequest() http.Handler {
 // PUT creates new principal
 // POST can be used to change the principals metadata
 func (a *AdminAPI) PaymentMethodRequest() http.Handler {
-
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	h := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		log := a.log.New(log15.Ctx{"method": "PaymentMethodRequest"})
 
@@ -100,6 +99,7 @@ func (a *AdminAPI) PaymentMethodRequest() http.Handler {
 			log.Info("http method not supported", log15.Ctx{"requestMethod": r.Method})
 		}
 	})
+	return a.ctx.RateLimitHandler(h)
 }
 
 func (a *AdminAPI) putNewPaymentMethod(w http.ResponseWriter, r *http.Request) {

@@ -22,8 +22,7 @@ type PrincipalAdminAPIResponse struct {
 // PUT creates new principal
 // POST can be used to change the principals metadata
 func (a *AdminAPI) PrincipalRequest() http.Handler {
-
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	h := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		log := a.log.New(log15.Ctx{"method": "PrincipalRequest"})
 
@@ -37,6 +36,7 @@ func (a *AdminAPI) PrincipalRequest() http.Handler {
 			log.Info("http method not supported", log15.Ctx{"requestMethod": r.Method})
 		}
 	})
+	return a.ctx.RateLimitHandler(h)
 }
 
 // handler to display a specific existing principal

@@ -21,7 +21,6 @@ type ProjectAdminAPIResponse struct {
 
 // return a handler to add and manipulate projects
 func (a *AdminAPI) ProjectRequest() http.Handler {
-
 	h := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 
@@ -40,8 +39,7 @@ func (a *AdminAPI) ProjectRequest() http.Handler {
 			w.WriteHeader(http.StatusMethodNotAllowed)
 		}
 	})
-
-	return h
+	return a.ctx.RateLimitHandler(h)
 }
 
 // return a hanlder to get project items
