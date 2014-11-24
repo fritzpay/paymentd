@@ -141,7 +141,8 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	wr := &ResponseWriter{w: w}
 	service.SetRequestContext(r, h.ctx)
 	defer service.ClearRequestContext(r)
-	service.TimeoutHandler(h.log.Warn, h.timeout, h.router).ServeHTTP(wr, r)
+	h.router.ServeHTTP(wr, r)
+	// service.TimeoutHandler(h.log.Warn, h.timeout, h.router).ServeHTTP(wr, r)
 }
 
 // debug intent worker

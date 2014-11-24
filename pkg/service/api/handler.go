@@ -74,7 +74,8 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}()
 	service.SetRequestContext(r, h.ctx)
 	defer service.ClearRequestContext(r)
-	service.TimeoutHandler(h.log.Warn, h.timeout, h.mux).ServeHTTP(w, r)
+	h.mux.ServeHTTP(w, r)
+	// service.TimeoutHandler(h.log.Warn, h.timeout, h.mux).ServeHTTP(w, r)
 }
 
 func (h *Handler) requireDir(dir string) error {
