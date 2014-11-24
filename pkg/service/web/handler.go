@@ -104,7 +104,7 @@ func (h *Handler) requireDir(dir string) error {
 
 func (h *Handler) registerPayment() error {
 	h.log.Info("registering web payment handler...")
-	h.router.Handle(PaymentPath, h.PaymentHandler()).Methods("GET")
+	h.router.Handle(PaymentPath, h.ctx.RateLimitHandler(h.PaymentHandler())).Methods("GET")
 	return nil
 }
 
