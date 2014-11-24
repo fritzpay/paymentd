@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"net/http"
 
 	"github.com/fritzpay/paymentd/pkg/config"
 	"golang.org/x/net/context"
@@ -25,6 +26,8 @@ type Context struct {
 
 	paymentDBWrite    *sql.DB
 	paymentDBReadOnly *sql.DB
+
+	rateLimit chan struct{}
 }
 
 // Value wraps the Context.Value
@@ -57,6 +60,7 @@ func (ctx *Context) WithValue(key, value interface{}) *Context {
 		principalDBReadOnly: ctx.principalDBReadOnly,
 		paymentDBWrite:      ctx.paymentDBWrite,
 		paymentDBReadOnly:   ctx.paymentDBReadOnly,
+		rateLimit:           ctx.rateLimit,
 	}
 }
 
@@ -166,6 +170,16 @@ func (ctx *Context) registerKeychainFromConfig() error {
 	return nil
 }
 
+func (ctx *Context) RateLimitHandler(parent http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		<-ctx.rateLimit
+		defer func() {
+			ctx.rateLimit <- struct{}{}
+		}()
+		parent.ServeHTTP(w, r)
+	})
+}
+
 // NewContext creates a new service context for use in the service pkg
 func NewContext(ctx context.Context, cfg config.Config, log log15.Logger) (*Context, error) {
 	if log == nil {
@@ -181,6 +195,13 @@ func NewContext(ctx context.Context, cfg config.Config, log log15.Logger) (*Cont
 	err := c.registerKeychainFromConfig()
 	if err != nil {
 		return nil, fmt.Errorf("error loading keys from config: %v", err)
+	}
+	if cfg.Database.MaxOpenConns <= 0 {
+		return nil, fmt.Errorf("invalid value for max open db conns %d", cfg.Database.MaxOpenConns)
+	}
+	c.rateLimit = make(chan struct{}, cfg.Database.MaxOpenConns)
+	for i := 0; i < cfg.Database.MaxOpenConns; i++ {
+		c.rateLimit <- struct{}{}
 	}
 	return c, nil
 }

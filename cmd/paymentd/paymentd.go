@@ -175,12 +175,16 @@ func connectDB(ctx *service.Context) error {
 	if err != nil {
 		return err
 	}
+	principalDBW.SetMaxOpenConns(cfg.Database.MaxOpenConns)
+	principalDBW.SetMaxIdleConns(cfg.Database.MaxIdleConns)
 	var principalDBRO *sql.DB
 	if cfg.Database.Principal.ReadOnly != nil {
 		principalDBRO, err = sql.Open(cfg.Database.Principal.ReadOnly.Type(), cfg.Database.Principal.ReadOnly.DSN())
 		if err != nil {
 			return err
 		}
+		principalDBRO.SetMaxOpenConns(cfg.Database.MaxOpenConns)
+		principalDBRO.SetMaxIdleConns(cfg.Database.MaxIdleConns)
 	}
 	ctx.SetPrincipalDB(principalDBW, principalDBRO)
 
@@ -191,12 +195,16 @@ func connectDB(ctx *service.Context) error {
 	if err != nil {
 		return err
 	}
+	paymentDBW.SetMaxOpenConns(cfg.Database.MaxOpenConns)
+	paymentDBW.SetMaxIdleConns(cfg.Database.MaxIdleConns)
 	var paymentDBRO *sql.DB
 	if cfg.Database.Payment.ReadOnly != nil {
 		paymentDBRO, err = sql.Open(cfg.Database.Payment.ReadOnly.Type(), cfg.Database.Payment.ReadOnly.DSN())
 		if err != nil {
 			return err
 		}
+		paymentDBRO.SetMaxOpenConns(cfg.Database.MaxOpenConns)
+		paymentDBRO.SetMaxIdleConns(cfg.Database.MaxIdleConns)
 	}
 	ctx.SetPaymentDB(paymentDBW, paymentDBRO)
 

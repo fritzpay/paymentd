@@ -70,7 +70,7 @@ func NewService(ctx *service.Context, mux *mux.Router) (*Service, error) {
 		s.log.Error("error registering payment API", log15.Ctx{"err": err})
 		return nil, err
 	}
-	mux.Handle(ServicePath+"/payment", payment.InitPayment()).Methods("POST")
+	mux.Handle(ServicePath+"/payment", ctx.RateLimitHandler(payment.InitPayment())).Methods("POST")
 	mux.Handle(ServicePath+"/payment/paymentId/{paymentId}", payment.GetPayment()).Methods("GET")
 	mux.Handle(ServicePath+"/payment/PaymentId/{paymentId}", payment.GetPayment()).Methods("GET")
 	mux.Handle(ServicePath+"/payment/ident/{ident}", payment.GetPayment()).Methods("GET")
