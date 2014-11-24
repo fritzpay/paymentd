@@ -6,30 +6,34 @@ import (
 )
 
 type ResponseWriter struct {
-	http.ResponseWriter
+	w http.ResponseWriter
 
-	mu             sync.Mutex
-	HTTPStatusCode int
-	HeaderWritten  bool
-	Written        int
+	mu            sync.Mutex
+	statusCode    int
+	headerWritten bool
+	written       int
+}
+
+func (r *ResponseWriter) Header() http.Header {
+	return r.w.Header()
 }
 
 func (r *ResponseWriter) WriteHeader(s int) {
 	r.mu.Lock()
-	if r.HeaderWritten {
+	if r.headerWritten {
 		r.mu.Unlock()
 		return
 	}
-	r.HTTPStatusCode = s
-	r.HeaderWritten = true
+	r.statusCode = s
+	r.headerWritten = true
 	r.mu.Unlock()
-	r.ResponseWriter.WriteHeader(s)
+	r.w.WriteHeader(s)
 }
 
 func (r *ResponseWriter) Write(b []byte) (int, error) {
-	w, err := r.ResponseWriter.Write(b)
+	w, err := r.w.Write(b)
 	r.mu.Lock()
-	r.Written += w
+	r.written += w
 	r.mu.Unlock()
 	return w, err
 }

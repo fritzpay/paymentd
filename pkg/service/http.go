@@ -26,9 +26,9 @@ type timeoutHandler struct {
 
 func (h *timeoutHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	done := make(chan struct{})
-	tw := &timeoutWriter{ResponseWriter: w}
+	tw := &timeoutWriter{w: w}
 	go func() {
-		h.handler.ServeHTTP(w, r)
+		h.handler.ServeHTTP(tw, r)
 		close(done)
 	}()
 	select {
@@ -37,7 +37,7 @@ func (h *timeoutHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	case <-h.timeout():
 		tw.mu.Lock()
 		if !tw.wroteHeader {
-			tw.ResponseWriter.WriteHeader(http.StatusServiceUnavailable)
+			tw.w.WriteHeader(http.StatusServiceUnavailable)
 		}
 		tw.timedOut = true
 		tw.mu.Unlock()
@@ -48,30 +48,35 @@ func (h *timeoutHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 }
 
 type timeoutWriter struct {
-	http.ResponseWriter
+	w http.ResponseWriter
 
 	mu          sync.Mutex
 	timedOut    bool
 	wroteHeader bool
 }
 
+func (w *timeoutWriter) Header() http.Header {
+	w.mu.Lock()
+	defer w.mu.Unlock()
+	return w.w.Header()
+}
+
 func (w *timeoutWriter) Write(p []byte) (int, error) {
 	w.mu.Lock()
-	timedOut := w.timedOut
-	w.mu.Unlock()
-	if timedOut {
+	defer w.mu.Unlock()
+	w.wroteHeader = true
+	if w.timedOut {
 		return 0, ErrTimedOut
 	}
-	return w.ResponseWriter.Write(p)
+	return w.w.Write(p)
 }
 
 func (w *timeoutWriter) WriteHeader(status int) {
 	w.mu.Lock()
+	defer w.mu.Unlock()
 	if w.timedOut || w.wroteHeader {
-		w.mu.Unlock()
 		return
 	}
 	w.wroteHeader = true
-	w.mu.Unlock()
-	w.ResponseWriter.WriteHeader(status)
+	w.w.WriteHeader(status)
 }

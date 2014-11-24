@@ -36,7 +36,7 @@ func NewHandler(ctx *service.Context) (*Handler, error) {
 	// Serve Admin GUI if active and path provided
 	cfg := h.ctx.Config()
 
-	h.timeout, err = cfg.API.Service.WriteTimeout.Duration()
+	h.timeout, err = cfg.API.Timeout.Duration()
 	if err != nil {
 		return nil, err
 	}

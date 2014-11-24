@@ -47,7 +47,7 @@ func NewHandler(ctx *service.Context) (*Handler, error) {
 	var err error
 	cfg := h.ctx.Config()
 
-	h.timeout, err = cfg.Web.Service.WriteTimeout.Duration()
+	h.timeout, err = cfg.Web.Timeout.Duration()
 	if err != nil {
 		return nil, err
 	}
@@ -138,7 +138,7 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			w.WriteHeader(http.StatusInternalServerError)
 		}
 	}()
-	wr := &ResponseWriter{ResponseWriter: w}
+	wr := &ResponseWriter{w: w}
 	service.SetRequestContext(r, h.ctx)
 	defer service.ClearRequestContext(r)
 	service.TimeoutHandler(h.log.Warn, h.timeout, h.router).ServeHTTP(wr, r)
