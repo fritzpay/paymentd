@@ -2,11 +2,12 @@ package web
 
 import (
 	"fmt"
-	"github.com/fritzpay/paymentd/pkg/paymentd/payment"
 	"net/http"
 	"os"
 	"runtime"
 	"time"
+
+	"github.com/fritzpay/paymentd/pkg/paymentd/payment"
 
 	"github.com/fritzpay/paymentd/pkg/service"
 	paymentService "github.com/fritzpay/paymentd/pkg/service/payment"

@@ -3,10 +3,11 @@
 package main
 
 import (
-	"github.com/fritzpay/paymentd/pkg/env"
 	"os"
 	"os/signal"
 	"syscall"
+
+	"github.com/fritzpay/paymentd/pkg/env"
 )
 
 func setEnv() {
