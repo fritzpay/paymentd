@@ -103,18 +103,27 @@ type Config struct {
 	}
 	// Web server config
 	Web struct {
-		Active  bool
-		URL     string
+		// Whether the WWW-service should be active
+		Active bool
+		// The URL under which the WWW-service is served
+		URL string
+		// WWW service config
 		Service ServiceConfig
 
-		PubWWWDir   string
+		// Public WWW directory
+		PubWWWDir string
+		// Template (base-)directory
 		TemplateDir string
 
+		// Whether the WWW-service is served securely
 		Secure bool
 
+		// Cookie config
 		Cookie struct {
+			// Whether so serve cookies as HTTPOnly
 			HTTPOnly bool
 		}
+		// Web auth keys for encrypting cookie auth containers
 		AuthKeys []string
 	}
 	Provider struct {
