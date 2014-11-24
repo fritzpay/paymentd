@@ -1,3 +1,4 @@
+// Authentication/authorization
 package service
 
 import (
@@ -6,26 +7,20 @@ import (
 	"compress/gzip"
 	"crypto/aes"
 	"crypto/cipher"
+	"crypto/hmac"
 	"crypto/rand"
 	"encoding/base64"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"hash"
 	"io"
 	"io/ioutil"
 	"strconv"
+	"sync"
 	"time"
 
 	"golang.org/x/crypto/pbkdf2"
-)
-
-const (
-	defaultKeySize = 32
-)
-
-var (
-	ErrDecrypt = errors.New("error decrypting container")
-	ErrMsgSize = errors.New("message too big")
 )
 
 const (
@@ -33,6 +28,164 @@ const (
 	// can have
 	MaxMsgSize = 4096
 )
+
+const (
+	// default capacity of keys in the keychain
+	keychainLen = 16
+	// default size of keys (generated) in bytes
+	defaultKeySize = 32
+)
+
+var (
+	ErrDecrypt       = errors.New("error decrypting container")
+	ErrMsgSize       = errors.New("message too big")
+	ErrInvalidKey    = errors.New("invalid key")
+	ErrNoKeys        = errors.New("no keys in keychain")
+	ErrNoMatchingKey = errors.New("no matching key for signature")
+)
+
+// Keychain stores (and rotates) keys for authorization container encryption
+type Keychain struct {
+	m    sync.RWMutex
+	keys [][]byte
+}
+
+// NewKeychain creates an empty keychain
+func NewKeychain() *Keychain {
+	k := &Keychain{
+		keys: make([][]byte, 0, keychainLen),
+	}
+	return k
+}
+
+// KeyCount returns the number of keys in the keychain
+func (k *Keychain) KeyCount() int {
+	k.m.RLock()
+	c := len(k.keys)
+	k.m.RUnlock()
+	return c
+}
+
+func (k *Keychain) pushKey(key []byte) {
+	k.m.Lock()
+	keys := make([][]byte, 1, cap(k.keys)+keychainLen)
+	keys[0] = key
+	k.keys = append(keys, k.keys...)
+	k.m.Unlock()
+}
+
+// AddKey adds a (hex-encoded) key to the keychain
+func (k *Keychain) AddKey(newKey string) error {
+	key, err := hex.DecodeString(newKey)
+	if err != nil {
+		return ErrInvalidKey
+	}
+	k.pushKey(key)
+	return nil
+}
+
+// AddBinKey adds a binary key to the keychain
+func (k *Keychain) AddBinKey(key []byte) {
+	k.pushKey(key)
+}
+
+// GenerateKey generates a random key, adds it to the keychain and returns the generated key
+func (k *Keychain) GenerateKey() ([]byte, error) {
+	key := make([]byte, defaultKeySize)
+	_, err := rand.Read(key)
+	if err != nil {
+		return nil, err
+	}
+	k.pushKey(key)
+	return key, nil
+}
+
+// Key returns a hex-encoded key from the keychain which can be used to encrypt authorization containers
+func (k *Keychain) Key() (string, error) {
+	key, err := k.BinKey()
+	if err != nil {
+		return "", err
+	}
+	return hex.EncodeToString(key), nil
+}
+
+// BinKey returns a binary key from the keychain which can be used to encrypt authorization containers
+func (k *Keychain) BinKey() ([]byte, error) {
+	k.m.RLock()
+	if len(k.keys) == 0 {
+		k.m.RUnlock()
+		return nil, ErrNoKeys
+	}
+	key := k.keys[0]
+	k.m.RUnlock()
+	return key, nil
+}
+
+// MatchKey returns the key which was used to sign the Signed
+// If no such key is in the keychain, it will return ErrNoMatchingKey
+func (k *Keychain) MatchKey(s Signed) ([]byte, error) {
+	k.m.RLock()
+	if len(k.keys) == 0 {
+		k.m.RUnlock()
+		return nil, ErrNoKeys
+	}
+	for _, key := range k.keys {
+		if ok, err := IsAuthentic(s, key); err != nil {
+			k.m.RUnlock()
+			return nil, err
+		} else if ok {
+			k.m.RUnlock()
+			return key, nil
+		}
+	}
+	k.m.RUnlock()
+	return nil, ErrNoMatchingKey
+}
+
+// Signable is a type which can be signed
+type Signable interface {
+	Message() ([]byte, error)
+	HashFunc() func() hash.Hash
+}
+
+// Signed is a type which has been signed
+// The signature can be authenticated using the Signable interface and recreating the signature
+type Signed interface {
+	Signable
+	Signature() ([]byte, error)
+}
+
+// IsAuthentic returns true if the signed message has a correct signature for the given key
+func IsAuthentic(msg Signed, key []byte) (bool, error) {
+	mac := hmac.New(msg.HashFunc(), key)
+	msgBytes, err := msg.Message()
+	if err != nil {
+		return false, err
+	}
+	_, err = mac.Write(msgBytes)
+	if err != nil {
+		return false, err
+	}
+	sig, err := msg.Signature()
+	if err != nil {
+		return false, err
+	}
+	return hmac.Equal(sig, mac.Sum(nil)), nil
+}
+
+// Sign signs a signable message with the given key and returns the signature
+func Sign(msg Signable, key []byte) ([]byte, error) {
+	mac := hmac.New(msg.HashFunc(), key)
+	msgBytes, err := msg.Message()
+	if err != nil {
+		return nil, err
+	}
+	_, err = mac.Write(msgBytes)
+	if err != nil {
+		return nil, err
+	}
+	return mac.Sum(nil), nil
+}
 
 // Authorization is a container which can hold arbitrary authorization data,
 // can be encrypted and signed and safely passed between services. As long as those

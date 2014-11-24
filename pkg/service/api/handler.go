@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net/http"
 	"os"
+	"time"
 
 	"github.com/fritzpay/paymentd/pkg/service"
 	"github.com/fritzpay/paymentd/pkg/service/api/v1"
@@ -16,7 +17,8 @@ type Handler struct {
 	ctx *service.Context
 	log log15.Logger
 
-	mux *mux.Router
+	timeout time.Duration
+	mux     *mux.Router
 }
 
 // NewHandler creates a new API Handler
@@ -30,17 +32,22 @@ func NewHandler(ctx *service.Context) (*Handler, error) {
 		mux: mux.NewRouter(),
 	}
 
+	var err error
 	// Serve Admin GUI if active and path provided
 	cfg := h.ctx.Config()
+
+	h.timeout, err = cfg.API.Timeout.Duration()
+	if err != nil {
+		return nil, err
+	}
+
 	adminGUIPubWWWDir := cfg.API.AdminGUIPubWWWDir
 	if cfg.API.ServeAdmin && len(adminGUIPubWWWDir) > 0 {
-
-		err := h.requireDir(adminGUIPubWWWDir)
+		err = h.requireDir(adminGUIPubWWWDir)
 		if err != nil {
 			h.log.Error("error reading admin gui www public dir", log15.Ctx{"err": err})
 			return nil, err
 		}
-
 		err = h.registerPublic()
 		if err != nil {
 			h.log.Error("error registering admin gui www public dir", log15.Ctx{"err": err})
@@ -68,6 +75,7 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	service.SetRequestContext(r, h.ctx)
 	defer service.ClearRequestContext(r)
 	h.mux.ServeHTTP(w, r)
+	// service.TimeoutHandler(h.log.Warn, h.timeout, h.mux).ServeHTTP(w, r)
 }
 
 func (h *Handler) requireDir(dir string) error {

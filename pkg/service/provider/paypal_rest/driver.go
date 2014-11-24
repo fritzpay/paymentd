@@ -1,7 +1,6 @@
 package paypal_rest
 
 import (
-	"code.google.com/p/goauth2/oauth"
 	"errors"
 	"fmt"
 	"net/http"
@@ -9,6 +8,8 @@ import (
 	"os"
 	"path"
 	"time"
+
+	"code.google.com/p/goauth2/oauth"
 
 	"github.com/fritzpay/paymentd/pkg/paymentd/payment"
 

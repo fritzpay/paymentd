@@ -84,6 +84,8 @@ type Config struct {
 		Active bool
 		// API service config
 		Service ServiceConfig
+		// Service timeout
+		Timeout Duration
 
 		// Should the API server provide administrative endpoints?
 		ServeAdmin bool
@@ -103,18 +105,29 @@ type Config struct {
 	}
 	// Web server config
 	Web struct {
-		Active  bool
-		URL     string
+		// Whether the WWW-service should be active
+		Active bool
+		// The URL under which the WWW-service is served
+		URL string
+		// WWW service config
 		Service ServiceConfig
+		// Service timeout
+		Timeout Duration
 
-		PubWWWDir   string
+		// Public WWW directory
+		PubWWWDir string
+		// Template (base-)directory
 		TemplateDir string
 
+		// Whether the WWW-service is served securely
 		Secure bool
 
+		// Cookie config
 		Cookie struct {
+			// Whether so serve cookies as HTTPOnly
 			HTTPOnly bool
 		}
+		// Web auth keys for encrypting cookie auth containers
 		AuthKeys []string
 	}
 	Provider struct {
@@ -146,6 +159,7 @@ func DefaultConfig() Config {
 	cfg.API.Service.Address = ":8080"
 	cfg.API.Service.ReadTimeout = Duration("10s")
 	cfg.API.Service.WriteTimeout = Duration("10s")
+	cfg.API.Timeout = Duration("5s")
 	cfg.API.ServeAdmin = false
 	cfg.API.AuthKeys = make([]string, 0)
 
@@ -155,6 +169,7 @@ func DefaultConfig() Config {
 	cfg.Web.Service.Address = ":8443"
 	cfg.Web.Service.ReadTimeout = Duration("10s")
 	cfg.Web.Service.WriteTimeout = Duration("10s")
+	cfg.Web.Timeout = Duration("5s")
 	cfg.Web.AuthKeys = make([]string, 0)
 
 	cfg.Web.Cookie.HTTPOnly = true

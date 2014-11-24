@@ -2,9 +2,10 @@ package paypal_rest
 
 import (
 	"database/sql"
-	paymentService "github.com/fritzpay/paymentd/pkg/service/payment"
 	"net/http"
 	"time"
+
+	paymentService "github.com/fritzpay/paymentd/pkg/service/payment"
 
 	"github.com/fritzpay/paymentd/pkg/paymentd/payment"
 	"gopkg.in/inconshreveable/log15.v2"

@@ -2,11 +2,12 @@ package web
 
 import (
 	"fmt"
-	"github.com/fritzpay/paymentd/pkg/paymentd/payment"
 	"net/http"
 	"os"
 	"runtime"
 	"time"
+
+	"github.com/fritzpay/paymentd/pkg/paymentd/payment"
 
 	"github.com/fritzpay/paymentd/pkg/service"
 	paymentService "github.com/fritzpay/paymentd/pkg/service/payment"
@@ -23,7 +24,8 @@ type Handler struct {
 	ctx *service.Context
 	log log15.Logger
 
-	router *mux.Router
+	timeout time.Duration
+	router  *mux.Router
 
 	paymentService *paymentService.Service
 	templateDir    string
@@ -44,6 +46,11 @@ func NewHandler(ctx *service.Context) (*Handler, error) {
 
 	var err error
 	cfg := h.ctx.Config()
+
+	h.timeout, err = cfg.Web.Timeout.Duration()
+	if err != nil {
+		return nil, err
+	}
 
 	h.paymentService, err = paymentService.NewService(ctx)
 	if err != nil {
@@ -131,10 +138,11 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			w.WriteHeader(http.StatusInternalServerError)
 		}
 	}()
-	wr := &ResponseWriter{ResponseWriter: w}
+	wr := &ResponseWriter{w: w}
 	service.SetRequestContext(r, h.ctx)
 	defer service.ClearRequestContext(r)
 	h.router.ServeHTTP(wr, r)
+	// service.TimeoutHandler(h.log.Warn, h.timeout, h.router).ServeHTTP(wr, r)
 }
 
 // debug intent worker
