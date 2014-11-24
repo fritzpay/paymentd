@@ -173,8 +173,10 @@ func (ctx *Context) registerKeychainFromConfig() error {
 func (ctx *Context) RateLimitHandler(parent http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		<-ctx.rateLimit
+		defer func() {
+			ctx.rateLimit <- struct{}{}
+		}()
 		parent.ServeHTTP(w, r)
-		ctx.rateLimit <- struct{}{}
 	})
 }
 

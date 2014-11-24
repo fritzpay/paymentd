@@ -13,7 +13,7 @@ import (
 func WithContext(f func(ctx *Context)) func() {
 	return func() {
 		log := log15.New()
-		cfg := config.Config{}
+		cfg := config.DefaultConfig()
 		ctx, err := NewContext(context.Background(), cfg, log)
 
 		So(err, ShouldBeNil)
