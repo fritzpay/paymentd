@@ -37,7 +37,7 @@ func (h *timeoutHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	case <-h.timeout():
 		tw.mu.Lock()
 		if !tw.wroteHeader {
-			tw.WriteHeader(http.StatusServiceUnavailable)
+			tw.ResponseWriter.WriteHeader(http.StatusServiceUnavailable)
 		}
 		tw.timedOut = true
 		tw.mu.Unlock()
