@@ -330,12 +330,12 @@ func (d *Driver) pollStatusHandler(tx *Transaction, parent http.Handler) http.Ha
 		}
 		// will be true when the polling (ajax) should stop and reload
 		cont := true
-		switch tx.Type {
 		// wait on create payment request
-		case TransactionTypeCreatePayment:
-			cont = false
-			// wait on execute payment request
-		case TransactionTypeExecutePayment:
+		// wait on get payment request
+		// wait on execute payment request
+		if tx.Type == TransactionTypeCreatePayment ||
+			tx.Type == TransactionTypeExecutePayment ||
+			tx.Type == TransactionTypeGetPayment {
 			cont = false
 		}
 		w.Header().Set("Content-Type", "application/json")
