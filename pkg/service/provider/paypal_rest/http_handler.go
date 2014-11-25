@@ -284,23 +284,36 @@ func (d *Driver) ApprovalHandler(tx *Transaction, p *payment.Payment) http.Handl
 	})
 }
 
+func (d *Driver) PaymentStatusHandler(p *payment.Payment) http.Handler {
+	switch p.Status {
+	case payment.PaymentStatusCancelled:
+		return d.CancelPageHandler(p)
+	case payment.PaymentStatusPaid:
+		return d.SuccessHandler(p)
+	case payment.PaymentStatusError:
+		return d.PaymentErrorHandler(p)
+	default:
+		d.log.Warn("unknown payment status", log15.Ctx{
+			"method":                   "PaymentStatusHandler",
+			"paymentTransactionStatus": p.Status,
+		})
+		return d.PaymentErrorHandler(p)
+	}
+}
+
 // the returned handler will serve the appropriate init action based on the current
 // paypal transaction status
 func (d *Driver) statusHandler(tx *Transaction, p *payment.Payment, defaultHandler http.Handler) http.Handler {
 	return d.pollStatusHandler(tx, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch tx.Type {
-		case TransactionTypeError:
-			d.PaymentErrorHandler(p).ServeHTTP(w, r)
-		case TransactionTypeCancelled:
-			d.CancelPageHandler(p).ServeHTTP(w, r)
 		case TransactionTypeCreatePaymentResponse:
-			d.ApprovalHandler(tx, p).ServeHTTP(w, r)
-		case TransactionTypeExecutePaymentResponse:
-			if p.Status == payment.PaymentStatusPaid {
-				d.SuccessHandler(p).ServeHTTP(w, r)
+			if tx.PaypalState.String == "created" {
+				d.ApprovalHandler(tx, p).ServeHTTP(w, r)
 				return
 			}
-			d.PaymentErrorHandler(p).ServeHTTP(w, r)
+			d.PaymentStatusHandler(p).ServeHTTP(w, r)
+		case TransactionTypeError, TransactionTypeCancelled, TransactionTypeExecutePaymentResponse:
+			d.PaymentStatusHandler(p).ServeHTTP(w, r)
 		default:
 			defaultHandler.ServeHTTP(w, r)
 		}
