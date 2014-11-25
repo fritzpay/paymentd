@@ -56,6 +56,7 @@ SELECT
 	c.callback_api_version,
 	c.callback_project_key,
 	c.return_url,
+	c.expires,
 
 	tx.timestamp,
 	tx.status
@@ -122,6 +123,7 @@ func scanSingleRow(row *sql.Row) (*Payment, error) {
 		&p.Config.CallbackAPIVersion,
 		&p.Config.CallbackProjectKey,
 		&p.Config.ReturnURL,
+		&p.Config.Expires,
 		&txTs,
 		&p.Status,
 	)
@@ -162,9 +164,9 @@ func PaymentByProjectIDAndIdentTx(db *sql.Tx, projectID int64, ident string) (*P
 
 const insertPaymentConfig = `
 INSERT INTO payment_config
-(project_id, payment_id, timestamp, payment_method_id, country, locale, callback_url, callback_api_version, callback_project_key, return_url)
+(project_id, payment_id, timestamp, payment_method_id, country, locale, callback_url, callback_api_version, callback_project_key, return_url, expires)
 VALUES
-(?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 `
 
 func InsertPaymentConfigTx(db *sql.Tx, p *Payment) error {
@@ -184,6 +186,7 @@ func InsertPaymentConfigTx(db *sql.Tx, p *Payment) error {
 		p.Config.CallbackAPIVersion,
 		p.Config.CallbackProjectKey,
 		p.Config.ReturnURL,
+		p.Config.Expires,
 	)
 	stmt.Close()
 	return err
