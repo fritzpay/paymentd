@@ -38,6 +38,8 @@ func (e errorID) Error() string {
 		return "internal error"
 	case ErrIntentTimeout:
 		return "intent timeout"
+	case ErrIntentNotAllowed:
+		return "intent not allowed"
 	default:
 		return "unknown error"
 	}
@@ -62,6 +64,8 @@ const (
 	ErrInternal
 	// intent timeout
 	ErrIntentTimeout
+	// intent not allowed
+	ErrIntentNotAllowed
 )
 
 const (
@@ -498,23 +502,35 @@ func (s *Service) handleIntent(
 }
 
 func (s *Service) IntentOpen(p *payment.Payment, timeout time.Duration) (*payment.PaymentTransaction, CommitIntentFunc, error) {
+	if !s.IsProcessablePayment(p) {
+		return nil, ErrIntentNotAllowed
+	}
 	paymentTx := p.NewTransaction(payment.PaymentStatusOpen)
 	paymentTx.Amount = paymentTx.Amount * -1
 	return s.handleIntent(p, paymentTx, timeout)
 }
 
 func (s *Service) IntentCancel(p *payment.Payment, timeout time.Duration) (*payment.PaymentTransaction, CommitIntentFunc, error) {
+	if p.Status != payment.PaymentStatusOpen {
+		return nil, ErrIntentNotAllowed
+	}
 	paymentTx := p.NewTransaction(payment.PaymentStatusCancelled)
 	paymentTx.Amount = 0
 	return s.handleIntent(p, paymentTx, timeout)
 }
 
 func (s *Service) IntentPaid(p *payment.Payment, timeout time.Duration) (*payment.PaymentTransaction, CommitIntentFunc, error) {
+	if p.Status != payment.PaymentStatusOpen {
+		return nil, ErrIntentNotAllowed
+	}
 	paymentTx := p.NewTransaction(payment.PaymentStatusPaid)
 	return s.handleIntent(p, paymentTx, timeout)
 }
 
 func (s *Service) IntentAuthorized(p *payment.Payment, timeout time.Duration) (*payment.PaymentTransaction, CommitIntentFunc, error) {
+	if p.Status != payment.PaymentStatusOpen {
+		return nil, ErrIntentNotAllowed
+	}
 	paymentTx := p.NewTransaction(payment.PaymentStatusAuthorized)
 	paymentTx.Amount = 0
 	return s.handleIntent(p, paymentTx, timeout)
