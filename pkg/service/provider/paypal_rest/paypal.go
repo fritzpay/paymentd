@@ -82,12 +82,12 @@ type PayPalAmount struct {
 }
 
 type PayPalTransaction struct {
-	Amount           PayPalAmount              `json:"amount"`
-	Description      string                    `json:"description,omitempty"`
-	RelatedResources map[string]PayPalResource `json:"related_resources,omitempty"`
-	InvoiceNumber    string                    `json:"invoice_number,omitempty"`
-	Custom           string                    `json:"custom,omitempty"`
-	SoftDescriptor   string                    `json:"soft_descriptor,omitempty"`
+	Amount           PayPalAmount    `json:"amount"`
+	Description      string          `json:"description,omitempty"`
+	RelatedResources PayPalResources `json:"related_resources,omitempty"`
+	InvoiceNumber    string          `json:"invoice_number,omitempty"`
+	Custom           string          `json:"custom,omitempty"`
+	SoftDescriptor   string          `json:"soft_descriptor,omitempty"`
 }
 
 type PayPalRedirectURLs struct {
@@ -121,6 +121,18 @@ type PaypalPayment struct {
 type PayPalPaymentExecution struct {
 	PayerID      string              `json:"payer_id"`
 	Transactions []PayPalTransaction `json:"transactions,omitempty"`
+}
+
+type PayPalResources []map[string]PayPalResource
+
+func (p PayPalResources) Resources(t string) []PayPalResource {
+	resources := make([]PayPalResource, 0, len(p))
+	for _, m := range p {
+		if r, ok := m[t]; ok {
+			resources = append(resources, r)
+		}
+	}
+	return resources
 }
 
 // PayPalResource represents one of sale, authorization, capture or refund object
