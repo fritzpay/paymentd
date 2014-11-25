@@ -4,9 +4,13 @@ import (
 	"crypto/sha256"
 	"database/sql"
 	"fmt"
+	tmpl "github.com/fritzpay/paymentd/pkg/template"
 	"hash"
+	"html/template"
 	"io"
+	"io/ioutil"
 	"net/http"
+	"path"
 	"strconv"
 	"strings"
 	"time"
@@ -524,4 +528,70 @@ func (h *Handler) servePaymentHandler(p *payment.Payment, method *payment_method
 		}
 		h.ServeHTTP(w, r)
 	})
+}
+
+func (h *Handler) paymentDefaultsHandler(parent http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		parent.ServeHTTP(w, r)
+		if wr, ok := w.(*ResponseWriter); ok {
+			if !wr.headerWritten {
+				return
+			}
+			// no content output
+			if wr.written > 0 {
+				return
+			}
+			if !strings.Contains(wr.Header().Get("Content-Type"), "text/html") {
+				return
+			}
+			if Debug {
+				h.log.Debug("serving default page", log15.Ctx{"HTTPStatusCode": wr.statusCode})
+			}
+			switch wr.statusCode {
+			case http.StatusNotFound:
+				h.paymentNotFound(w, r)
+				return
+			default:
+				h.log.Warn("no default handler found for HTTP status", log15.Ctx{
+					"method":         "paymentDefaultsHandler",
+					"HTTPStatusCode": wr.statusCode,
+				})
+			}
+		}
+	})
+}
+
+func (h *Handler) getTemplate(t *template.Template, tmplDir, locale, baseName string) (err error) {
+	tmplFile, err := tmpl.TemplateFileName(tmplDir, locale, defaultLocale, baseName)
+	if err != nil {
+		return err
+	}
+	tmplB, err := ioutil.ReadFile(tmplFile)
+	if err != nil {
+		return err
+	}
+	tmplLocale := path.Base(path.Ext(tmplFile))
+	t.Funcs(template.FuncMap(map[string]interface{}{
+		"locale": func() string {
+			return tmplLocale
+		},
+	}))
+	_, err = t.Parse(string(tmplB))
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func (h *Handler) paymentNotFound(w http.ResponseWriter, r *http.Request) {
+	tmpl := template.New("not_found")
+	err := h.getTemplate(tmpl, h.templateDir, defaultLocale, "/payment/not_found.html.tmpl")
+	if err != nil {
+		h.log.Error("error retrieving template", log15.Ctx{"err": err})
+		return
+	}
+	err = tmpl.Execute(w, nil)
+	if err != nil {
+		h.log.Error("template error", log15.Ctx{"err": err})
+	}
 }

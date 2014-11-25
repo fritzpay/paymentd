@@ -20,6 +20,10 @@ const (
 	PaymentPath = "/payment"
 )
 
+const (
+	defaultLocale = "en_US"
+)
+
 type Handler struct {
 	ctx *service.Context
 	log log15.Logger
@@ -111,7 +115,10 @@ func (h *Handler) requireDir(dir string) error {
 
 func (h *Handler) registerPayment() error {
 	h.log.Info("registering web payment handler...")
-	h.router.Handle(PaymentPath, h.ctx.RateLimitHandler(h.PaymentHandler())).Methods("GET")
+	h.router.Handle(
+		PaymentPath,
+		h.paymentDefaultsHandler(h.ctx.RateLimitHandler(h.PaymentHandler()))).
+		Methods("GET")
 	return nil
 }
 
