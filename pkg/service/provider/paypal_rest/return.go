@@ -217,6 +217,9 @@ func (d *Driver) executePayment(cfg *Config, reqURL *url.URL, p *payment.Payment
 			d.setPayPalError(p, respBody)
 			return ErrHTTP
 		}
+		if Debug {
+			log.Debug("received response")
+		}
 		pay := &PaypalPayment{}
 		err = json.Unmarshal(respBody, pay)
 		if err != nil {

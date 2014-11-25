@@ -322,6 +322,31 @@ CREATE TABLE IF NOT EXISTS `provider_paypal_transaction` (
     ON UPDATE CASCADE)
 ENGINE = InnoDB;
 
+
+-- -----------------------------------------------------
+-- Table `provider_paypal_authorization`
+-- -----------------------------------------------------
+DROP TABLE IF EXISTS `provider_paypal_authorization` ;
+
+CREATE TABLE IF NOT EXISTS `provider_paypal_authorization` (
+  `project_id` INT UNSIGNED NOT NULL,
+  `payment_id` BIGINT UNSIGNED NOT NULL,
+  `timestamp` BIGINT UNSIGNED NOT NULL,
+  `valid_until` DATETIME NOT NULL,
+  `state` VARCHAR(32) NOT NULL,
+  `authorization_id` VARCHAR(128) NOT NULL,
+  `paypal_id` VARCHAR(128) NOT NULL,
+  `links` TEXT NULL,
+  `data` TEXT NULL,
+  PRIMARY KEY (`project_id`, `payment_id`, `timestamp`),
+  INDEX `fk_provider_paypal_authorization_payment_id_idx` (`payment_id` ASC),
+  CONSTRAINT `fk_provider_paypal_authorization_payment_id`
+    FOREIGN KEY (`payment_id`)
+    REFERENCES `payment` (`id`)
+    ON DELETE RESTRICT
+    ON UPDATE CASCADE)
+ENGINE = InnoDB;
+
 SET SQL_MODE=@OLD_SQL_MODE;
 SET FOREIGN_KEY_CHECKS=@OLD_FOREIGN_KEY_CHECKS;
 SET UNIQUE_CHECKS=@OLD_UNIQUE_CHECKS;

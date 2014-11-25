@@ -82,11 +82,12 @@ type PayPalAmount struct {
 }
 
 type PayPalTransaction struct {
-	Amount         PayPalAmount `json:"amount"`
-	Description    string       `json:"description,omitempty"`
-	InvoiceNumber  string       `json:"invoice_number,omitempty"`
-	Custom         string       `json:"custom,omitempty"`
-	SoftDescriptor string       `json:"soft_descriptor,omitempty"`
+	Amount           PayPalAmount    `json:"amount"`
+	Description      string          `json:"description,omitempty"`
+	RelatedResources PayPalResources `json:"related_resources,omitempty"`
+	InvoiceNumber    string          `json:"invoice_number,omitempty"`
+	Custom           string          `json:"custom,omitempty"`
+	SoftDescriptor   string          `json:"soft_descriptor,omitempty"`
 }
 
 type PayPalRedirectURLs struct {
@@ -120,6 +121,39 @@ type PaypalPayment struct {
 type PayPalPaymentExecution struct {
 	PayerID      string              `json:"payer_id"`
 	Transactions []PayPalTransaction `json:"transactions,omitempty"`
+}
+
+type PayPalResources []map[string]PayPalResource
+
+func (p PayPalResources) Resources(t string) []PayPalResource {
+	resources := make([]PayPalResource, 0, len(p))
+	for _, m := range p {
+		if r, ok := m[t]; ok {
+			resources = append(resources, r)
+		}
+	}
+	return resources
+}
+
+// PayPalResource represents one of sale, authorization, capture or refund object
+type PayPalResource struct {
+	ID                        string       `json:"id"`
+	Amount                    PayPalAmount `json:"amount"`
+	IsFinalCapture            bool         `json:"is_final_capture"`
+	Description               string       `json:"string,omitempty"`
+	CreateTime                string       `json:"create_time"`
+	State                     string       `json:"state"`
+	CaptureID                 string       `json:"capture_id,omitempty"`
+	ParentPayment             string       `json:"parent_payment"`
+	ValidUntil                string       `json:"valid_until,omitempty"`
+	UpdateTime                string       `json:"update_time"`
+	PaymentMode               string       `json:"payment_mode,omitempty"`
+	PendingReason             string       `json:"pending_reason,omitempty"`
+	ReasonCode                string       `json:"reason_code,omitempty"`
+	ClearingTime              string       `json:"clearing_time,omitempty"`
+	ProtectionEligibility     string       `json:"protection_eligibility,omitempty"`
+	ProtectionEligibilityType string       `json:"protection_eligibility_type,omitempty"`
+	Links                     []PayPalLink `json:"links,omitempty"`
 }
 
 func (d *Driver) createPaypalPaymentRequest(p *payment.Payment, cfg *Config, non *nonce.Nonce) (*PayPalPaymentRequest, error) {

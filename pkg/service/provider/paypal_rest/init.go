@@ -181,11 +181,46 @@ func (d *Driver) doInit(cfg *Config, reqURL *url.URL, p *payment.Payment, body s
 		paypalTx.ProjectID = p.ProjectID()
 		paypalTx.PaymentID = p.ID()
 		paypalTx.Type = TransactionTypeCreatePaymentResponse
-		err = InsertTransactionDB(d.ctx.PaymentDB(), paypalTx)
+
+		var tx *sql.Tx
+		var commit bool
+		defer func() {
+			if tx != nil && !commit {
+				err = tx.Rollback()
+				if err != nil {
+					log.Crit("error on rollback", log15.Ctx{"err": err})
+				}
+			}
+		}()
+		tx, err = d.ctx.PaymentDB().Begin()
+		if err != nil {
+			log.Crit("error on creating db tx", log15.Ctx{"err": err})
+			d.setPayPalError(p, respBody)
+			return ErrDatabase
+		}
+		err = InsertTransactionTx(tx, paypalTx)
 		if err != nil {
 			log.Error("error saving paypal response", log15.Ctx{"err": err})
 			d.setPayPalError(p, respBody)
-			return ErrProvider
+			return ErrDatabase
+		}
+		if paypalP.State != "created" {
+			log.Error("invalid paypal state received", log15.Ctx{"state": paypalP.State})
+			paypalTx.Type = TransactionTypeError
+			err = InsertTransactionTx(tx, paypalTx)
+			if err != nil {
+				log.Error("error saving error state", log15.Ctx{"err": err})
+				d.setPayPalError(p, respBody)
+				return ErrDatabase
+			}
+		}
+
+		commit = true
+		err = tx.Commit()
+		if err != nil {
+			log.Crit("error on commit", log15.Ctx{"err": err})
+			d.setPayPalError(p, respBody)
+			return ErrDatabase
 		}
 		return nil
 	}
