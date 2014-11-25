@@ -503,7 +503,7 @@ func (s *Service) handleIntent(
 
 func (s *Service) IntentOpen(p *payment.Payment, timeout time.Duration) (*payment.PaymentTransaction, CommitIntentFunc, error) {
 	if !s.IsProcessablePayment(p) {
-		return nil, ErrIntentNotAllowed
+		return nil, nil, ErrIntentNotAllowed
 	}
 	paymentTx := p.NewTransaction(payment.PaymentStatusOpen)
 	paymentTx.Amount = paymentTx.Amount * -1
@@ -512,7 +512,7 @@ func (s *Service) IntentOpen(p *payment.Payment, timeout time.Duration) (*paymen
 
 func (s *Service) IntentCancel(p *payment.Payment, timeout time.Duration) (*payment.PaymentTransaction, CommitIntentFunc, error) {
 	if p.Status != payment.PaymentStatusOpen {
-		return nil, ErrIntentNotAllowed
+		return nil, nil, ErrIntentNotAllowed
 	}
 	paymentTx := p.NewTransaction(payment.PaymentStatusCancelled)
 	paymentTx.Amount = 0
@@ -521,7 +521,7 @@ func (s *Service) IntentCancel(p *payment.Payment, timeout time.Duration) (*paym
 
 func (s *Service) IntentPaid(p *payment.Payment, timeout time.Duration) (*payment.PaymentTransaction, CommitIntentFunc, error) {
 	if p.Status != payment.PaymentStatusOpen {
-		return nil, ErrIntentNotAllowed
+		return nil, nil, ErrIntentNotAllowed
 	}
 	paymentTx := p.NewTransaction(payment.PaymentStatusPaid)
 	return s.handleIntent(p, paymentTx, timeout)
@@ -529,7 +529,7 @@ func (s *Service) IntentPaid(p *payment.Payment, timeout time.Duration) (*paymen
 
 func (s *Service) IntentAuthorized(p *payment.Payment, timeout time.Duration) (*payment.PaymentTransaction, CommitIntentFunc, error) {
 	if p.Status != payment.PaymentStatusOpen {
-		return nil, ErrIntentNotAllowed
+		return nil, nil, ErrIntentNotAllowed
 	}
 	paymentTx := p.NewTransaction(payment.PaymentStatusAuthorized)
 	paymentTx.Amount = 0
