@@ -514,6 +514,12 @@ func (s *Service) IntentPaid(p *payment.Payment, timeout time.Duration) (*paymen
 	return s.handleIntent(p, paymentTx, timeout)
 }
 
+func (s *Service) IntentAuthorized(p *payment.Payment, timeout time.Duration) (*payment.PaymentTransaction, CommitIntentFunc, error) {
+	paymentTx := p.NewTransaction(payment.PaymentStatusAuthorized)
+	paymentTx.Amount = 0
+	return s.handleIntent(p, paymentTx, timeout)
+}
+
 // CreatePaymentToken creates a new random payment token
 func (s *Service) CreatePaymentToken(tx *sql.Tx, p *payment.Payment) (*payment.PaymentToken, error) {
 	log := s.log.New(log15.Ctx{"method": "CreatePaymentToken"})
