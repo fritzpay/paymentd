@@ -312,7 +312,7 @@ func (d *Driver) statusHandler(tx *Transaction, p *payment.Payment, defaultHandl
 				return
 			}
 			d.PaymentStatusHandler(p).ServeHTTP(w, r)
-		case TransactionTypeError, TransactionTypeCancelled, TransactionTypeExecutePaymentResponse:
+		case TransactionTypeError, TransactionTypeCancelled, TransactionTypeGetPaymentResponse, TransactionTypeExecutePaymentResponse:
 			d.PaymentStatusHandler(p).ServeHTTP(w, r)
 		default:
 			defaultHandler.ServeHTTP(w, r)
