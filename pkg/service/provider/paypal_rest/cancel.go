@@ -54,7 +54,7 @@ func (d *Driver) CancelHandler() http.Handler {
 			return
 		}
 
-		paypalTx, err := TransactionByPaymentIDAndNonceTx(tx, paymentID, nonce)
+		_, err = TransactionByPaymentIDAndNonceTx(tx, paymentID, nonce)
 		if err != nil {
 			if err == ErrTransactionNotFound {
 				log.Info("paypal transaction not found")
@@ -77,20 +77,6 @@ func (d *Driver) CancelHandler() http.Handler {
 			return
 		}
 
-		if paypalTx.Type != TransactionTypeCancelled {
-			paypalTx := &Transaction{
-				ProjectID: p.ProjectID(),
-				PaymentID: p.ID(),
-				Timestamp: time.Now(),
-				Type:      TransactionTypeCancelled,
-			}
-			err = InsertTransactionTx(tx, paypalTx)
-			if err != nil {
-				log.Error("error create paypal transaction", log15.Ctx{"err": err})
-				d.InternalErrorHandler(p).ServeHTTP(w, r)
-				return
-			}
-		}
 		var paymentTx *payment.PaymentTransaction
 		var commitIntent paymentService.CommitIntentFunc
 		if p.Status != payment.PaymentStatusCancelled {
