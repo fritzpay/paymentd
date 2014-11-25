@@ -121,6 +121,7 @@ type Config struct {
 	CallbackAPIVersion sql.NullString
 	CallbackProjectKey sql.NullString
 	ReturnURL          sql.NullString
+	Expires            *time.Time
 }
 
 func (cfg *Config) IsConfigured() bool {
@@ -153,6 +154,10 @@ func (cfg *Config) SetCallbackProjectKey(key string) {
 
 func (cfg *Config) SetReturnURL(url string) {
 	cfg.ReturnURL.String, cfg.ReturnURL.Valid = url, true
+}
+
+func (cfg *Config) SetExpires(exp time.Time) {
+	cfg.Expires = &exp
 }
 
 func (cfg *Config) HasCallback() bool {
