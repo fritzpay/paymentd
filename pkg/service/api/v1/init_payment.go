@@ -43,6 +43,7 @@ type InitPaymentRequest struct {
 	CallbackAPIVersion string `json:",omitempty"`
 	CallbackProjectKey string `json:",omitempty"`
 	ReturnURL          string `json:",omitempty"`
+	Expires            int64  `json:",string,omitempty"`
 
 	Metadata map[string]string
 
@@ -85,15 +86,6 @@ func (r *InitPaymentRequest) Validate() error {
 	if len(r.Country) != 2 {
 		return fmt.Errorf("invalid Country")
 	}
-	if r.Timestamp == 0 {
-		return fmt.Errorf("missing Timestamp")
-	}
-	if r.Nonce == "" {
-		return fmt.Errorf("missing Nonce")
-	}
-	if len(r.Nonce) > nonce.NonceBytes {
-		return fmt.Errorf("invalid Nonce")
-	}
 	var err error
 	if r.HexSignature == "" {
 		return fmt.Errorf("missing Signature")
@@ -114,6 +106,21 @@ func (r *InitPaymentRequest) Validate() error {
 		if _, err := url.Parse(r.ReturnURL); err != nil {
 			return fmt.Errorf("invalid ReturnURL")
 		}
+	}
+	if r.Expires != 0 {
+		expires := time.Unix(r.Expires, 0)
+		if expires.Before(time.Now()) {
+			return fmt.Errorf("invalid Expires. Expires is in the past")
+		}
+	}
+	if r.Timestamp == 0 {
+		return fmt.Errorf("missing Timestamp")
+	}
+	if r.Nonce == "" {
+		return fmt.Errorf("missing Nonce")
+	}
+	if len(r.Nonce) > nonce.NonceBytes {
+		return fmt.Errorf("invalid Nonce")
 	}
 	return nil
 }
@@ -194,6 +201,12 @@ func (r *InitPaymentRequest) Message() ([]byte, error) {
 			return nil, fmt.Errorf("buffer error: %v", err)
 		}
 	}
+	if r.Expires != 0 {
+		_, err = buf.WriteString(strconv.FormatInt(r.Expires, 10))
+		if err != nil {
+			return nil, fmt.Errorf("buffer error: %v", err)
+		}
+	}
 	if r.Metadata != nil {
 		err = maputil.WriteSortedMap(buf, r.Metadata)
 		if err != nil {
@@ -252,6 +265,10 @@ func (r *InitPaymentRequest) PopulatePaymentFields(p *payment.Payment) {
 	if r.ReturnURL != "" {
 		p.Config.SetReturnURL(r.ReturnURL)
 	}
+	if r.Expires != 0 {
+		t := time.Unix(r.Expires, 0)
+		p.Config.SetExpires(t)
+	}
 	if r.Metadata != nil {
 		p.Metadata = r.Metadata
 	}
@@ -272,6 +289,7 @@ type InitPaymentResponse struct {
 		CallbackAPIVersion string            `json:",omitempty"`
 		CallbackProjectKey string            `json:",omitempty"`
 		ReturnURL          string            `json:",omitempty"`
+		Expires            int64             `json:",string,omitempty"`
 		Metadata           map[string]string `json:",omitempty"`
 	}
 	Payment struct {
@@ -314,6 +332,9 @@ func (r *InitPaymentResponse) ConfirmationFromPayment(p *payment.Payment) {
 	}
 	if p.Config.ReturnURL.Valid {
 		r.Confirmation.ReturnURL = p.Config.ReturnURL.String
+	}
+	if p.Config.Expires != nil {
+		r.Confirmation.Expires = p.Config.Expires.Unix()
 	}
 	if p.Metadata != nil {
 		r.Confirmation.Metadata = p.Metadata

@@ -182,9 +182,9 @@ func (h *Handler) setPaymentCookie(w http.ResponseWriter, p *payment.Payment) er
 	log := h.log.New(log15.Ctx{"method": "setPaymentCookie"})
 	auth := service.NewAuthorization(h.hashFunc())
 	auth.Payload[PaymentAuthPaymentID] = p.PaymentID().String()
-	// TODO set expiry if requested, without expiry, its lifetime is based on the session
-	// cookie
-	// auth.Expires(time.Now().Add(PaymentCookieMaxLifetime))
+	if p.Config.Expires != nil {
+		auth.Expires(*p.Config.Expires)
+	}
 	key, err := h.ctx.WebKeychain().BinKey()
 	if err != nil {
 		log.Error("error retrieving auth key", log15.Ctx{"err": err})
@@ -199,8 +199,9 @@ func (h *Handler) setPaymentCookie(w http.ResponseWriter, p *payment.Payment) er
 		Name: PaymentCookieName,
 		Path: PaymentPath,
 	}
-	// TODO set cookie expiry
-	// 		Expires: auth.Expiry(),
+	if !auth.Expiry().IsZero() {
+		c.Expires = auth.Expiry()
+	}
 	c.Value, err = auth.Serialized()
 	if err != nil {
 		log.Error("error retrieving serialized auth", log15.Ctx{"err": err})
