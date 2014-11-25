@@ -4,7 +4,6 @@ import (
 	"crypto/sha256"
 	"database/sql"
 	"fmt"
-	tmpl "github.com/fritzpay/paymentd/pkg/template"
 	"hash"
 	"html/template"
 	"io"
@@ -14,6 +13,8 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	tmpl "github.com/fritzpay/paymentd/pkg/template"
 
 	"github.com/fritzpay/paymentd/pkg/paymentd/payment"
 	"github.com/fritzpay/paymentd/pkg/paymentd/payment_method"
