@@ -550,8 +550,9 @@ func (h *Handler) paymentDefaultsHandler(parent http.Handler) http.Handler {
 			}
 			switch wr.statusCode {
 			case http.StatusNotFound:
-				h.paymentNotFound(w, r)
-				return
+				h.defaultPage("/payment/not_found.html.tmpl", w, r)
+			case http.StatusInternalServerError:
+				h.defaultPage("/payment/internal_error.html.tmpl", w, r)
 			default:
 				h.log.Warn("no default handler found for HTTP status", log15.Ctx{
 					"method":         "paymentDefaultsHandler",
@@ -584,9 +585,18 @@ func (h *Handler) getTemplate(t *template.Template, tmplDir, locale, baseName st
 	return nil
 }
 
-func (h *Handler) paymentNotFound(w http.ResponseWriter, r *http.Request) {
-	tmpl := template.New("not_found")
-	err := h.getTemplate(tmpl, h.templateDir, defaultLocale, "/payment/not_found.html.tmpl")
+func (h *Handler) defaultPage(base string, w http.ResponseWriter, r *http.Request) {
+	var locale string
+	if acceptLang := r.Header.Get("Accept-Language"); acceptLang != "" {
+		tags, _, err := language.ParseAcceptLanguage(acceptLang)
+		if err == nil && len(tags) >= 1 {
+			locale = tags[0].String()
+		}
+	}
+
+	tmpl := template.New("page")
+
+	err := h.getTemplate(tmpl, h.templateDir, locale, base)
 	if err != nil {
 		h.log.Error("error retrieving template", log15.Ctx{"err": err})
 		return
