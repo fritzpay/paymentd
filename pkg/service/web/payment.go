@@ -26,7 +26,6 @@ import (
 )
 
 const (
-	PaymentTokenParam    = "token"
 	PaymentCookieName    = "payment"
 	PaymentAuthPaymentID = "paymentID"
 )
@@ -37,7 +36,7 @@ func (h *Handler) hashFunc() func() hash.Hash {
 
 func (h *Handler) authenticatePaymentRequest(w http.ResponseWriter, r *http.Request) (proceed bool) {
 	// if token present
-	if tokenStr := r.URL.Query().Get(PaymentTokenParam); tokenStr != "" {
+	if tokenStr := r.URL.Query().Get(paymentService.PaymentTokenParam); tokenStr != "" {
 		h.authenticatePaymentToken(w, r, tokenStr)
 		return false
 	}

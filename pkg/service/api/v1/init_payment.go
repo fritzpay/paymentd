@@ -623,8 +623,7 @@ func (a *PaymentAPI) InitPayment() http.Handler {
 				return
 			}
 			redirectQ := redirect.Query()
-			// TODO replace token with constant which will be also used by web service
-			redirectQ.Set("token", token.Token)
+			redirectQ.Set(paymentService.PaymentTokenParam, token.Token)
 			redirect.RawQuery = redirectQ.Encode()
 			paymentResp.Payment.RedirectURL = redirect.String()
 		}

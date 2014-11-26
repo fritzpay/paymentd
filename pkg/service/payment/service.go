@@ -76,6 +76,8 @@ const (
 const (
 	// PaymentTokenMaxAgeDefault is the default maximum age of payment tokens
 	PaymentTokenMaxAgeDefault = time.Minute * 15
+	// PaymentTokenParam is the name of the token parameter
+	PaymentTokenParam = "token"
 )
 
 // IntentWorkers are the primary means of synchronizing and controlling changes on payment
