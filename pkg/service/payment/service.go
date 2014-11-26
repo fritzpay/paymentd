@@ -34,6 +34,8 @@ func (e errorID) Error() string {
 		return "payment method project mismatch"
 	case ErrPaymentMethodInactive:
 		return "payment method inactive"
+	case ErrPaymentMethodDisabled:
+		return "payment method disabled"
 	case ErrInternal:
 		return "internal error"
 	case ErrIntentTimeout:
@@ -60,6 +62,8 @@ const (
 	ErrPaymentMethodConflict
 	// payment method inactive
 	ErrPaymentMethodInactive
+	// payment method disabled
+	ErrPaymentMethodDisabled
 	// internal error
 	ErrInternal
 	// intent timeout
@@ -505,6 +509,13 @@ func (s *Service) IntentOpen(p *payment.Payment, timeout time.Duration) (*paymen
 	if !s.IsProcessablePayment(p) {
 		return nil, nil, ErrIntentNotAllowed
 	}
+	meth, err := payment_method.PaymentMethodByIDDB(s.ctx.PaymentDB(service.ReadOnly), p.Config.PaymentMethodID.Int64)
+	if err != nil {
+		return nil, nil, err
+	}
+	if !meth.Active() {
+		return nil, nil, ErrPaymentMethodInactive
+	}
 	paymentTx := p.NewTransaction(payment.PaymentStatusOpen)
 	paymentTx.Amount = paymentTx.Amount * -1
 	return s.handleIntent(p, paymentTx, timeout)
@@ -513,6 +524,13 @@ func (s *Service) IntentOpen(p *payment.Payment, timeout time.Duration) (*paymen
 func (s *Service) IntentCancel(p *payment.Payment, timeout time.Duration) (*payment.PaymentTransaction, CommitIntentFunc, error) {
 	if p.Status != payment.PaymentStatusOpen {
 		return nil, nil, ErrIntentNotAllowed
+	}
+	meth, err := payment_method.PaymentMethodByIDDB(s.ctx.PaymentDB(service.ReadOnly), p.Config.PaymentMethodID.Int64)
+	if err != nil {
+		return nil, nil, err
+	}
+	if meth.Disabled() {
+		return nil, nil, ErrPaymentMethodDisabled
 	}
 	paymentTx := p.NewTransaction(payment.PaymentStatusCancelled)
 	paymentTx.Amount = 0
@@ -523,6 +541,13 @@ func (s *Service) IntentPaid(p *payment.Payment, timeout time.Duration) (*paymen
 	if p.Status != payment.PaymentStatusOpen {
 		return nil, nil, ErrIntentNotAllowed
 	}
+	meth, err := payment_method.PaymentMethodByIDDB(s.ctx.PaymentDB(service.ReadOnly), p.Config.PaymentMethodID.Int64)
+	if err != nil {
+		return nil, nil, err
+	}
+	if meth.Disabled() {
+		return nil, nil, ErrPaymentMethodDisabled
+	}
 	paymentTx := p.NewTransaction(payment.PaymentStatusPaid)
 	return s.handleIntent(p, paymentTx, timeout)
 }
@@ -530,6 +555,13 @@ func (s *Service) IntentPaid(p *payment.Payment, timeout time.Duration) (*paymen
 func (s *Service) IntentAuthorized(p *payment.Payment, timeout time.Duration) (*payment.PaymentTransaction, CommitIntentFunc, error) {
 	if p.Status != payment.PaymentStatusOpen {
 		return nil, nil, ErrIntentNotAllowed
+	}
+	meth, err := payment_method.PaymentMethodByIDDB(s.ctx.PaymentDB(service.ReadOnly), p.Config.PaymentMethodID.Int64)
+	if err != nil {
+		return nil, nil, err
+	}
+	if meth.Disabled() {
+		return nil, nil, ErrPaymentMethodDisabled
 	}
 	paymentTx := p.NewTransaction(payment.PaymentStatusAuthorized)
 	paymentTx.Amount = 0
