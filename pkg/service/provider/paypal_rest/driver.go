@@ -1,8 +1,11 @@
 package paypal_rest
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/fritzpay/paymentd/pkg/paymentd/payment_method"
+	"io/ioutil"
 	"net/http"
 	"net/url"
 	"os"
@@ -164,5 +167,84 @@ func httpDo(
 		return ctx.Err()
 	case err := <-c:
 		return err
+	}
+}
+
+func (d *Driver) getPayment(p *payment.Payment) {
+	log := d.log.New(log15.Ctx{"method": "getPayment"})
+	paypalTx, err := TransactionByPaymentIDAndTypeDB(d.ctx.PaymentDB(service.ReadOnly), p.PaymentID(), TransactionTypeCreatePaymentResponse)
+	if err != nil {
+		log.Error("error retrieving paypal transaction. unitialized payment?", log15.Ctx{"err": err})
+		return
+	}
+	links, err := paypalTx.PayPalLinks()
+	if err != nil {
+		log.Error("error retrieving paypal links", log15.Ctx{"err": err})
+	}
+	var selfURL *url.URL
+	var req *http.Request
+	if selfLink, ok := links["self"]; !ok {
+		log.Error("no self link in paypal transaction", log15.Ctx{"links": links})
+		return
+	} else {
+		selfURL, err = url.Parse(selfLink.HRef)
+		if err != nil {
+			log.Error("error parsing self URL", log15.Ctx{"err": err})
+			return
+		}
+		req, err = http.NewRequest(selfLink.Method, selfURL.String(), nil)
+		if err != nil {
+			log.Error("error creating HTTP request", log15.Ctx{"err": err})
+			return
+		}
+	}
+	method, err := payment_method.PaymentMethodByIDDB(d.ctx.PaymentDB(service.ReadOnly), p.Config.PaymentMethodID.Int64)
+	if err != nil {
+		log.Error("error retrieving payment method", log15.Ctx{"err": err})
+		return
+	}
+	cfg, err := ConfigByPaymentMethodDB(d.ctx.PaymentDB(service.ReadOnly), method)
+	if err != nil {
+		log.Error("error retrieving paypal config", log15.Ctx{"err": err})
+		return
+	}
+	responseFunc := func(resp *http.Response, err error) error {
+		if err != nil {
+			log.Error("error on HTTP call", log15.Ctx{"err": err})
+			return err
+		}
+		respBody, err := ioutil.ReadAll(resp.Body)
+		resp.Body.Close()
+		if err != nil {
+			log.Error("error reading response body", log15.Ctx{"err": err})
+			return err
+		}
+		log = log.New(log15.Ctx{"responseBody": string(respBody)})
+		pay := &PaypalPayment{}
+		err = json.Unmarshal(respBody, pay)
+		if err != nil {
+			log.Error("error decoding response", log15.Ctx{"err": err})
+			return err
+		}
+		paypalTx, err = NewPayPalPaymentTransaction(pay)
+		if err != nil {
+			log.Error("error creating paypal transaction", log15.Ctx{"err": err})
+			return err
+		}
+		paypalTx.ProjectID = p.ProjectID()
+		paypalTx.PaymentID = p.ID()
+		paypalTx.Type = TransactionTypeGetPaymentResponse
+
+		err = InsertTransactionDB(d.ctx.PaymentDB(), paypalTx)
+		if err != nil {
+			log.Error("error saving paypal transaction", log15.Ctx{"err": err})
+			return err
+		}
+		return nil
+	}
+
+	err = httpDo(d.ctx, d.oAuthTransportFunc(p, cfg), req, responseFunc)
+	if err != nil {
+		log.Error("error on executing HTTP request", log15.Ctx{"err": err})
 	}
 }
