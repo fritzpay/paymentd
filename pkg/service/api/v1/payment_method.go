@@ -242,6 +242,7 @@ func (a *AdminAPI) putNewPaymentMethod(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	commit = true
 	err = tx.Commit()
 	if err != nil {
 		ErrDatabase.Write(w)
@@ -253,9 +254,10 @@ func (a *AdminAPI) putNewPaymentMethod(w http.ResponseWriter, r *http.Request) {
 	resp.Status = StatusSuccess
 	resp.Info = "created with methodkey " + pmr.MethodKey
 	resp.Response = pmdb
-	resp.Write(w)
-
-	commit = true
+	err = resp.Write(w)
+	if err != nil {
+		log.Error("error writing response", log15.Ctx{"err": err})
+	}
 }
 
 func (a *AdminAPI) postChangePaymentMethod(w http.ResponseWriter, r *http.Request) {
