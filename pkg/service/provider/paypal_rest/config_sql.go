@@ -38,8 +38,7 @@ WHERE
 	)
 `
 
-func ConfigByPaymentMethodTx(db *sql.Tx, method *payment_method.Method) (*Config, error) {
-	row := db.QueryRow(selectConfigByProjectIDAndMethodKey, method.ProjectID, method.MethodKey)
+func scanConfig(row *sql.Row) (*Config, error) {
 	cfg := &Config{}
 	err := row.Scan(
 		&cfg.ProjectID,
@@ -58,4 +57,14 @@ func ConfigByPaymentMethodTx(db *sql.Tx, method *payment_method.Method) (*Config
 		return cfg, err
 	}
 	return cfg, nil
+}
+
+func ConfigByPaymentMethodTx(db *sql.Tx, method *payment_method.Method) (*Config, error) {
+	row := db.QueryRow(selectConfigByProjectIDAndMethodKey, method.ProjectID, method.MethodKey)
+	return scanConfig(row)
+}
+
+func ConfigByPaymentMethodDB(db *sql.DB, method *payment_method.Method) (*Config, error) {
+	row := db.QueryRow(selectConfigByProjectIDAndMethodKey, method.ProjectID, method.MethodKey)
+	return scanConfig(row)
 }

@@ -207,6 +207,7 @@ func (d *Driver) doInit(cfg *Config, reqURL *url.URL, p *payment.Payment, body s
 		if paypalP.State != "created" {
 			log.Error("invalid paypal state received", log15.Ctx{"state": paypalP.State})
 			paypalTx.Type = TransactionTypeError
+			paypalTx.Timestamp = time.Now()
 			err = InsertTransactionTx(tx, paypalTx)
 			if err != nil {
 				log.Error("error saving error state", log15.Ctx{"err": err})
