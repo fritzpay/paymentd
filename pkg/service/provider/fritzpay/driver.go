@@ -156,8 +156,8 @@ func (d *Driver) Callback(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
-	if !method.Active() {
-		log.Warn("inactive payment method")
+	if method.Disabled() {
+		log.Warn("disabled payment method")
 		w.WriteHeader(http.StatusOK)
 		return
 	}

@@ -25,9 +25,9 @@ func (d *Driver) InitPayment(p *payment.Payment, method *payment_method.Method) 
 	if Debug {
 		log.Debug("initialize payment")
 	}
-	if !method.Active() {
-		log.Warn("payment requested with inactive payment method")
-		return nil, fmt.Errorf("inactive payment method id %d", method.ID)
+	if method.Disabled() {
+		log.Warn("payment requested with disabled payment method")
+		return nil, fmt.Errorf("disabled payment method id %d", method.ID)
 	}
 
 	var tx *sql.Tx
