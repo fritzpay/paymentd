@@ -553,6 +553,14 @@ func (h *Handler) paymentDefaultsHandler(parent http.Handler) http.Handler {
 				h.defaultPage("/payment/not_found.html.tmpl", w, r)
 			case http.StatusInternalServerError:
 				h.defaultPage("/payment/internal_error.html.tmpl", w, r)
+			case http.StatusBadRequest:
+				h.defaultPage("/payment/bad_request.html.tmpl", w, r)
+			case http.StatusServiceUnavailable:
+				h.defaultPage("/payment/service_unavailable.html.tmpl", w, r)
+			case http.StatusConflict:
+				h.defaultPage("/payment/conflict.html.tmpl", w, r)
+			case http.StatusUnauthorized:
+				h.defaultPage("/payment/unauthorized.html.tmpl", w, r)
 			default:
 				h.log.Warn("no default handler found for HTTP status", log15.Ctx{
 					"method":         "paymentDefaultsHandler",
