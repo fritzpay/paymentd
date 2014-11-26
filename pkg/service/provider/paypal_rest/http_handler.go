@@ -1,65 +1,23 @@
 package paypal_rest
 
 import (
-	"errors"
 	"fmt"
 	"html/template"
 	"io"
 	"io/ioutil"
 	"net/http"
-	"os"
 	"path"
 	"strings"
 	"time"
+
+	tmpl "github.com/fritzpay/paymentd/pkg/template"
 
 	"github.com/fritzpay/paymentd/pkg/paymentd/payment"
 	"gopkg.in/inconshreveable/log15.v2"
 )
 
-var (
-	ErrTemplateNotFound    = errors.New("template not found")
-	ErrInvalidTemplateFile = errors.New("invalid template file")
-)
-
-// defensively try to normalize the locale
-//
-// it does not necessarily return a valid locale. in this case the default
-// locale will be used anyways
-func normalizeLocale(l string) string {
-	if l == "" {
-		return "_"
-	}
-	l = strings.Replace(l, "-", "_", -1)
-	parts := strings.Split(l, "_")
-	if len(parts) == 2 {
-		parts[0] = strings.ToLower(parts[0])
-		parts[1] = strings.ToUpper(parts[1])
-		return strings.Join(parts, "_")
-	}
-	return l
-}
-
-func getTemplateFile(tmplDir, locale, baseName string) (string, error) {
-	tmplFile := path.Join(tmplDir, normalizeLocale(locale), baseName)
-	inf, err := os.Stat(tmplFile)
-	if err != nil && os.IsNotExist(err) {
-		tmplFile = path.Join(tmplDir, defaultLocale, baseName)
-		inf, err = os.Stat(tmplFile)
-	}
-	if err != nil {
-		if os.IsNotExist(err) {
-			return "", ErrTemplateNotFound
-		}
-		return "", err
-	}
-	if inf.IsDir() {
-		return "", ErrInvalidTemplateFile
-	}
-	return tmplFile, nil
-}
-
-func (d *Driver) getTemplate(tmpl *template.Template, tmplDir, locale, baseName string) (err error) {
-	tmplFile, err := getTemplateFile(tmplDir, locale, baseName)
+func (d *Driver) getTemplate(t *template.Template, tmplDir, locale, baseName string) (err error) {
+	tmplFile, err := tmpl.TemplateFileName(tmplDir, locale, defaultLocale, baseName)
 	if err != nil {
 		return err
 	}
@@ -68,7 +26,7 @@ func (d *Driver) getTemplate(tmpl *template.Template, tmplDir, locale, baseName 
 		return err
 	}
 	tmplLocale := path.Base(path.Ext(tmplFile))
-	tmpl.Funcs(template.FuncMap(map[string]interface{}{
+	t.Funcs(template.FuncMap(map[string]interface{}{
 		"staticPath": func() (string, error) {
 			url, err := d.mux.Get("staticHandler").URLPath()
 			if err != nil {
@@ -80,7 +38,7 @@ func (d *Driver) getTemplate(tmpl *template.Template, tmplDir, locale, baseName 
 			return tmplLocale
 		},
 	}))
-	_, err = tmpl.Parse(string(tmplB))
+	_, err = t.Parse(string(tmplB))
 	if err != nil {
 		return err
 	}

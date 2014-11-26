@@ -5,11 +5,16 @@ import (
 	"database/sql"
 	"fmt"
 	"hash"
+	"html/template"
 	"io"
+	"io/ioutil"
 	"net/http"
+	"path"
 	"strconv"
 	"strings"
 	"time"
+
+	tmpl "github.com/fritzpay/paymentd/pkg/template"
 
 	"github.com/fritzpay/paymentd/pkg/paymentd/payment"
 	"github.com/fritzpay/paymentd/pkg/paymentd/payment_method"
@@ -524,4 +529,88 @@ func (h *Handler) servePaymentHandler(p *payment.Payment, method *payment_method
 		}
 		h.ServeHTTP(w, r)
 	})
+}
+
+func (h *Handler) paymentDefaultsHandler(parent http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		parent.ServeHTTP(w, r)
+		if wr, ok := w.(*ResponseWriter); ok {
+			if !wr.headerWritten {
+				return
+			}
+			// no content output
+			if wr.written > 0 {
+				return
+			}
+			if !strings.Contains(wr.Header().Get("Content-Type"), "text/html") {
+				return
+			}
+			if Debug {
+				h.log.Debug("serving default page", log15.Ctx{"HTTPStatusCode": wr.statusCode})
+			}
+			switch wr.statusCode {
+			case http.StatusNotFound:
+				h.defaultPage("/payment/not_found.html.tmpl", w, r)
+			case http.StatusInternalServerError:
+				h.defaultPage("/payment/internal_error.html.tmpl", w, r)
+			case http.StatusBadRequest:
+				h.defaultPage("/payment/bad_request.html.tmpl", w, r)
+			case http.StatusServiceUnavailable:
+				h.defaultPage("/payment/service_unavailable.html.tmpl", w, r)
+			case http.StatusConflict:
+				h.defaultPage("/payment/conflict.html.tmpl", w, r)
+			case http.StatusUnauthorized:
+				h.defaultPage("/payment/unauthorized.html.tmpl", w, r)
+			default:
+				h.log.Warn("no default handler found for HTTP status", log15.Ctx{
+					"method":         "paymentDefaultsHandler",
+					"HTTPStatusCode": wr.statusCode,
+				})
+			}
+		}
+	})
+}
+
+func (h *Handler) getTemplate(t *template.Template, tmplDir, locale, baseName string) (err error) {
+	tmplFile, err := tmpl.TemplateFileName(tmplDir, locale, defaultLocale, baseName)
+	if err != nil {
+		return err
+	}
+	tmplB, err := ioutil.ReadFile(tmplFile)
+	if err != nil {
+		return err
+	}
+	tmplLocale := path.Base(path.Ext(tmplFile))
+	t.Funcs(template.FuncMap(map[string]interface{}{
+		"locale": func() string {
+			return tmplLocale
+		},
+	}))
+	_, err = t.Parse(string(tmplB))
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func (h *Handler) defaultPage(base string, w http.ResponseWriter, r *http.Request) {
+	var locale string
+	if acceptLang := r.Header.Get("Accept-Language"); acceptLang != "" {
+		tags, _, err := language.ParseAcceptLanguage(acceptLang)
+		if err == nil && len(tags) >= 1 {
+			locale = tags[0].String()
+		}
+	}
+
+	tmpl := template.New("page")
+
+	err := h.getTemplate(tmpl, h.templateDir, locale, base)
+	if err != nil {
+		h.log.Error("error retrieving template", log15.Ctx{"err": err})
+		return
+	}
+	err = tmpl.Execute(w, nil)
+	if err != nil {
+		h.log.Error("template error", log15.Ctx{"err": err})
+	}
 }
