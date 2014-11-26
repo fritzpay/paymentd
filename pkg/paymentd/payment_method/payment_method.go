@@ -17,6 +17,8 @@ func ParseMethodStatus(s string) (methodStatus, error) {
 		return PaymentMethodStatusActive, nil
 	} else if s == PaymentMethodStatusInactive.String() {
 		return PaymentMethodStatusInactive, nil
+	} else if s == PaymentMethodStatusDisabled.String() {
+		return PaymentMethodStatusDisabled, nil
 	} else {
 		return methodStatus(""), errors.New("invalid")
 	}
@@ -52,6 +54,7 @@ func (s methodStatus) Value() (driver.Value, error) {
 const (
 	PaymentMethodStatusActive   methodStatus = "active"
 	PaymentMethodStatusInactive methodStatus = "inactive"
+	PaymentMethodStatusDisabled methodStatus = "disabled"
 )
 
 // PaymentMethod represents a mode (method of payment)
@@ -75,6 +78,11 @@ type Method struct {
 // Active returns true if the payment method is considered active
 func (m *Method) Active() bool {
 	return m.Status == PaymentMethodStatusActive
+}
+
+// Active returns true if the payment method is considered disabled
+func (m *Method) Disabled() bool {
+	return m.Status == PaymentMethodStatusDisabled
 }
 
 const (
