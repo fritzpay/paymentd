@@ -4,13 +4,14 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/fritzpay/paymentd/pkg/paymentd/payment_method"
 	"io/ioutil"
 	"net/http"
 	"net/url"
 	"os"
 	"path"
 	"time"
+
+	"github.com/fritzpay/paymentd/pkg/paymentd/payment_method"
 
 	"code.google.com/p/goauth2/oauth"
 
