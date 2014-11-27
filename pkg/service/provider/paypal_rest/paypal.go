@@ -45,7 +45,8 @@ const (
 )
 
 var (
-	ErrNoLinks = errors.New("no links")
+	ErrNoLinks           = errors.New("no links")
+	ErrPayPalPaymentNoID = errors.New("paypal payment withoud ID")
 )
 
 type PayPalError struct {
@@ -378,4 +379,70 @@ func NewPayPalPaymentTransaction(paypalP *PaypalPayment) (*Transaction, error) {
 		return nil, err
 	}
 	return paypalTx, err
+}
+
+type Authorization struct {
+	ProjectID       int64
+	PaymentID       int64
+	Timestamp       time.Time
+	ValidUntil      time.Time
+	State           string
+	AuthorizationID string
+	PaypalID        string
+	Amount          string
+	Currency        string
+	Links           []byte
+	Data            []byte
+}
+
+// NewPayPalPaymentAuthorization creates an authorization entry for the given payment
+// and PayPal payment type
+//
+// The PayPal documentation is lacking information about how multiple transactions
+// are handled. We will try a somewhat naïve approach here.
+func NewPayPalPaymentAuthorization(p *payment.Payment, paypalP *PaypalPayment) (*Authorization, error) {
+	if paypalP.ID == "" {
+		return nil, ErrPayPalPaymentNoID
+	}
+	auth := &Authorization{
+		Timestamp: time.Now(),
+		PaypalID:  paypalP.ID,
+	}
+	var authRes *PayPalResource
+	for _, tx := range paypalP.Transactions {
+		authLen := len(tx.RelatedResources.Resources("authorization"))
+		if authLen == 0 {
+			continue
+		}
+		// we assume this is illegal
+		if authLen > 1 {
+			return nil, fmt.Errorf("multiple authorizations in related resources")
+		}
+		authRes = &tx.RelatedResources.Resources("authorization")[0]
+	}
+	if authRes == nil {
+		return nil, fmt.Errorf("no authorization resource")
+	}
+	valid, err := time.Parse(time.RFC3339, authRes.ValidUntil)
+	if err != nil {
+		return nil, fmt.Errorf("error parsing validity: %v", err)
+	}
+	auth.ValidUntil = valid
+	auth.State = authRes.State
+	auth.AuthorizationID = authRes.ID
+	auth.Amount = authRes.Amount.Total
+	auth.Currency = authRes.Amount.Currency
+	if authRes.Links != nil {
+		links, err := json.Marshal(authRes.Links)
+		if err != nil {
+			return nil, fmt.Errorf("error encoding links: %v", err)
+		}
+		auth.Links = links
+	}
+	enc, err := json.Marshal(authRes)
+	if err != nil {
+		return nil, fmt.Errorf("error encoding authorization: %v", err)
+	}
+	auth.Data = enc
+	return auth, nil
 }

@@ -245,3 +245,32 @@ func InsertTransactionDB(db *sql.DB, t *Transaction) error {
 	}
 	return doInsertTransaction(stmt, t)
 }
+
+const insertAuthorization = `
+INSERT INTO paypal_authorization
+(project_id, payment_id, timestamp, valid_until, state, authorization_id, paypal_id, amount, currency, links, data)
+VALUES
+(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+`
+
+func InsertAuthorizationTx(db *sql.Tx, auth *Authorization) error {
+	stmt, err := db.Prepare(insertAuthorization)
+	if err != nil {
+		return err
+	}
+	_, err = stmt.Exec(
+		auth.ProjectID,
+		auth.PaymentID,
+		auth.Timestamp.UnixNano(),
+		auth.ValidUntil,
+		auth.State,
+		auth.AuthorizationID,
+		auth.PaypalID,
+		auth.Amount,
+		auth.Currency,
+		auth.Links,
+		auth.Data,
+	)
+	stmt.Close()
+	return err
+}
