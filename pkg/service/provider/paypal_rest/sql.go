@@ -247,7 +247,7 @@ func InsertTransactionDB(db *sql.DB, t *Transaction) error {
 }
 
 const insertAuthorization = `
-INSERT INTO paypal_authorization
+INSERT INTO provider_paypal_authorization
 (project_id, payment_id, timestamp, valid_until, state, authorization_id, paypal_id, amount, currency, links, data)
 VALUES
 (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)

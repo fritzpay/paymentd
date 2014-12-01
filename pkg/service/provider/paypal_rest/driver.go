@@ -622,22 +622,35 @@ func (d *Driver) ReturnHandler() http.Handler {
 			return
 		}
 
-		go d.executePayment(cfg, execURL, p, string(execJSON))
+		go d.executePayment(cfg, execURL, p, currentTx.Intent.String, string(execJSON))
 
 		d.statusHandler(execTx, p, d.ReturnPageHandler(p)).ServeHTTP(w, r)
 	})
 }
 
-func (d *Driver) executePayment(cfg *Config, reqURL *url.URL, p *payment.Payment, body string) {
+func (d *Driver) executePayment(cfg *Config, reqURL *url.URL, p *payment.Payment, intent string, body string) {
 	log := d.log.New(log15.Ctx{
 		"method":    "executePayment",
 		"projectID": p.ProjectID(),
 		"paymentID": p.ID(),
+		"intent":    intent,
 		"body":      body,
 	})
 	log.Debug("executing payment...")
 
-	paymentTx, commitIntent, err := d.paymentService.IntentPaid(p, 500*time.Millisecond)
+	var paymentTx *payment.PaymentTransaction
+	var commitIntent paymentService.CommitIntentFunc
+	var err error
+
+	switch intent {
+	case IntentSale:
+		paymentTx, commitIntent, err = d.paymentService.IntentPaid(p, 500*time.Millisecond)
+	case IntentAuth:
+		paymentTx, commitIntent, err = d.paymentService.IntentAuthorized(p, 500*time.Millisecond)
+	default:
+		log.Error("invalid intent on execute payment")
+		return
+	}
 	if err != nil {
 		log.Error("error on intent paid", log15.Ctx{"err": err})
 		d.setPayPalError(p, nil)
@@ -710,6 +723,7 @@ func (d *Driver) executePayment(cfg *Config, reqURL *url.URL, p *payment.Payment
 		err = InsertTransactionTx(tx, paypalTx)
 		if err != nil {
 			log.Error("error saving paypal transaction", log15.Ctx{"err": err})
+			d.setPayPalError(p, respBody)
 			return ErrDatabase
 		}
 
@@ -717,7 +731,23 @@ func (d *Driver) executePayment(cfg *Config, reqURL *url.URL, p *payment.Payment
 		err = d.paymentService.SetPaymentTransaction(tx, paymentTx)
 		if err != nil {
 			log.Error("error on payment transaction", log15.Ctx{"err": err})
+			d.setPayPalError(p, respBody)
 			return ErrDatabase
+		}
+
+		if intent == IntentAuth {
+			auth, err := NewPayPalPaymentAuthorization(p, pay)
+			if err != nil {
+				log.Error("error creating PayPal authorization", log15.Ctx{"err": err})
+				d.setPayPalError(p, respBody)
+				return ErrInternal
+			}
+			err = InsertAuthorizationTx(tx, auth)
+			if err != nil {
+				log.Error("error saving authorization", log15.Ctx{"err": err})
+				d.setPayPalError(p, respBody)
+				return ErrDatabase
+			}
 		}
 
 		commit = true

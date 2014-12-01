@@ -405,6 +405,8 @@ func NewPayPalPaymentAuthorization(p *payment.Payment, paypalP *PaypalPayment) (
 		return nil, ErrPayPalPaymentNoID
 	}
 	auth := &Authorization{
+		ProjectID: p.ProjectID(),
+		PaymentID: p.ID(),
 		Timestamp: time.Now(),
 		PaypalID:  paypalP.ID,
 	}
