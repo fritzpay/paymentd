@@ -6,11 +6,72 @@ import (
 	"time"
 
 	"github.com/fritzpay/paymentd/pkg/paymentd/payment"
+
+	"github.com/fritzpay/paymentd/pkg/paymentd/payment_method"
 )
 
 var (
+	ErrConfigNotFound      = errors.New("config not found")
 	ErrTransactionNotFound = errors.New("transaction not found")
 )
+
+const selectConfig = `
+SELECT
+	c.project_id,
+	c.method_key,
+	c.created,
+	c.created_by,
+	c.endpoint,
+	c.client_id,
+	c.secret,
+	c.type
+FROM provider_paypal_config AS c
+`
+const selectConfigByProjectIDAndMethodKey = selectConfig + `
+WHERE
+	c.project_id = ?
+	AND
+	c.method_key = ?
+	AND
+	c.created = (
+		SELECT MAX(created) FROM provider_paypal_config
+		WHERE
+			project_id = c.project_id
+			AND
+			method_key = c.method_key
+	)
+`
+
+func scanConfig(row *sql.Row) (*Config, error) {
+	cfg := &Config{}
+	err := row.Scan(
+		&cfg.ProjectID,
+		&cfg.MethodKey,
+		&cfg.Created,
+		&cfg.CreatedBy,
+		&cfg.Endpoint,
+		&cfg.ClientID,
+		&cfg.Secret,
+		&cfg.Type,
+	)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return cfg, ErrConfigNotFound
+		}
+		return cfg, err
+	}
+	return cfg, nil
+}
+
+func ConfigByPaymentMethodTx(db *sql.Tx, method *payment_method.Method) (*Config, error) {
+	row := db.QueryRow(selectConfigByProjectIDAndMethodKey, method.ProjectID, method.MethodKey)
+	return scanConfig(row)
+}
+
+func ConfigByPaymentMethodDB(db *sql.DB, method *payment_method.Method) (*Config, error) {
+	row := db.QueryRow(selectConfigByProjectIDAndMethodKey, method.ProjectID, method.MethodKey)
+	return scanConfig(row)
+}
 
 const selectTransaction = `
 SELECT
@@ -183,4 +244,33 @@ func InsertTransactionDB(db *sql.DB, t *Transaction) error {
 		return err
 	}
 	return doInsertTransaction(stmt, t)
+}
+
+const insertAuthorization = `
+INSERT INTO provider_paypal_authorization
+(project_id, payment_id, timestamp, valid_until, state, authorization_id, paypal_id, amount, currency, links, data)
+VALUES
+(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+`
+
+func InsertAuthorizationTx(db *sql.Tx, auth *Authorization) error {
+	stmt, err := db.Prepare(insertAuthorization)
+	if err != nil {
+		return err
+	}
+	_, err = stmt.Exec(
+		auth.ProjectID,
+		auth.PaymentID,
+		auth.Timestamp.UnixNano(),
+		auth.ValidUntil,
+		auth.State,
+		auth.AuthorizationID,
+		auth.PaypalID,
+		auth.Amount,
+		auth.Currency,
+		auth.Links,
+		auth.Data,
+	)
+	stmt.Close()
+	return err
 }

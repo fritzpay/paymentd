@@ -337,6 +337,8 @@ CREATE TABLE IF NOT EXISTS `provider_paypal_authorization` (
   `state` VARCHAR(32) NOT NULL,
   `authorization_id` VARCHAR(128) NOT NULL,
   `paypal_id` VARCHAR(128) NOT NULL,
+  `amount` VARCHAR(64) NOT NULL,
+  `currency` VARCHAR(3) NOT NULL,
   `links` TEXT NULL,
   `data` TEXT NULL,
   PRIMARY KEY (`project_id`, `payment_id`, `timestamp`),

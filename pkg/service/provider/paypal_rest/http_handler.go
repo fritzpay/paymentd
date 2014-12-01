@@ -246,7 +246,7 @@ func (d *Driver) PaymentStatusHandler(p *payment.Payment) http.Handler {
 	switch p.Status {
 	case payment.PaymentStatusCancelled:
 		return d.CancelPageHandler(p)
-	case payment.PaymentStatusPaid:
+	case payment.PaymentStatusPaid, payment.PaymentStatusAuthorized:
 		return d.SuccessHandler(p)
 	case payment.PaymentStatusError:
 		return d.PaymentErrorHandler(p)
@@ -270,7 +270,9 @@ func (d *Driver) statusHandler(tx *Transaction, p *payment.Payment, defaultHandl
 				return
 			}
 			d.PaymentStatusHandler(p).ServeHTTP(w, r)
-		case TransactionTypeError, TransactionTypeGetPaymentResponse, TransactionTypeExecutePaymentResponse:
+		case TransactionTypeError:
+			d.PaymentErrorHandler(p).ServeHTTP(w, r)
+		case TransactionTypeGetPaymentResponse, TransactionTypeExecutePaymentResponse:
 			d.PaymentStatusHandler(p).ServeHTTP(w, r)
 		default:
 			defaultHandler.ServeHTTP(w, r)

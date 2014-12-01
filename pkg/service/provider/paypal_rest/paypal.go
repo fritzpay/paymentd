@@ -2,8 +2,12 @@
 package paypal_rest
 
 import (
+	"database/sql"
+	"encoding/json"
+	"errors"
 	"fmt"
 	"net/url"
+	"time"
 
 	"github.com/fritzpay/paymentd/pkg/paymentd/nonce"
 
@@ -11,17 +15,38 @@ import (
 	"gopkg.in/inconshreveable/log15.v2"
 )
 
-type PayPalPaymentMethod string
-
 const (
 	paymentIDParam         = "paymentID"
 	nonceParam             = "nonce"
 	paypalPayerIDParameter = "PayerID"
 )
 
+type PayPalPaymentMethod string
+
 const (
 	PayPalPaymentMethodPayPal PayPalPaymentMethod = "paypal"
 	PayPalPaymentMethodCC                         = "credit_card"
+)
+
+const (
+	IntentSale = "sale"
+	IntentAuth = "authorize"
+)
+
+// PayPal transaction types
+const (
+	TransactionTypeCreatePayment          = "createPayment"
+	TransactionTypeCreatePaymentResponse  = "createPaymentResponse"
+	TransactionTypeError                  = "error"
+	TransactionTypeExecutePayment         = "executePayment"
+	TransactionTypeExecutePaymentResponse = "executePaymentResponse"
+	TransactionTypeGetPayment             = "getPayment"
+	TransactionTypeGetPaymentResponse     = "getPaymentResponse"
+)
+
+var (
+	ErrNoLinks           = errors.New("no links")
+	ErrPayPalPaymentNoID = errors.New("paypal payment withoud ID")
 )
 
 type PayPalError struct {
@@ -157,7 +182,7 @@ type PayPalResource struct {
 }
 
 func (d *Driver) createPaypalPaymentRequest(p *payment.Payment, cfg *Config, non *nonce.Nonce) (*PayPalPaymentRequest, error) {
-	if cfg.Type != "sale" && cfg.Type != "authorize" {
+	if cfg.Type != IntentSale && cfg.Type != IntentAuth {
 		return nil, fmt.Errorf("invalid config. type %s not recognized", cfg.Type)
 	}
 	var err error
@@ -241,4 +266,185 @@ func (d *Driver) redirectURLs(p *payment.Payment, mods ...urlModification) (PayP
 	u.CancelURL = cancelURL.String()
 
 	return u, nil
+}
+
+type Config struct {
+	ProjectID int64
+	MethodKey string
+	Created   time.Time
+	CreatedBy string
+
+	Endpoint string
+	ClientID string
+	Secret   string
+	Type     string
+}
+
+// Transaction represents a transaction on a paypal payment
+//
+// It can be one of the following:
+//
+//   - A representation of a request.
+//   - A representation of a response.
+//   - A representation of a local change to a transaction.
+//
+// It also keeps the state of the paypal payment, i.e. the most recent transaction
+// will denote what the state of the payment is.
+type Transaction struct {
+	ProjectID        int64
+	PaymentID        int64
+	Timestamp        time.Time
+	Type             string
+	Nonce            sql.NullString
+	Intent           sql.NullString
+	PaypalID         sql.NullString
+	PayerID          sql.NullString
+	PaypalCreateTime *time.Time
+	PaypalState      sql.NullString
+	PaypalUpdateTime *time.Time
+	Links            []byte
+	Data             []byte
+}
+
+func (t *Transaction) SetNonce(nonce string) {
+	t.Nonce.String, t.Nonce.Valid = nonce, true
+}
+
+func (t *Transaction) SetIntent(intent string) {
+	t.Intent.String, t.Intent.Valid = intent, true
+}
+
+func (t *Transaction) SetPaypalID(id string) {
+	t.PaypalID.String, t.PaypalID.Valid = id, true
+}
+
+func (t *Transaction) SetPayerID(id string) {
+	t.PayerID.String, t.PayerID.Valid = id, true
+}
+
+func (t *Transaction) SetState(state string) {
+	t.PaypalState.String, t.PaypalState.Valid = state, true
+}
+
+func (t *Transaction) PayPalLinks() (map[string]*PayPalLink, error) {
+	if t.Links == nil || len(t.Links) == 0 {
+		return nil, ErrNoLinks
+	}
+	links := make([]*PayPalLink, 0, 10)
+	err := json.Unmarshal(t.Links, &links)
+	if err != nil {
+		return nil, err
+	}
+	ret := make(map[string]*PayPalLink)
+	for _, l := range links {
+		ret[l.Rel] = l
+	}
+	return ret, nil
+}
+
+func NewPayPalPaymentTransaction(paypalP *PaypalPayment) (*Transaction, error) {
+	var err error
+	paypalTx := &Transaction{
+		Timestamp: time.Now(),
+	}
+	if paypalP.Intent != "" {
+		paypalTx.SetIntent(paypalP.Intent)
+	}
+	if paypalP.ID != "" {
+		paypalTx.SetPaypalID(paypalP.ID)
+	}
+	if paypalP.State != "" {
+		paypalTx.SetState(paypalP.State)
+	}
+	if paypalP.CreateTime != "" {
+		var t time.Time
+		t, err = time.Parse(time.RFC3339, paypalP.CreateTime)
+		if err == nil {
+			paypalTx.PaypalCreateTime = &t
+		}
+	}
+	if paypalP.UpdateTime != "" {
+		var t time.Time
+		t, err = time.Parse(time.RFC3339, paypalP.UpdateTime)
+		if err == nil {
+			paypalTx.PaypalUpdateTime = &t
+		}
+	}
+	paypalTx.Links, err = json.Marshal(paypalP.Links)
+	if err != nil {
+		return nil, err
+	}
+	paypalTx.Data, err = json.Marshal(paypalP)
+	if err != nil {
+		return nil, err
+	}
+	return paypalTx, err
+}
+
+type Authorization struct {
+	ProjectID       int64
+	PaymentID       int64
+	Timestamp       time.Time
+	ValidUntil      time.Time
+	State           string
+	AuthorizationID string
+	PaypalID        string
+	Amount          string
+	Currency        string
+	Links           []byte
+	Data            []byte
+}
+
+// NewPayPalPaymentAuthorization creates an authorization entry for the given payment
+// and PayPal payment type
+//
+// The PayPal documentation is lacking information about how multiple transactions
+// are handled. We will try a somewhat naïve approach here.
+func NewPayPalPaymentAuthorization(p *payment.Payment, paypalP *PaypalPayment) (*Authorization, error) {
+	if paypalP.ID == "" {
+		return nil, ErrPayPalPaymentNoID
+	}
+	auth := &Authorization{
+		ProjectID: p.ProjectID(),
+		PaymentID: p.ID(),
+		Timestamp: time.Now(),
+		PaypalID:  paypalP.ID,
+	}
+	var authRes *PayPalResource
+	for _, tx := range paypalP.Transactions {
+		authLen := len(tx.RelatedResources.Resources("authorization"))
+		if authLen == 0 {
+			continue
+		}
+		// we assume this is illegal
+		if authLen > 1 {
+			return nil, fmt.Errorf("multiple authorizations in related resources")
+		}
+		authRes = &tx.RelatedResources.Resources("authorization")[0]
+	}
+	if authRes == nil {
+		return nil, fmt.Errorf("no authorization resource")
+	}
+	valid, err := time.Parse(time.RFC3339, authRes.ValidUntil)
+	if err != nil {
+		return nil, fmt.Errorf("error parsing validity: %v", err)
+	}
+	auth.ValidUntil = valid
+	auth.State = authRes.State
+	auth.AuthorizationID = authRes.ID
+	auth.Amount = authRes.Amount.Total
+	auth.Currency = authRes.Amount.Currency
+	if authRes.Links != nil {
+		links, err := json.Marshal(authRes.Links)
+		if err != nil {
+			return nil, fmt.Errorf("error encoding links: %v", err)
+		}
+		auth.Links = links
+	}
+	enc, err := json.Marshal(authRes)
+	if err != nil {
+		return nil, fmt.Errorf("error encoding authorization: %v", err)
+	}
+	auth.Data = enc
+	return auth, nil
 }
