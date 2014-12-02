@@ -11,8 +11,9 @@ Contents:
 .. toctree::
    :maxdepth: 2
 
-   install
    concepts
+   install
+   quickstart
 
 .. only:: html
 

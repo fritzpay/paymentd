@@ -19,3 +19,6 @@ Glossary
 		The service connected to :term:`paymentd`. This system will usually handle
 		orders, offer primary interfaces for the customer/end-user and broker API
 		calls to other subsystems like fulfillment/delivery.
+
+	PSP
+		A Payment Service Provider (PSP) offers services to accept online payments.

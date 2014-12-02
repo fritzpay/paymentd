@@ -47,7 +47,7 @@ master_doc = 'index'
 
 # General information about the project.
 project = u'paymentd Handbook'
-copyright = u'2014, Fritz Payment GmbH'
+copyright = u'(c) 2014, Fritz Payment GmbH'
 
 # The version info for the project you're documenting, acts as replacement for
 # |version| and |release|, also used in various other places throughout the
