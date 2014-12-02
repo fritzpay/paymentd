@@ -12,6 +12,13 @@ Contents:
    :maxdepth: 2
 
    install
+   concepts
+
+.. only:: html
+
+.. toctree::
+
+	glossary
 
 
 Indices and tables
