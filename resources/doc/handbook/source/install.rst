@@ -5,8 +5,20 @@ Installing
 
 This part will guide you through the installation process of :term:`paymentd`.
 
+Installing the binaries
+-----------------------
+
+We provide precompiled binaries of :term:`paymentd`. The binaries are statically
+compiled and should run pretty much anywhere without dependencies.
+
+.. todo:: Include URLs to binaries.
+
+Building from source
+--------------------
+
+************
 Dependencies
-------------
+************
 
 :term:`paymentd` is very light on dependencies. You will need:
 
@@ -16,9 +28,6 @@ Dependencies
 
 Any other dependencies will be handled through the build process and will not require
 any changes to your environment.
-
-Building from source
---------------------
 
 :term:`paymentd` is written in `Go`_. This section will guide you through building
 the binaries from the sources.
