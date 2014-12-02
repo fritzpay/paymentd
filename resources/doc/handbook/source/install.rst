@@ -12,6 +12,9 @@ Dependencies
 * `git`_ so the ``go`` tool can obtain the sources from git repositories.
 * `mercurial`_ so the ``go`` tool can obtain the sources from mercurial repositories.
 
+Any other dependencies will be handled through the build process and will not require
+any changes to your environment.
+
 Building from source
 --------------------
 
