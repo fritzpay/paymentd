@@ -193,3 +193,90 @@ The connection Data Source Names (DSNs) are described at the `MySQL driver libra
 
 The "Write" DSNs are required. The "ReadOnly" DSNs are optional. If they are ``null``,
 only the Read/Write connections will be used.
+
+**********
+API Server
+**********
+
+.. topic:: The API section
+
+	::
+
+		"API": {
+			"Active": true,
+			"Service": {
+				"Address": ":8080",
+				"ReadTimeout": "10s",
+				"WriteTimeout": "10s",
+				"MaxHeaderBytes": 0
+			},
+			"Timeout": "5s",
+			"ServeAdmin": false,
+			"Secure": false,
+			"Cookie": {
+				"AllowCookieAuth": false,
+				"HTTPOnly": true
+			},
+			"AdminGUIPubWWWDir": "",
+			"AuthKeys": []
+		}
+
+The API (Server) section holds values for the :ref:`API Server <api_server>`.
+
+Active
+++++++
+
+This boolean value indicates whether the server should serve the API service.
+
+Service Address
++++++++++++++++
+
+This is the address the API server will listen on. The default value ``:8080`` listens
+on all active interfaces on port ``8080``. If you provide an IP address, the server
+will be bound to that IP address.
+
+Service ReadTimeout/WriteTimeout
+++++++++++++++++++++++++++++++++
+
+The HTTP timeouts for reading a request and writing a response.
+
+Service MaxHeaderBytes
+++++++++++++++++++++++
+
+The maximum size of headers. If the default ``0`` is provided, it will be the default
+Go ``net.http`` ``DefaultMaxHeaderBytes`` (1 MB at this time).
+
+Timeout
++++++++
+
+A global timeout after which any request will stop.
+
+ServeAdmin
+++++++++++
+
+This boolean value indicates whether the API service will also serve administrative
+API methods.
+
+Secure
+++++++
+
+Whether the API server should be served securely. This affects the secure flags of the
+cookies.
+
+While :term:`paymentd` does not support TLS as of now, most installations will run
+:term:`paymentd` behind a TLS-enabled proxy. In these cases, this flag should be set
+to ``true``.
+
+Cookie AllowCookieAuth
+++++++++++++++++++++++
+
+The administrative APIs require a valid ``Authorization`` header and offer means of
+obtaining a valid authorization.
+
+When this flag is set to ``true`` obtained authorizations will also set a cookie and
+the API endpoints will check for authoriation cookies.
+
+Cookie HTTPOnly
++++++++++++++++
+
+Whether the ``HTTP only`` flag should be set on cookies.
