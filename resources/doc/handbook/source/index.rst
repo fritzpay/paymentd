@@ -6,8 +6,6 @@
 The paymentd Handbook
 =====================
 
-Contents:
-
 .. toctree::
    :maxdepth: 2
 
@@ -18,15 +16,13 @@ Contents:
 
 .. only:: html
 
-.. toctree::
+	.. toctree::
 
-	glossary
+		appendix
+		glossary
 
+	Indices and tables
+	==================
 
-Indices and tables
-==================
-
-* :ref:`genindex`
-* :ref:`modindex`
-* :ref:`search`
-
+	* :ref:`genindex`
+	* :ref:`search`

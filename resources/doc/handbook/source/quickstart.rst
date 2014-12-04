@@ -6,7 +6,8 @@ This section assumes that :term:`paymentd` is :ref:`installed <install>`.
 Configuration
 -------------
 
-:term:`paymentd` is configured using a JSON-file. 
+:term:`paymentd` is configured using a JSON-file. For a detailed description
+of the configuration variables please refer to :ref:`config`.
 
 The ``paymentd`` command will look for the environment variable ``PAYMENTDCFG``, which
 should contain the path to the config JSON file. Alternatively ``paymentd`` can be invoked
@@ -17,81 +18,29 @@ with the ``-c`` flag and the path to the config JSON file::
 :term:`paymentd` comes with a default configuration which can be displayed using 
 the ``paymentdctl`` tool.
 
-Values not present in the configuration will use the default values.
-
 .. topic:: The default configuration
 
-	::
+	Obtaining the default configuration with the ``paymentdctl`` tool::
 
 		$ $GOPATH/bin/paymentdctl cfg w -o /dev/stdout 
 		no config file flag provided. will use default config...
 		{
-		  "Payment": {
-		    "PaymentIDEncPrime": 982450871,
-		    "PaymentIDEncXOR": 123456789
-		  },
-		  "Database": {
-		    "TransactionMaxRetries": 5,
-		    "MaxOpenConns": 10,
-		    "MaxIdleConns": 5,
-		    "Principal": {
-		      "Write": {
-		        "mysql": "paymentd@tcp(localhost:3306)/fritzpay_principal?charset=utf8mb4\u0026parseTime=true\u0026loc=UTC\u0026timeout=1m\u0026wait_timeout=30\u0026interactive_timeout=30\u0026time_zone=%22%2B00%3A00%22"
-		      },
-		      "ReadOnly": null
-		    },
-		    "Payment": {
-		      "Write": {
-		        "mysql": "paymentd@tcp(localhost:3306)/fritzpay_payment?charset=utf8mb4\u0026parseTime=true\u0026loc=UTC\u0026timeout=1m\u0026wait_timeout=30\u0026interactive_timeout=30\u0026time_zone=%22%2B00%3A00%22"
-		      },
-		      "ReadOnly": null
-		    }
-		  },
-		  "API": {
-		    "Active": true,
-		    "Service": {
-		      "Address": ":8080",
-		      "ReadTimeout": "10s",
-		      "WriteTimeout": "10s",
-		      "MaxHeaderBytes": 0
-		    },
-		    "Timeout": "5s",
-		    "ServeAdmin": false,
-		    "Secure": false,
-		    "Cookie": {
-		      "AllowCookieAuth": false,
-		      "HTTPOnly": true
-		    },
-		    "AdminGUIPubWWWDir": "",
-		    "AuthKeys": []
-		  },
-		  "Web": {
-		    "Active": false,
-		    "URL": "http://localhost:8443",
-		    "Service": {
-		      "Address": ":8443",
-		      "ReadTimeout": "10s",
-		      "WriteTimeout": "10s",
-		      "MaxHeaderBytes": 0
-		    },
-		    "Timeout": "5s",
-		    "PubWWWDir": "",
-		    "TemplateDir": "",
-		    "Secure": false,
-		    "Cookie": {
-		      "HTTPOnly": true
-		    },
-		    "AuthKeys": []
-		  },
-		  "Provider": {
-		    "URL": "http://localhost:8443",
-		    "ProviderTemplateDir": ""
-		  }
+			... default config output
 		}config file /dev/stdout written.
+
+Values not present in the configuration will use the default values.
 
 You can use the ``paymentdctl`` tool to write a configuration template like so::
 
 	$ $GOPATH/bin/paymentdctl cfg w -o /path/to/paymentd.config.json
+
+*************************
+The default configuration
+*************************
+
+.. include:: tables.rst
+	:start-after: startPaymentdDefaultConfigJSON
+	:end-before: endPaymentdDefaultConfigJSON
 
 Configuration sections
 ----------------------

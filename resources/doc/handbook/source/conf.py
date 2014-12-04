@@ -186,13 +186,14 @@ htmlhelp_basename = 'paymentdHandbookdoc'
 
 latex_elements = {
 # The paper size ('letterpaper' or 'a4paper').
-#'papersize': 'letterpaper',
+'papersize': 'a4paper',
 
 # The font size ('10pt', '11pt' or '12pt').
 #'pointsize': '10pt',
 
 # Additional stuff for the LaTeX preamble.
-#'preamble': '',
+'preamble': '',
+'figure_align': 'H',
 }
 
 # Grouping the document tree into LaTeX files. List of tuples
@@ -218,7 +219,7 @@ latex_documents = [
 #latex_show_urls = False
 
 # Documents to append as an appendix to all manuals.
-#latex_appendices = []
+latex_appendices = ['config', 'tables', 'glossary']
 
 # If false, no module index is generated.
 #latex_domain_indices = True
@@ -249,7 +250,7 @@ texinfo_documents = [
 ]
 
 # Documents to append as an appendix to all manuals.
-#texinfo_appendices = []
+#texinfo_appendices = ['config', 'tables', 'glossary']
 
 # If false, no module index is generated.
 #texinfo_domain_indices = True

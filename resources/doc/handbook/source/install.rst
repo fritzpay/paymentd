@@ -48,17 +48,17 @@ Obtaining the sources the "Go Way" is simple as::
 The ``go`` tool will download the sources and create a tree like::
 
 	$ tree -d $GOPATH -L 5
-	/home/seong/tmp
-	├── bin
-	└── src
-	    └── github.com
-	        └── fritzpay
-	            └── paymentd
-	                ├── cmd
-	                ├── Godeps
-	                ├── htmlSrc
-	                ├── pkg
-	                └── resources
+	/path/to/gopath
+	    bin
+	    src
+	        github.com
+	            fritzpay
+	                paymentd
+	                    cmd
+	                    Godeps
+	                    htmlSrc
+	                    pkg
+	                    resources
 
 .. note::
 
