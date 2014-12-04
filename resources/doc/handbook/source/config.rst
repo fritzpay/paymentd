@@ -128,8 +128,8 @@ The "Write" DSNs are required. The "ReadOnly" DSNs are optional. If they are ``n
 only the Read/Write connections will be used.
 
 
-API Server
-----------
+API Service
+-----------
 
 .. topic:: The API section
 
@@ -154,7 +154,7 @@ API Server
 			"AuthKeys": []
 		}
 
-The API (Server) section holds values for the :ref:`API Server <api_server>`.
+The API service section holds values for the :ref:`API Server <api_server>`.
 
 ******
 Active
@@ -181,7 +181,9 @@ Service MaxHeaderBytes
 **********************
 
 The maximum size of headers. If the default ``0`` is provided, it will be the default
-Go ``net.http`` ``DefaultMaxHeaderBytes`` (1 MB at this time).
+Go ``net.http`` `DefaultMaxHeaderBytes`_ (1 MB at this time).
+
+.. _DefaultMaxHeaderBytes: http://golang.org/pkg/net/http/#pkg-constants
 
 *******
 Timeout
@@ -222,3 +224,160 @@ Cookie HTTPOnly
 ***************
 
 Whether the ``HTTP only`` flag should be set on cookies.
+
+********
+AuthKeys
+********
+
+The API service maintains a list of keys (an array of hex-encoded strings). Those
+are used to encrypt the authorization containers. These keys, when shared across 
+different services in the whole software stack, allow cross-application
+authentication and authorization.
+
+The list is used to roll over new keys. The first key is the preferred key.
+
+.. note::
+
+	Keys will be randomly generated during startup of the daemon, if no keys are
+	configured. Those keys must be added to the configuration for persistence.
+
+	Persistence is required to apply the same keys on multiple instances of
+	:term:`paymentd` or different applications.
+
+
+Web Server
+----------
+
+.. topic:: The Web section
+
+	::
+
+		"Web": {
+			"Active": false,
+			"URL": "http://localhost:8443",
+			"Service": {
+				"Address": ":8443",
+				"ReadTimeout": "10s",
+				"WriteTimeout": "10s",
+				"MaxHeaderBytes": 0
+			},
+			"PubWWWDir": "",
+			"TemplateDir": "",
+			"Secure": false,
+			"Cookie": {
+				"HTTPOnly": true
+			},
+			"AuthKeys": []
+		}
+
+The Web service section holds values for the :ref:`Web Server <web_server>`.
+
+******
+Active
+******
+
+This boolean value indicates whether the server should serve the Web service.
+
+***
+URL
+***
+
+The URL under which the Web server will be served.
+
+***************
+Service Address
+***************
+
+This is the address the Web server will listen on. The default value ``:8443`` listens
+on all active interfaces on port ``8443``. If you provide an IP address, the server
+will be bound to that IP address.
+
+********************************
+Service ReadTimeout/WriteTimeout
+********************************
+
+The HTTP timeouts for reading a request and writing a response.
+
+**********************
+Service MaxHeaderBytes
+**********************
+
+The maximum size of headers. If the default ``0`` is provided, it will be the default
+Go ``net.http`` `DefaultMaxHeaderBytes`_ (1 MB at this time).
+
+*********
+PubWWWDir
+*********
+
+The path to the directory where the WWW public files are located. Static HTML/JS/CSS files
+should be placed in this directory.
+
+***********
+TemplateDir
+***********
+
+The path to the directory where the templates are located.
+
+******
+Secure
+******
+
+Whether the Web server should be served securely. This affects the secure flags of the
+cookies.
+
+While :term:`paymentd` does not support TLS as of now, most installations will run
+:term:`paymentd` behind a TLS-enabled proxy. In these cases, this flag should be set
+to ``true``.
+
+***************
+Cookie HTTPOnly
+***************
+
+Whether the ``HTTP only`` flag should be set on cookies.
+
+********
+AuthKeys
+********
+
+The Web service maintains a list of keys (an array of hex-encoded strings). Those
+are used to encrypt the payment cookie containers. These keys, when shared across 
+different services in the whole software stack, allow cross-application
+authentication and authorization.
+
+The list is used to roll over new keys. The first key is the preferred key.
+
+.. note::
+
+	Keys will be randomly generated during startup of the daemon, if no keys are
+	configured. Those keys must be added to the configuration for persistence.
+
+	Persistence is required to apply the same keys on multiple instances of
+	:term:`paymentd` or different applications.
+
+
+Provider
+--------
+
+.. topic:: The Provider section
+
+	::
+
+		"Provider": {
+			"URL": "http://localhost:8443",
+			"ProviderTemplateDir": ""
+		}
+
+The Provider section holds values for the PSP service.
+
+***
+URL
+***
+
+The URL under which the provider endpoints will be served.
+
+*******************
+ProviderTemplateDir
+*******************
+
+The path to the directory which holds the provider templates.
+
