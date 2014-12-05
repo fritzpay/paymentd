@@ -92,3 +92,39 @@ along with some utilities.
 .. _$GOPATH: https://golang.org/doc/code.html#GOPATH
 .. _git: http://git-scm.com/
 .. _mercurial: http://mercurial.selenic.com/
+
+Manual build
+------------
+
+This section describes the necessary steps to manually build :term:`paymentd`
+if you don't want to use the ``make.go`` script or want to use special build tags.
+
+************************************
+Installing `Godep`_ and dependencies
+************************************
+
+:term:`paymentd` uses `Godep`_ for managing dependencies.
+
+You can restore the dependencies (assuming `Godep`_ is installed) with::
+
+	$ cd $GOPATH/src/github.com/fritzpay/paymentd
+	$ godep restore ./...
+
+***************************
+Installing :term:`paymentd`
+***************************
+
+Using the ``go`` tool to install the binary::
+
+	$ go install github.com/fritzpay/paymentd/cmd/paymentd
+
+**********
+Debug mode
+**********
+
+If you want to run :term:`paymentd` in :ref:`Debug mode <debug_mode>`, you must build
+the binary using the ``debug`` tag::
+
+	$ go install github.com/fritzpay/paymentd/cmd/paymentd -tags debug
+
+.. _Godep: https://github.com/tools/godep

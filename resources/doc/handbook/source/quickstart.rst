@@ -51,3 +51,28 @@ The default configuration
 .. include:: tables.rst
 	:start-after: startPaymentdDefaultConfigJSON
 	:end-before: endPaymentdDefaultConfigJSON
+
+Running :term:`paymentd`
+------------------------
+
+The server will start serving when you run the binary::
+
+	$ $GOPATH/bin/paymentd
+
+Or with the config flag::
+
+	$ $GOPATH/bin/paymentd -c /path/to/paymentd.config.json
+
+Or with the environment variable set::
+
+	$ export PAYMENTDCFG=/path/to/paymentd.config.json
+	$ $GOPATH/bin/paymentd
+
+Restarting :term:`paymentd`
+---------------------------
+
+:term:`paymentd` supports live reloading capabilities without dropping active connections.
+
+Sending a ``USR2`` signal to the running process will spawn a new process and pass the
+connection fd(s) to the new process. After the handover is completed, the parent process
+will be stopped with a ``TERM`` signal.
