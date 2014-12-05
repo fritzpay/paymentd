@@ -6,6 +6,7 @@ import (
 	"github.com/fritzpay/paymentd/pkg/paymentd/provider"
 
 	"github.com/fritzpay/paymentd/pkg/service/provider/paypal_rest"
+	"github.com/fritzpay/paymentd/pkg/service/provider/stripe"
 
 	"github.com/fritzpay/paymentd/pkg/paymentd/payment_method"
 	"github.com/fritzpay/paymentd/pkg/service"
@@ -57,6 +58,8 @@ func (s *Service) AttachDrivers(mux *mux.Router) error {
 			s.drivers[driverFritzpay] = &fritzpay.Driver{}
 		case driverPaypalREST:
 			s.drivers[driverPaypalREST] = &paypal_rest.Driver{}
+		case driverStripe:
+			s.drivers[driverStripe] = &stripe.Driver{}
 		default:
 			s.log.Error("unknown provider id in database", log15.Ctx{"providerName": prov.Name})
 			return ErrNoDriver
