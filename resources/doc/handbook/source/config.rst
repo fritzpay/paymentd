@@ -127,6 +127,7 @@ Important DSN parameters are:
 The "Write" DSNs are required. The "ReadOnly" DSNs are optional. If they are ``null``,
 only the Read/Write connections will be used.
 
+.. _config_api:
 
 API Service
 -----------
@@ -190,6 +191,8 @@ Timeout
 *******
 
 A general timeout for all API requests.
+
+.. _config_api_serve_admin:
 
 **********
 ServeAdmin

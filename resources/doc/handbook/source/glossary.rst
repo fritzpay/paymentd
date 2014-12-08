@@ -7,6 +7,8 @@ Glossary
 	paymentd
 		The :term:`daemon`, which serves the payment service in the FritzPay stack.
 
+		See the high-level description of the ``paymentd`` service: :ref:`paymentd_server`.
+
 	daemon
 		A program which runs on a server (usually in the background) and provides
 		various services.
@@ -14,6 +16,8 @@ Glossary
 	www endpoint
 		The HTTP service endpoint, which is used by the customer/end-user to access the
 		payment and perform the payment.
+
+		See also the high-level description of the Web Server: :ref:`web_server`.
 
 	Order System
 		The service connected to :term:`paymentd`. This system will usually handle
