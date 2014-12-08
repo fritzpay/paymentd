@@ -159,6 +159,10 @@ Authentication and Authorization
 	:statuscode 400: The request was malformed; the provided fields could not be understood.
 	:statuscode 401: Unauthorized, either the username does not exist or the credentials were incorrect.
 
+**********************
+Renew an authorization
+**********************
+
 .. http:get:: /v1/authorization
 	:synopsis: Renew an authorization.
 
@@ -241,6 +245,10 @@ Principal API
 
 These methods deal with the administration of :ref:`Principals <principal>`.
 
+**********************
+Create a new principal
+**********************
+
 .. http:put:: /v1/principal
 
 	Create a new principal resource.
@@ -263,8 +271,6 @@ These methods deal with the administration of :ref:`Principals <principal>`.
 			}
 		}
 
-	:reqheader Authorization: HTTP Basic Auth
-
 	**Example response**:
 
 	.. sourcecode:: http
@@ -279,7 +285,7 @@ These methods deal with the administration of :ref:`Principals <principal>`.
 			"Response": {
 				"ID": "3",
 				"Created": "2014-11-04T09:59:28Z",
-				"CreatedBy": "Jane Joe",
+				"CreatedBy": "Jane Doe",
 				"Name": "acme_corporation",
 				"Metadata": {
 					"MyMeta": "Value"
@@ -292,8 +298,120 @@ These methods deal with the administration of :ref:`Principals <principal>`.
 	:reqheader Cookie: Accepted when :ref:`config_api_cookie_allow_cookie_auth`
 	                   is enabled.
 
+	:resjson string Response.ID: The Principal ID
+	:resjson string Response.Created: The Created :rfc:`3339` Timestamp
+	:resjson string Response.CreatedBy: The user who created the principal
+	:resjson string Response.Name: The principal name
+	:resjson Object Metadata: The Metadata or ``null``
+
 	:statuscode 200: No error, current principal state returned.
 	:statuscode 400: The request was malformed; the princial data could not be understood.
 	:statuscode 401: Unauthorized, either the username does not exist or the credentials
 	                 were incorrect.
 	:statuscode 409: Principal with given name already exists.
+
+*********************
+Change principal data
+*********************
+
+.. http:post:: /v1/principal
+
+	Change an existing principal.
+
+	**Example request**:
+
+	.. sourcecode:: http
+
+		POST /principal HTTP/1.1
+		Host: example.com
+		Content-Type: application/json
+		Accept: application/json
+		Authorization: QxNTA4NTO7MHxYaCVyOkp7RNaMujhpMT...
+
+		{
+			"Metadata": {
+				"city":"munich"
+			}
+		}
+
+	**Example reponse**:
+
+	.. sourcecode:: http
+
+		HTTP/1.1 200 OK
+		Content-Type: application/json
+
+		{
+			"Version": "1.2",
+			"Status": "success",
+			"Info": "principal acme_corporation changed",
+			"Response": {
+				"ID": "3",
+				"Created": "2014-11-04T14:07:49Z",
+				"CreatedBy": "Dan Done",
+				"Name": "acme_corporation",
+				"Metadata": {
+					"MyMeta": "Value",
+					"city": "munich"
+				},
+			"Error": null
+		}
+
+	:reqheader Authorization: A valid authorization token.
+
+	:statuscode 200: No error, principal data changed.
+	:statuscode 400: The request was malformed; the provided parameters could not be
+	                 understood.
+	:statuscode 401: Unauthorized, either the username does not exist or the credentials
+	                 were incorrect.
+	:statuscode 404: Principal with given id was not found 
+
+********************
+Retrieve a principal
+********************
+
+.. http:get:: /principal/(name)
+
+	Retrieve the given principal.
+
+	**Example request**:
+
+	.. sourcecode:: http
+
+		GET /principal/acme_corporation  HTTP/1.1
+		Host: example.com
+		Content-Type: application/json
+		Accept: application/json
+		Authorization: MTQxNTA5NTI5MHxYaCVyOkp7RNaMujhp...
+
+	**Example response**:
+
+	.. sourcecode:: http
+		
+		HTTP/1.1 200 OK
+		Content-Type: application/json
+
+		{
+			"Version": "1.2",
+			"Status": "success",
+			"Info": "principal acme_corporation found",
+			"Response": {
+				"ID": "3",
+				"Created": "2014-11-04T14:07:49Z",
+				"CreatedBy": "Dan Done",
+				"Name": "acme_corporation",
+				"Metadata": {
+					"MyMeta": "Value",
+					"city": "munich"
+				},
+			"Error": null
+		}
+
+	:param name: The principal name.
+
+	:reqheader Authorization: A valid authorization token.
+	
+	:statuscode 200: No error, principal data served.
+	:statuscode 400: The request was malformed; the given princial name could not be understood.
+	:statuscode 401: Unauthorized, either the username does not exist or the credentials
+	:statuscode 404: principal with given name could not be found
