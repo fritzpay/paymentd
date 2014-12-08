@@ -10,7 +10,7 @@ The schemas can be found in::
 
 	$GOPATH/src/github.com/fritzpay/paymentd/resources/mysql/paymentd.sql
 
-Note that the database names are part of the SQl file. If you want to use
+Note that the database names are part of the SQL file. If you want to use
 different database names, you need to update the references accordingly.
 
 Configuration

@@ -13,6 +13,8 @@ The paymentd Handbook
    concepts
    install
    quickstart
+   server
+   api
 
 .. only:: html
 
