@@ -73,15 +73,69 @@ The :term:`paymentd` default configuration JSON
 
 .. endPaymentdDefaultConfigJSON
 
-An Example :http:header:`Authorization` Container
--------------------------------------------------
+paymentd General JSON response fields
+-------------------------------------
 
-.. startPaymentdAuthContainer
+.. startPaymentdGeneralJSONResponseFields
 
-::
+.. table:: General JSON response fields
 
-	MTQxODA0NjQ4NnxHd+v6FLA0tYWGA+l5v6vZ+t06jARTrYq09PhAFJ3PTa2tVd
-	IFl3AbbGRQbi08isTe8CIOCF8DbsV2VX/iH/7OpikAsDW84Azjlb1MZ2GD+hvQ
-	azEdtkuqbgG8oya8T+WofA==
+	======== ========================================================
+	Field    Explanation
+	======== ========================================================
+	Version  The API version served.
+	Status   A defined status field as a string.
+	Info     A human readable explanation about the response.
+	Response A response object, which is defined by the request type.
+	Error    A generic value. It's ``null`` if no error occured.
+	         *Deprecated in version 1.2.*
+	======== ========================================================
 
-.. endPaymentdAuthContainer
+.. endPaymentdGeneralJSONResponseFields
+
+.. _paymentd-table-statuses:
+
+paymentd API response status codes
+----------------------------------
+
+.. tabularcolumns:: |p{5cm}|L|
+.. table:: A list of JSON response statuses currently in use.
+
+	======================= ==============================================================
+	Status                  Meaning
+	======================= ==============================================================
+	``success``             The request was successfully processed.
+	``error``               There was an error processing the request.
+	``unauthorized``        The request could not be processed due to wrong credentials or
+	                        missing rights.
+	``implementationError`` There was an error mostly due to wrongly formatted request
+	                        fields, missing required fields or conflicts.
+	======================= ==============================================================
+
+.. _paymentd-table-payment-status-codes:
+
+paymentd Payment status codes
+-----------------------------
+
+.. startPaymentStatusCodes
+
+.. tabularcolumns:: |p{5cm}|L|
+.. table:: A list payment statuses currently in use.
+
+	+----------------+----------------------------------------------------------------------+
+	|     Status     |                               Meaning                                |
+	+================+======================================================================+
+	| ``open``       | The Payment was accessed by the customer/end-user and is ready to be |
+	|                | processed.                                                           |
+	+----------------+----------------------------------------------------------------------+
+	| ``paid``       | The Payment was succesfully paid.                                    |
+	+----------------+----------------------------------------------------------------------+
+	| ``cancelled``  | The customer/end-user deliberately cancelled the Payment.            |
+	+----------------+----------------------------------------------------------------------+
+	| ``chargeback`` | There was a chargeback and the payment was reversed.                 |
+	|                |                                                                      |
+	|                | This usually happens when an account does not have the required      |
+	|                | funds.                                                               |
+	+----------------+----------------------------------------------------------------------+
+
+.. endPaymentStatusCodes

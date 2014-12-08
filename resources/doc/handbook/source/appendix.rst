@@ -6,3 +6,4 @@ Appendix
 
 	config
 	tables
+	examples

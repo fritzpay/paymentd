@@ -2,6 +2,7 @@ API Reference
 =============
 
 .. toctree::
-   :maxdepth: 3
+	:maxdepth: 3
 
-   api/admin
+	api/basics
+	api/admin

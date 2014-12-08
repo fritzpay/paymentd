@@ -11,7 +11,7 @@ The User API deals with user authentication and authorization. All administrativ
 API methods require a valid :http:header:`Authorization` header to be present.
 
 Those can be obtained using the User API methods. Other services in your stack could
-act as a authentication/authorization layer and provide the correct
+act as a authentication/authorization service and provide the correct
 auth schemes for integrating the administrative API into your environment.
 
 ***************************
@@ -34,7 +34,7 @@ An Authorization Container provided by :term:`paymentd` has a fixed expiry of
 
 Here is an example authorization container:
 
-.. include:: /tables.rst
+.. include:: /examples.rst
 	:start-after: startPaymentdAuthContainer
 	:end-before: endPaymentdAuthContainer
 
@@ -241,3 +241,59 @@ Principal API
 
 These methods deal with the administration of :ref:`Principals <principal>`.
 
+.. http:put:: /v1/principal
+
+	Create a new principal resource.
+
+	**Example request**:
+
+	.. sourcecode:: http
+
+		PUT /principal HTTP/1.1
+		Host: example.com
+		Content-Type: application/json
+		Accept: application/json
+		Authorization: MTQxNTA5NTI5MHxYaCVyOkp7RNaMujhp...
+		Cookie: auth=MTQxNTA5NTI5MHxYaCVyOkp7RNaMujhp...
+
+		{
+			"Name": "acme_corporation",
+			"Metadata": {
+				"MyMeta": "Value"
+			}
+		}
+
+	:reqheader Authorization: HTTP Basic Auth
+
+	**Example response**:
+
+	.. sourcecode:: http
+
+		HTTP/1.1 200 OK
+		Content-Type: application/json
+
+		{
+			"Version": "1.2",
+			"Status": "success",
+			"Info": "principal acme_corporation created",
+			"Response": {
+				"ID": "3",
+				"Created": "2014-11-04T09:59:28Z",
+				"CreatedBy": "Jane Joe",
+				"Name": "acme_corporation",
+				"Metadata": {
+					"MyMeta": "Value"
+				}
+			},
+			"Error": null
+		}
+
+	:reqheader Authorization: A valid authorization token.
+	:reqheader Cookie: Accepted when :ref:`config_api_cookie_allow_cookie_auth`
+	                   is enabled.
+
+	:statuscode 200: No error, current principal state returned.
+	:statuscode 400: The request was malformed; the princial data could not be understood.
+	:statuscode 401: Unauthorized, either the username does not exist or the credentials
+	                 were incorrect.
+	:statuscode 409: Principal with given name already exists.
