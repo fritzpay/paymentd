@@ -1,6 +1,6 @@
 {
 	"ImportPath": "github.com/fritzpay/paymentd",
-	"GoVersion": "go1.3.2",
+	"GoVersion": "go1.3.3",
 	"Packages": [
 		"./..."
 	],
