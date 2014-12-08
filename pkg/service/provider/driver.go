@@ -15,6 +15,7 @@ import (
 const (
 	driverFritzpay   = "fritzpay"
 	driverPaypalREST = "paypal_rest"
+	driverStripe     = "stripe"
 )
 
 type Driver interface {
