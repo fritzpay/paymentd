@@ -15,10 +15,14 @@ API endpoints are served by the API server. :term:`paymentd` does not deal with 
 the transport layer of its servers. Typically you would want to serve :term:`paymentd`
 through a TLS proxy.
 
+The Web Server can be configured to serve an administrative GUI (see 
+:ref:`config_api_admin_gui_pub_www_dir`).
+
 The API server will listen on its own port. Mutliple :term:`paymentd` processes
 can be configured to either serve the API or not.
 
-It is configured in the :ref:`API section <config_api>`.
+Please refer to the :ref:`API section <config_api>` for API Server related configuration
+variables.
 
 **********************
 Administrative Methods
@@ -51,3 +55,9 @@ The Web Server
 At some point during the payment flow, the :term:`customer <Customer>` will have to interact
 with the payment system. Either to provide payment-related information or to be
 redirected to the :term:`Payment Service Provider (PSP) <PSP>`.
+
+The web server will listen on its dedicated port and will serve the payment endpoint along
+with :ref:`Provider Driver <provider_driver>` endpoints as well as static files.
+
+Please refer to the :ref:`WWW section <config_www>` for Web Server related configuration
+variables.

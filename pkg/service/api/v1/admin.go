@@ -13,6 +13,7 @@ const (
 
 const (
 	// AuthLifetime is the duration for which an authorization is considered valid
+	// TODO @configure
 	AuthLifetime = 15 * time.Minute
 	// AuthUserIDKey is the key for the user ID entry in the authorization container
 	AuthUserIDKey = "userID"

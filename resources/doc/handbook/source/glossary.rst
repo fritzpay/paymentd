@@ -9,6 +9,9 @@ Glossary
 
 		See the high-level description of the ``paymentd`` service: :ref:`paymentd_server`.
 
+	Customer
+		"Customer" means the end-user using :term:`paymentd` to make payments.
+
 	daemon
 		A program which runs on a server (usually in the background) and provides
 		various services.

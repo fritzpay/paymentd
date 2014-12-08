@@ -72,3 +72,16 @@ The :term:`paymentd` default configuration JSON
 	}
 
 .. endPaymentdDefaultConfigJSON
+
+An Example :http:header:`Authorization` Container
+-------------------------------------------------
+
+.. startPaymentdAuthContainer
+
+::
+
+	MTQxODA0NjQ4NnxHd+v6FLA0tYWGA+l5v6vZ+t06jARTrYq09PhAFJ3PTa2tVd
+	IFl3AbbGRQbi08isTe8CIOCF8DbsV2VX/iH/7OpikAsDW84Azjlb1MZ2GD+hvQ
+	azEdtkuqbgG8oya8T+WofA==
+
+.. endPaymentdAuthContainer
