@@ -452,3 +452,125 @@ Retrieve a principal
 	:statuscode 400: The request was malformed; the given princial name could not be understood.
 	:statuscode 401: Unauthorized, either the username does not exist or the credentials
 	:statuscode 404: principal with given name could not be found
+
+
+Project API
+-----------
+
+********************
+Create a new project
+********************
+
+.. http:put:: /v1/project
+
+	Create a new project
+
+	**Example request**:
+
+	.. sourcecode:: http
+
+		PUT /project HTTP/1.1
+		Host: example.com
+		Content-Type: application/json
+		Accept: application/json
+		Authorization: MTQxNTA5NTI5MHxYaCVyOkp7RNaMujhp...
+
+		{
+			"PrincipalID": "1",
+			"Name": "Roadrunnergame",
+			"Metadata": {
+				"Version":"Singleplay"
+			}
+		}
+
+	**Example reponse**:
+
+	.. sourcecode:: http
+
+		HTTP/1.1 200 OK
+		Content-Type: application/json
+
+		{
+			"Status": "success",
+			"Info": "project Roadrunnergame created",
+			"Response": {		
+				"ID": "1",
+				"PrincipalID": "1",
+				"Name": "Roadrunnergame",
+				"CreatedBy": "John Doe",
+				"Created": "2014-10-17T14:12:11Z",
+				"Metadata": {
+					"Version": "Singleplay"
+				}
+			},
+			"Error": null
+		}
+
+	:reqheader Authorization: A valid authorization token.
+
+	:reqjson string PrincipalID: The :ref:`Principal <prinicpal>` ID for which the project
+	                             should be created.
+	:reqjson string Name: The :ref:`project` name. This name has to be unique per principal.
+	:reqjson Object Metadata: Metadata associated with the project.
+	
+	:statuscode 200: No error, project created.
+	:statuscode 400: The request was malformed; the provided fields could not be understood.
+	:statuscode 401: Unauthorized, either the username does not exist or the credentials were incorrect.
+
+**************************
+Change an existing project
+**************************
+
+.. http:post:: /v1/project
+
+	Change an existing project
+
+	**Example request**:
+
+	.. sourcecode:: http
+
+		POST /project HTTP/1.1
+		Host: example.com
+		Content-Type: application/json
+		Accept: application/json
+		Authorization: MTQxNTA5NTI5MHxYaCVyOkp7RNaMujhp...
+	
+		{
+			"PrincipalID": "1",
+			"ID": "1",
+			"Metadata": {
+				"Type": "Game",
+				"Version": "1"
+			}
+		}
+
+	**Example reponse**:
+
+	.. sourcecode:: http
+
+		HTTP/1.1 200 OK
+		Accept: application/json
+		Content-Type: application/json
+
+		{
+			"Status": "success",
+			"Info": "project Roadrunnergame changed",
+			"Response": {	
+				"ID": "1",
+				"PrincipalID": "1",
+				"Name": "Roadrunnergame",
+				"CreatedBy": "John Doe",
+				"Created": "2014-10-17T14:12:11Z",
+				"Metadata": {
+					"Type": "Game",
+					"Version":"1"
+				}
+			},
+			"Error": null
+		}
+
+	:statuscode 200: No error, project data changed.
+	:statuscode 400: The request was malformed; the provided parameters could not be understood.
+	:statuscode 401: Unauthorized, either the username does not exist or the credentials
+	:statuscode 404: project with given id was not found 
+
