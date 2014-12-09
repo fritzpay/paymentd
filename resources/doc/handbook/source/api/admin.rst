@@ -202,9 +202,46 @@ Renew an authorization
 	:statuscode 400: The request was malformed; the provided fields could not be understood.
 	:statuscode 401: Unauthorized, either the username does not exist or the credentials were incorrect.
 
-*************
-Informational
-*************
+******************
+Set a new password
+******************
+
+.. http:put:: /v1/authorization
+	:synopsis: Set a new system user password.
+
+	Set a new system user password.
+
+	**Example Request**:
+
+	.. sourcecode:: http
+
+		PUT /v1/authorization HTTP/1.1
+		Host: example.com
+		Authorization: MTQxODA0NjQ4NnxHd+v...
+		Cookie: auth=MTQxODA0NjQ4NnxHd+v...
+		Content-Type: text/plain
+
+		newpassword
+
+	**Example Response**:
+
+	.. sourcecode:: http
+
+		HTTP/1.1 200 OK
+		Content-Type: text/plain; charset=utf-8
+
+	:reqheader Authorization: A valid authorization token.
+	:reqheader Cookie: Accepted when :ref:`config_api_cookie_allow_cookie_auth`
+	                   is enabled.
+
+	:statuscode 200: No error, password changed.
+	:statuscode 400: The request was malformed; the provided fields could not be understood.
+	:statuscode 401: Unauthorized, either the username does not exist or the credentials were incorrect.
+
+
+*************************
+Retrieve the current user
+*************************
 
 .. http:get:: /v1/user
 
