@@ -21,7 +21,7 @@ const (
 	// ConfigNameSystemPassword is the name for the system password configuration setting
 	ConfigNameSystemPassword = "SystemPassword"
 	// ConfigSystemPasswordBcryptCost is the cost for bcrypting the system password
-	ConfigSystemPasswordBcryptCost = 12
+	ConfigSystemPasswordBcryptCost = 10
 )
 
 const (
