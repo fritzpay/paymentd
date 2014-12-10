@@ -102,6 +102,7 @@ pygments_style = 'sphinx'
 # The theme to use for HTML and HTML Help pages.  See the documentation for
 # a list of builtin themes.
 html_theme = 'sphinx_rtd_theme'
+#html_theme = 'sphinxdoc'
 
 # Theme options are theme-specific and customize the look and feel of a theme
 # further.  For a list of options available for each theme, see the
@@ -200,7 +201,7 @@ latex_elements = {
 # (source start file, target name, title,
 #  author, documentclass [howto, manual, or own class]).
 latex_documents = [
-  ('index', 'paymentdHandbook.tex', u'paymentd Handbook Documentation',
+  ('index', 'paymentdHandbook.tex', u'paymentd Handbook',
    u'Fritz Payment GmbH', 'manual'),
 ]
 
@@ -230,7 +231,7 @@ latex_appendices = ['config', 'tables', 'glossary']
 # One entry per manual page. List of tuples
 # (source start file, name, description, authors, manual section).
 man_pages = [
-    ('index', 'paymentdhandbook', u'paymentd Handbook Documentation',
+    ('index', 'paymentdhandbook', u'paymentd Handbook',
      [u'Fritz Payment GmbH'], 1)
 ]
 
@@ -244,7 +245,7 @@ man_pages = [
 # (source start file, target name, title, author,
 #  dir menu entry, description, category)
 texinfo_documents = [
-  ('index', 'paymentdHandbook', u'paymentd Handbook Documentation',
+  ('index', 'paymentdHandbook', u'paymentd Handbook',
    u'Fritz Payment GmbH', 'paymentdHandbook', 'One line description of project.',
    'Miscellaneous'),
 ]

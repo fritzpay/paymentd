@@ -3,6 +3,9 @@
 :term:`paymentd` configuration
 ==============================
 
+.. contents::
+	:local:
+
 Payment
 -------
 
@@ -127,6 +130,7 @@ Important DSN parameters are:
 The "Write" DSNs are required. The "ReadOnly" DSNs are optional. If they are ``null``,
 only the Read/Write connections will be used.
 
+.. _config_api:
 
 API Service
 -----------
@@ -191,6 +195,8 @@ Timeout
 
 A general timeout for all API requests.
 
+.. _config_api_serve_admin:
+
 **********
 ServeAdmin
 **********
@@ -209,6 +215,8 @@ While :term:`paymentd` does not support TLS as of now, most installations will r
 :term:`paymentd` behind a TLS-enabled proxy. In these cases, this flag should be set
 to ``true``.
 
+.. _config_api_cookie_allow_cookie_auth:
+
 **********************
 Cookie AllowCookieAuth
 **********************
@@ -224,6 +232,17 @@ Cookie HTTPOnly
 ***************
 
 Whether the ``HTTP only`` flag should be set on cookies.
+
+.. _config_api_admin_gui_pub_www_dir:
+
+******************************
+Admin GUI Public WWW Directory
+******************************
+
+If ``AdminGUIPubWWWDir`` is set to a valid directory, the admin service will also
+serve this static directory.
+
+.. _config_api_auth_keys:
 
 ********
 AuthKeys
@@ -244,6 +263,7 @@ The list is used to roll over new keys. The first key is the preferred key.
 	Persistence is required to apply the same keys on multiple instances of
 	:term:`paymentd` or different applications.
 
+.. _config_www:
 
 Web Server
 ----------
