@@ -68,24 +68,16 @@ func (a *AdminAPI) getProject(w http.ResponseWriter, r *http.Request) {
 	// project_id
 	vars := mux.Vars(r)
 	projectIDParam := vars["projectid"]
-	params := r.URL.Query()
-	principalIDParam := params.Get("principalid")
 	projectID, err := strconv.ParseInt(projectIDParam, 10, 64)
 	if err != nil {
 		log.Error("param projectid conversion error", log15.Ctx{"err": err})
 		ErrReadParam.Write(w)
 		return
 	}
-	principalID, err := strconv.ParseInt(principalIDParam, 10, 64)
-	if err != nil {
-		log.Error("param principalid conversion error", log15.Ctx{"err": err})
-		ErrReadParam.Write(w)
-		return
-	}
 
 	// get project from database
 	db := a.ctx.PrincipalDB(service.ReadOnly)
-	pr, err := project.ProjectByPrincipalIDandIDDB(db, principalID, projectID)
+	pr, err := project.ProjectByIDDB(db, projectID)
 	if err == project.ErrProjectNotFound {
 		log.Warn("project not found", log15.Ctx{"err": err})
 		ErrNotFound.Write(w)
