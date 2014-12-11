@@ -29,8 +29,6 @@ func (a *AdminAPI) PrincipalRequest() http.Handler {
 		switch r.Method {
 		case "PUT":
 			a.putNewPrincipal(w, r)
-		case "POST":
-			a.postChangePrincipal(w, r)
 		default:
 			ErrMethod.Write(w)
 			log.Info("http method not supported", log15.Ctx{"requestMethod": r.Method})
@@ -39,52 +37,63 @@ func (a *AdminAPI) PrincipalRequest() http.Handler {
 	return a.ctx.RateLimitHandler(h)
 }
 
-// handler to display a specific existing principal
-func (a *AdminAPI) PrincipalGetRequest() http.Handler {
-
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "application/json")
-		log := a.log.New(log15.Ctx{"method": "PrincipalGetRequest"})
-
-		// get principal by name
-		vars := mux.Vars(r)
-		principalName := vars["name"]
-		log = log.New(log15.Ctx{"principalName": principalName})
-
-		db := a.ctx.PrincipalDB(service.ReadOnly)
-		pr, err := principal.PrincipalByNameDB(db, principalName)
-		if err == principal.ErrPrincipalNotFound {
-			ErrNotFound.Write(w)
-			log.Info("principal not found")
-			return
-		}
-		if err != nil {
-			ErrDatabase.Write(w)
-			log.Error("DB get by name failed", log15.Ctx{"err": err})
-			return
-		}
-
-		md, err := metadata.MetadataByPrimaryDB(db, principal.MetadataModel, pr.ID)
-		if err != nil {
-			ErrDatabase.Write(w)
-			log.Error("get metadata failed", log15.Ctx{"err": err})
-			return
-		}
-		if len(md) > 0 {
-			pr.Metadata = md.Values()
-		}
-
-		// create service response object
-		resp := PrincipalAdminAPIResponse{}
-		resp.Status = StatusSuccess
-		resp.Info = "principal " + pr.Name + " found"
-		resp.Response = pr
-		err = resp.Write(w)
-		if err != nil {
-			log.Error("write error", log15.Ctx{"err": err})
-			return
+func (a *AdminAPI) PrincipalNameRequest() http.Handler {
+	h := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.Method {
+		case "POST":
+			a.ctx.RateLimitHandler(http.HandlerFunc(a.postChangePrincipal)).ServeHTTP(w, r)
+		case "GET":
+			a.getPrincipal(w, r)
+		default:
+			ErrMethod.Write(w)
 		}
 	})
+	return h
+}
+
+// handler to display a specific existing principal
+func (a *AdminAPI) getPrincipal(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	log := a.log.New(log15.Ctx{"method": "getPrincipal"})
+
+	// get principal by name
+	vars := mux.Vars(r)
+	principalName := vars["name"]
+	log = log.New(log15.Ctx{"principalName": principalName})
+
+	db := a.ctx.PrincipalDB(service.ReadOnly)
+	pr, err := principal.PrincipalByNameDB(db, principalName)
+	if err == principal.ErrPrincipalNotFound {
+		ErrNotFound.Write(w)
+		log.Info("principal not found")
+		return
+	}
+	if err != nil {
+		ErrDatabase.Write(w)
+		log.Error("DB get by name failed", log15.Ctx{"err": err})
+		return
+	}
+
+	md, err := metadata.MetadataByPrimaryDB(db, principal.MetadataModel, pr.ID)
+	if err != nil {
+		ErrDatabase.Write(w)
+		log.Error("get metadata failed", log15.Ctx{"err": err})
+		return
+	}
+	if len(md) > 0 {
+		pr.Metadata = md.Values()
+	}
+
+	// create service response object
+	resp := PrincipalAdminAPIResponse{}
+	resp.Status = StatusSuccess
+	resp.Info = "principal " + pr.Name + " found"
+	resp.Response = pr
+	err = resp.Write(w)
+	if err != nil {
+		log.Error("write error", log15.Ctx{"err": err})
+		return
+	}
 }
 
 func (a *AdminAPI) putNewPrincipal(w http.ResponseWriter, r *http.Request) {
@@ -164,6 +173,9 @@ func (a *AdminAPI) putNewPrincipal(w http.ResponseWriter, r *http.Request) {
 func (a *AdminAPI) postChangePrincipal(w http.ResponseWriter, r *http.Request) {
 	log := a.log.New(log15.Ctx{"method": "postChangePrincipal"})
 
+	vars := mux.Vars(r)
+	principalName := vars["name"]
+
 	// get Metadata from post variables
 	jd := json.NewDecoder(r.Body)
 	pr := principal.Principal{}
@@ -195,7 +207,7 @@ func (a *AdminAPI) postChangePrincipal(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// does principal exist
-	_, err = principal.PrincipalByIDTx(tx, pr.ID)
+	_, err = principal.PrincipalByNameTx(tx, principalName)
 	if err != nil {
 		txErr := tx.Rollback()
 		if txErr != nil {
