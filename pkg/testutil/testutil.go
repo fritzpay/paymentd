@@ -3,6 +3,7 @@ package testutil
 import (
 	"bytes"
 	"net/http"
+	"testing"
 
 	"github.com/fritzpay/paymentd/pkg/config"
 	"github.com/fritzpay/paymentd/pkg/service"
@@ -76,4 +77,16 @@ func (r *ResponseWriter) Write(p []byte) (int, error) {
 func (r *ResponseWriter) WriteHeader(statusCode int) {
 	r.HeaderWritten = true
 	r.StatusCode = statusCode
+}
+
+func ReportLog(t *testing.T, logChan <-chan *log15.Record) {
+drain:
+	for {
+		select {
+		case r := <-logChan:
+			t.Logf("Log: %s, %+v", r.Msg, r.Ctx)
+		default:
+			break drain
+		}
+	}
 }

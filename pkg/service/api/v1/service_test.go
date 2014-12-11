@@ -1,12 +1,17 @@
 package v1
 
 import (
+	"bytes"
 	"database/sql"
 	"encoding/base64"
 	"encoding/json"
+	"fmt"
+	"github.com/fritzpay/paymentd/pkg/paymentd/principal"
 	"net/http"
+	"strconv"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/fritzpay/paymentd/pkg/service"
 	"github.com/fritzpay/paymentd/pkg/testutil"
@@ -381,6 +386,7 @@ func TestGetProvider(t *testing.T) {
 
 				Convey("Given a payment db", testutil.WithPaymentDB(t, func(db *sql.DB) {
 					ctx.SetPaymentDB(db, nil)
+					Reset(func() { db.Close() })
 
 					Convey("Given a valid authorization", WithAuthorization(mx, func(auth string) {
 						req.Header.Set("Authorization", auth)
@@ -397,6 +403,122 @@ func TestGetProvider(t *testing.T) {
 					}))
 				}))
 			})
+		}))
+	}))
+}
+
+func TestPrincipal(t *testing.T) {
+	Convey("Given a test context", t, testutil.WithContext(func(ctx *service.Context, logChan <-chan *log15.Record) {
+		ctx.Config().API.ServeAdmin = true
+
+		Convey("Given a service", WithService(ctx, logChan, func(s *Service, mx *mux.Router) {
+
+			Convey("Given a payment db", testutil.WithPaymentDB(t, func(db *sql.DB) {
+				ctx.SetPaymentDB(db, nil)
+				Reset(func() { db.Close() })
+
+				Convey("Given a principal db", testutil.WithPrincipalDB(t, func(prDB *sql.DB) {
+					ctx.SetPrincipalDB(prDB, nil)
+					Reset(func() { prDB.Close() })
+
+					Convey("Given a create principal request", func() {
+						pr := principal.Principal{
+							Name: fmt.Sprintf("test%d", time.Now().UnixNano()),
+							Metadata: map[string]string{
+								"test": "one",
+							},
+						}
+						jsonB, err := json.Marshal(pr)
+						So(err, ShouldBeNil)
+						buf := bytes.NewBuffer(jsonB)
+
+						req, err := http.NewRequest("PUT", ServicePath+"/principal", buf)
+						So(err, ShouldBeNil)
+
+						rm := mux.RouteMatch{}
+						match := mx.Match(req, &rm)
+						So(match, ShouldBeTrue)
+
+						// request context
+						service.SetRequestContext(req, ctx)
+						Reset(func() {
+							service.ClearRequestContext(req)
+						})
+
+						Convey("Given a valid authorization", WithAuthorization(mx, func(auth string) {
+							req.Header.Set("Authorization", auth)
+
+							Convey("When executing the request", func() {
+								w := testutil.NewResponseWriter()
+								mx.ServeHTTP(w, req)
+
+								Convey("It should succeed", func() {
+									So(w.HeaderWritten, ShouldBeTrue)
+									So(w.StatusCode, ShouldEqual, http.StatusOK)
+
+									resp := ServiceResponse{}
+									dec := json.NewDecoder(&w.Buf)
+									err := dec.Decode(&resp)
+									So(err, ShouldBeNil)
+									So(resp.Status, ShouldEqual, StatusSuccess)
+
+									respPr, ok := resp.Response.(map[string]interface{})
+									So(ok, ShouldBeTrue)
+
+									principalIDStr := respPr["ID"].(string)
+									principalID, err := strconv.ParseInt(principalIDStr, 10, 64)
+									So(err, ShouldBeNil)
+									So(principalID, ShouldNotEqual, 0)
+
+									Convey("Given an update request", func() {
+										pr.Metadata["test2"] = "two"
+										jsonB, err = json.Marshal(pr)
+										So(err, ShouldBeNil)
+										buf = bytes.NewBuffer(jsonB)
+										req, err = http.NewRequest("POST", ServicePath+"/principal/"+pr.Name, buf)
+										So(err, ShouldBeNil)
+										req.Header.Set("Authorization", auth)
+
+										rm := mux.RouteMatch{}
+										match := mx.Match(req, &rm)
+										So(match, ShouldBeTrue)
+
+										service.SetRequestContext(req, ctx)
+										Reset(func() {
+											service.ClearRequestContext(req)
+										})
+
+										Convey("When executing the request", func() {
+											w := testutil.NewResponseWriter()
+											mx.ServeHTTP(w, req)
+
+											Convey("It should succeed", func() {
+												So(w.HeaderWritten, ShouldBeTrue)
+												So(w.StatusCode, ShouldEqual, http.StatusOK)
+
+												resp := ServiceResponse{}
+												dec := json.NewDecoder(&w.Buf)
+												err := dec.Decode(&resp)
+												So(err, ShouldBeNil)
+												So(resp.Status, ShouldEqual, StatusSuccess)
+
+												respPr, ok := resp.Response.(map[string]interface{})
+												So(ok, ShouldBeTrue)
+												So(respPr["Metadata"], ShouldNotBeNil)
+
+												meta, ok := respPr["Metadata"].(map[string]interface{})
+												So(ok, ShouldBeTrue)
+
+												So(meta["test2"], ShouldEqual, "two")
+											})
+										})
+									})
+								})
+							})
+						}))
+					})
+				}))
+			}))
 		}))
 	}))
 }
