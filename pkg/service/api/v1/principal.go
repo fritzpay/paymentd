@@ -207,7 +207,7 @@ func (a *AdminAPI) postChangePrincipal(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// does principal exist
-	_, err = principal.PrincipalByNameTx(tx, principalName)
+	prByName, err := principal.PrincipalByNameTx(tx, principalName)
 	if err != nil {
 		txErr := tx.Rollback()
 		if txErr != nil {
@@ -222,6 +222,7 @@ func (a *AdminAPI) postChangePrincipal(w http.ResponseWriter, r *http.Request) {
 		ErrDatabase.Write(w)
 		return
 	}
+	pr.ID = prByName.ID
 
 	// insert Metadata
 	md := metadata.MetadataFromValues(pr.Metadata, pr.CreatedBy)
