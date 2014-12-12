@@ -131,7 +131,7 @@ func ShowCommandHelp(c *Context, command string) {
 
 // Prints help for the given subcommand
 func ShowSubcommandHelp(c *Context) {
-	HelpPrinter(SubcommandHelpTemplate, c.App)
+	ShowCommandHelp(c, c.Command.Name)
 }
 
 // Prints the version number of the App
@@ -206,7 +206,7 @@ func checkSubcommandHelp(c *Context) bool {
 }
 
 func checkCompletions(c *Context) bool {
-	if c.GlobalBool(BashCompletionFlag.Name) && c.App.EnableBashCompletion {
+	if (c.GlobalBool(BashCompletionFlag.Name) || c.Bool(BashCompletionFlag.Name)) && c.App.EnableBashCompletion {
 		ShowCompletions(c)
 		return true
 	}
