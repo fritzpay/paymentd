@@ -34,7 +34,7 @@
 //
 // See http://blog.golang.org/context for example code for a server that uses
 // Contexts.
-package context
+package context // import "golang.org/x/net/context"
 
 import (
 	"errors"
@@ -108,7 +108,7 @@ type Context interface {
 	// 	// Package user defines a User type that's stored in Contexts.
 	// 	package user
 	//
-	// 	import "code.google.com/p/go.net/context"
+	// 	import "golang.org/x/net/context"
 	//
 	// 	// User is the type of value stored in the Contexts.
 	// 	type User struct {...}
@@ -124,7 +124,7 @@ type Context interface {
 	//
 	// 	// NewContext returns a new Context that carries value u.
 	// 	func NewContext(ctx context.Context, u *User) context.Context {
-	// 		return context.WithValue(userKey, u)
+	// 		return context.WithValue(ctx, userKey, u)
 	// 	}
 	//
 	// 	// FromContext returns the User value stored in ctx, if any.

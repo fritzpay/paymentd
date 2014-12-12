@@ -1,15 +1,10 @@
 {
 	"ImportPath": "github.com/fritzpay/paymentd",
-	"GoVersion": "go1.3.3",
+	"GoVersion": "go1.4",
 	"Packages": [
 		"./..."
 	],
 	"Deps": [
-		{
-			"ImportPath": "code.google.com/p/go.crypto/blowfish",
-			"Comment": "null-226",
-			"Rev": "c9a0e9891d8ff16d1d41100bf923145b2bf25812"
-		},
 		{
 			"ImportPath": "code.google.com/p/goauth2/oauth",
 			"Comment": "weekly-56",
@@ -21,21 +16,21 @@
 		},
 		{
 			"ImportPath": "github.com/codegangsta/cli",
-			"Comment": "1.2.0-26-gf7ebb76",
-			"Rev": "f7ebb761e83e21225d1d8954fde853bf8edd46c4"
+			"Comment": "1.2.0-44-ge7849f9",
+			"Rev": "e7849f92399051793137d748ed0bef537a96fc96"
 		},
 		{
 			"ImportPath": "github.com/facebookgo/grace",
-			"Rev": "5369e5af9da8df86ab8ed51b55d0b2b7ea32c4ec"
+			"Rev": "1b0609c25d1f0d6aefdd5404eaa710a16daca9d6"
 		},
 		{
 			"ImportPath": "github.com/go-sql-driver/mysql",
-			"Comment": "v1.2-26-g9543750",
-			"Rev": "9543750295406ef070f7de8ae9c43ccddd44e15e"
+			"Comment": "v1.2-28-gcebeb35",
+			"Rev": "cebeb3599d51814753350e87cd21f24b3ddaa66e"
 		},
 		{
 			"ImportPath": "github.com/gorilla/context",
-			"Rev": "14f550f51af52180c2eefed15e5fd18d63c0a64a"
+			"Rev": "50c25fb3b2b3b3cc724e9b6ac75fb44b3bccd0da"
 		},
 		{
 			"ImportPath": "github.com/gorilla/mux",
@@ -46,39 +41,43 @@
 			"Rev": "f1ac7f4f24f50328e6bc838ca4437d1612a0243c"
 		},
 		{
+			"ImportPath": "github.com/mattn/go-colorable",
+			"Rev": "043ae16291351db8465272edf465c9f388161627"
+		},
+		{
 			"ImportPath": "github.com/smartystreets/goconvey/convey",
-			"Comment": "1.5.0-337-g46ed257",
-			"Rev": "46ed257da550caea1f91f8d60b8c6cfadb3a73b7"
+			"Comment": "1.5.0-345-g432ed38",
+			"Rev": "432ed384e87b0d670f738ef45d613e513c0456d0"
 		},
 		{
 			"ImportPath": "github.com/stripe/stripe-go",
-			"Comment": "v2.0.0-3-g257b657",
-			"Rev": "257b657d63202e5b20ae79c0614a8df111d14f84"
+			"Comment": "v2.0.0-6-ge94c228",
+			"Rev": "e94c228747a2c6e1e8c19434fb1e7f973954d905"
 		},
 		{
 			"ImportPath": "golang.org/x/crypto/bcrypt",
-			"Comment": "null-231",
-			"Rev": "88f995681294397936c136182f54e1f6891db323"
+			"Rev": "1fbbd62cfec66bd39d91e97749579579d4d3037e"
+		},
+		{
+			"ImportPath": "golang.org/x/crypto/blowfish",
+			"Rev": "1fbbd62cfec66bd39d91e97749579579d4d3037e"
 		},
 		{
 			"ImportPath": "golang.org/x/crypto/pbkdf2",
-			"Comment": "null-231",
-			"Rev": "88f995681294397936c136182f54e1f6891db323"
+			"Rev": "1fbbd62cfec66bd39d91e97749579579d4d3037e"
 		},
 		{
 			"ImportPath": "golang.org/x/net/context",
-			"Comment": "null-181",
-			"Rev": "eb3aa32581e642b8f84f8103124a98c82e252b4e"
+			"Rev": "cbcac7bb8415db9b6cb4d1ebab1dc9afbd688b97"
 		},
 		{
 			"ImportPath": "golang.org/x/text/language",
-			"Comment": "null-104",
-			"Rev": "7ab6d3749429e2c62c53eecadf3e4ec5e715c11b"
+			"Rev": "ef0bf1da95d2b971524f971801f2a4c2d0b4841f"
 		},
 		{
 			"ImportPath": "gopkg.in/inconshreveable/log15.v2",
-			"Comment": "v2.4",
-			"Rev": "574f2561514e06d66f532fce5c7f776f7c7939b3"
+			"Comment": "v2.7",
+			"Rev": "7cf5571b3b32a7c7b5605dc5ed8ad8fdbb2135f0"
 		}
 	]
 }
