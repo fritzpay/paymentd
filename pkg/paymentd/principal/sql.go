@@ -77,6 +77,24 @@ func scanPrincipal(row *sql.Row) (Principal, error) {
 	return p, nil
 }
 
+func PrincipalAllDB(db *sql.DB) ([]Principal, error) {
+	rows, err := db.Query(selectPrincipal)
+
+	d := make([]Principal, 0, 200)
+
+	for rows.Next() {
+
+		p := Principal{}
+		err := rows.Scan(&p.ID, &p.Created, &p.CreatedBy, &p.Name)
+		if err != nil {
+			return d, err
+		}
+		d = append(d, p)
+	}
+
+	return d, err
+}
+
 func PrincipalByIDTx(db *sql.Tx, id int64) (Principal, error) {
 	row := db.QueryRow(selectPrincipalByID, id)
 	return scanPrincipal(row)

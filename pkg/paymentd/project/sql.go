@@ -128,6 +128,12 @@ WHERE
 
 	id = ?
 `
+
+const selectProjectByPrincipalID = selectProject + `
+WHERE
+	principal_id = ?
+`
+
 const selectProjectByPrincipalIDAndId = selectProject + `
 WHERE
 	principal_id = ?
@@ -176,6 +182,41 @@ func scanProject(row *sql.Row) (*Project, error) {
 func ProjectByIDDB(db *sql.DB, projectId int64) (*Project, error) {
 	row := db.QueryRow(selectProjectById, projectId)
 	return scanProject(row)
+}
+
+// AllProjectsByPrincipalIDDB selects all projects by given principal ID
+
+func AllProjectsByPrincipalIDDB(db *sql.DB, principalID int64) ([]Project, error) {
+	rows, err := db.Query(selectProjectByPrincipalID, principalID)
+
+	d := make([]Project, 0, 200)
+
+	for rows.Next() {
+		p := Project{}
+		var ts sql.NullInt64
+		err := rows.Scan(
+			&p.ID,
+			&p.PrincipalID,
+			&p.Name,
+			&p.Created,
+			&p.CreatedBy,
+			&ts,
+			&p.Config.WebURL,
+			&p.Config.CallbackURL,
+			&p.Config.CallbackAPIVersion,
+			&p.Config.CallbackProjectKey,
+			&p.Config.ReturnURL,
+		)
+		if err != nil {
+			return d, err
+		}
+		if ts.Valid {
+			p.Config.Timestamp = time.Unix(ts.Int64, 0)
+		}
+		d = append(d, p)
+	}
+
+	return d, err
 }
 
 // ProjectByIdTx selects a project by the given project id
