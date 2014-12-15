@@ -351,7 +351,7 @@ Create a new principal
 Change principal data
 *********************
 
-.. http:post:: /v1/principal
+.. http:post:: /v1/principal/(name)
 
 	Change an existing principal.
 
@@ -359,7 +359,7 @@ Change principal data
 
 	.. sourcecode:: http
 
-		POST /principal HTTP/1.1
+		POST /v1/principal/acme_corporation HTTP/1.1
 		Host: example.com
 		Content-Type: application/json
 		Accept: application/json
@@ -393,6 +393,8 @@ Change principal data
 				},
 			"Error": null
 		}
+
+	:param name: The principal name.
 
 	:reqheader Authorization: A valid authorization token.
 
@@ -508,7 +510,7 @@ Create a new project
 
 	:reqheader Authorization: A valid authorization token.
 
-	:reqjson string PrincipalID: The :ref:`Principal <prinicpal>` ID for which the project
+	:reqjson string PrincipalID: The :ref:`Principal <principal>` ID for which the project
 	                             should be created.
 	:reqjson string Name: The :ref:`project` name. This name has to be unique per principal.
 	:reqjson Object Metadata: Metadata associated with the project.
