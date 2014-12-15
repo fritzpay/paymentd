@@ -576,3 +576,61 @@ Change an existing project
 	:statuscode 401: Unauthorized, either the username does not exist or the credentials
 	:statuscode 404: project with given id was not found 
 
+******************
+Retrieve a project
+******************
+
+.. http:get:: /project/(id)
+
+	Retrieve the project data with the given project id.
+
+	**Example request**:
+
+	.. sourcecode:: http
+
+		GET /project/1 HTTP/1.1
+		Host: example.com
+		Accept: application/json
+		Authorization: MTQxNTA5NTI5MHxYaCVyOkp7RNaMujhp...
+
+	**Example response**:
+
+	.. sourcecode:: http
+
+		HTTP/1.1 200 OK
+		Accept: application/json
+		Content-Type: application/json
+
+		{
+			"Version": "1.2",
+			"Status": "success",
+			"Info": "project Roadrunnergame found",
+			"Response": {
+				"ID": "1",
+				"PrincipalID": "1",
+				"Name": "Roadrunnergame",
+				"Created": "2014-10-17T14:12:11Z",
+				"CreatedBy": "John Doe",
+				"Config": {
+					"WebURL": null,
+					"CallbackURL": null,
+					"CallbackAPIVersion": null,
+					"ProjectKey": null,
+					"ReturnURL": null
+				},
+				"Metadata": {
+					"Type": "Game",
+					"Version": "1"
+				}
+			},
+			"Error": null
+		}
+
+	:param name: The project id
+
+	:reqheader Authorization: A valid authorization token.
+	
+	:statuscode 200: No error, project data served.
+	:statuscode 400: The request was malformed; the provided id could not be understood.
+	:statuscode 401: Unauthorized, either the username does not exist or the credentials
+	:statuscode 404: project with given id was not found 
