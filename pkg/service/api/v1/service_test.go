@@ -6,12 +6,13 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
-	"github.com/fritzpay/paymentd/pkg/paymentd/principal"
 	"net/http"
 	"strconv"
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/fritzpay/paymentd/pkg/paymentd/principal"
 
 	"github.com/fritzpay/paymentd/pkg/service"
 	"github.com/fritzpay/paymentd/pkg/testutil"
