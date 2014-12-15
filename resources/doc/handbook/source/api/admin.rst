@@ -294,7 +294,7 @@ Create a new principal
 
 	.. sourcecode:: http
 
-		PUT /principal HTTP/1.1
+		PUT /v1/principal HTTP/1.1
 		Host: example.com
 		Content-Type: application/json
 		Accept: application/json
@@ -409,7 +409,7 @@ Change principal data
 Retrieve a principal
 ********************
 
-.. http:get:: /principal/(name)
+.. http:get:: /v1/principal/(name)
 
 	Retrieve the given principal.
 
@@ -417,7 +417,7 @@ Retrieve a principal
 
 	.. sourcecode:: http
 
-		GET /principal/acme_corporation  HTTP/1.1
+		GET /v1/principal/acme_corporation  HTTP/1.1
 		Host: example.com
 		Content-Type: application/json
 		Accept: application/json
@@ -471,7 +471,7 @@ Create a new project
 
 	.. sourcecode:: http
 
-		PUT /project HTTP/1.1
+		PUT /v1/project HTTP/1.1
 		Host: example.com
 		Content-Type: application/json
 		Accept: application/json
@@ -531,7 +531,7 @@ Change an existing project
 
 	.. sourcecode:: http
 
-		POST /project HTTP/1.1
+		POST /v1/project HTTP/1.1
 		Host: example.com
 		Content-Type: application/json
 		Accept: application/json
@@ -551,7 +551,6 @@ Change an existing project
 	.. sourcecode:: http
 
 		HTTP/1.1 200 OK
-		Accept: application/json
 		Content-Type: application/json
 
 		{
@@ -580,7 +579,7 @@ Change an existing project
 Retrieve a project
 ******************
 
-.. http:get:: /project/(id)
+.. http:get:: /v1/project/(id)
 
 	Retrieve the project data with the given project id.
 
@@ -588,7 +587,7 @@ Retrieve a project
 
 	.. sourcecode:: http
 
-		GET /project/1 HTTP/1.1
+		GET /v1/project/1 HTTP/1.1
 		Host: example.com
 		Accept: application/json
 		Authorization: MTQxNTA5NTI5MHxYaCVyOkp7RNaMujhp...
@@ -598,7 +597,6 @@ Retrieve a project
 	.. sourcecode:: http
 
 		HTTP/1.1 200 OK
-		Accept: application/json
 		Content-Type: application/json
 
 		{
@@ -634,3 +632,31 @@ Retrieve a project
 	:statuscode 400: The request was malformed; the provided id could not be understood.
 	:statuscode 401: Unauthorized, either the username does not exist or the credentials
 	:statuscode 404: project with given id was not found 
+
+Currency API
+------------
+
+:term:`paymentd` maintains its own set of available currencies. Those are identified
+by ISO 4217 currency codes.
+
+*******************************************
+Retrieve a list of all supported currencies
+*******************************************
+
+.. http:get:: /v1/currency
+
+	Retrieve a list of all currencies.
+
+	**Example request**:
+
+	.. sourcecode:: http
+
+		GET /v1/currency HTTP/1.1
+		Host: example.com
+		Accept: application/json
+		Authorization: MTQxNTA5NTI5MHxYaCVyOkp7RNaMujhp...
+
+	**Example response**:
+
+		HTTP/1.1 200 OK
+		Content-Type: application/json
