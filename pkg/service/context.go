@@ -177,6 +177,10 @@ func (ctx *Context) registerKeychainFromConfig() error {
 	return nil
 }
 
+// RateLimitHandler wraps the given handler with a context-wide rate limit
+//
+// The capacity of the ctx.rateLimit buffered channel determines the maximum
+// amount of concurrent requests on this context.
 func (ctx *Context) RateLimitHandler(parent http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		<-ctx.rateLimit
