@@ -573,6 +573,7 @@ Change an existing project
 	:statuscode 200: No error, project data changed.
 	:statuscode 400: The request was malformed; the provided parameters could not be understood.
 	:statuscode 401: Unauthorized, either the username does not exist or the credentials
+	                 were incorrect.
 	:statuscode 404: project with given id was not found 
 
 ******************
@@ -631,7 +632,8 @@ Retrieve a project
 	:statuscode 200: No error, project data served.
 	:statuscode 400: The request was malformed; the provided id could not be understood.
 	:statuscode 401: Unauthorized, either the username does not exist or the credentials
-	:statuscode 404: project with given id was not found 
+	                 were incorrect.
+	:statuscode 404: project with given id was not found.
 
 Currency API
 ------------
@@ -658,5 +660,66 @@ Retrieve a list of all supported currencies
 
 	**Example response**:
 
+	.. sourcecode:: http
+
 		HTTP/1.1 200 OK
 		Content-Type: application/json
+
+		{
+			"Version": "1.2",
+			"Status": "success",
+			"Info": "currencies found",
+			"Response": [
+				"AED",
+				"AFN",
+				...
+			],
+			"Error": null
+		}
+
+	:reqheader Authorization: A valid authorization token.
+	
+	:statuscode 200: No error, currencies returned.
+	:statuscode 401: Unauthorized, either the username does not exist or the credentials
+	                 were incorrect.
+
+
+****************************
+Retrieve a specific currency
+****************************
+
+.. http:get:: /v1/currency/(code)
+
+	Retrieve a currency.
+
+	**Example request**:
+
+	.. sourcecode:: http
+
+		GET /v1/currency/EUR HTTP/1.1
+		Host: example.com
+		Authorization: MTQxNTA5NTI5MHxYaCVyOkp7RNaMujhp...
+
+	**Example response**:
+
+	.. sourcecode:: http
+
+		HTTP/1.1 200 OK
+		Content-Type: application/json
+
+		{
+			"Version": "1.2",
+			"Status": "success",
+			"Info": "currency EUR found",
+			"Response": "EUR",
+			"Error": null
+		}
+
+	:reqheader Authorization: A valid authorization token.
+
+	:param code: ISO 4217 currency code
+	
+	:statuscode 200: No error, currencies returned.
+	:statuscode 401: Unauthorized, either the username does not exist or the credentials
+	                 were incorrect.
+	:statuscode 404: Not found, the currency was not found.	
