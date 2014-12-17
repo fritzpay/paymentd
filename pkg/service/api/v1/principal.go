@@ -107,12 +107,12 @@ func (a *AdminAPI) getAllPrincipals(w http.ResponseWriter, r *http.Request) {
 	pr, err := principal.PrincipalAllDB(db)
 	if err == principal.ErrPrincipalNotFound {
 		ErrNotFound.Write(w)
-		log.Info("principal not found")
+		log.Info("no principals found/ present")
 		return
 	}
 	if err != nil {
 		ErrDatabase.Write(w)
-		log.Error("DB get by name failed", log15.Ctx{"err": err})
+		log.Error("DB get all failed", log15.Ctx{"err": err})
 		return
 	}
 

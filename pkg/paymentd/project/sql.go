@@ -188,6 +188,9 @@ func ProjectByIDDB(db *sql.DB, projectId int64) (*Project, error) {
 
 func AllProjectsByPrincipalIDDB(db *sql.DB, principalID int64) ([]Project, error) {
 	rows, err := db.Query(selectProjectByPrincipalID, principalID)
+	if err != nil {
+		return nil, err
+	}
 
 	d := make([]Project, 0, 200)
 
@@ -208,7 +211,9 @@ func AllProjectsByPrincipalIDDB(db *sql.DB, principalID int64) ([]Project, error
 			&p.Config.ReturnURL,
 		)
 		if err != nil {
+			rows.Close()
 			return d, err
+
 		}
 		if ts.Valid {
 			p.Config.Timestamp = time.Unix(ts.Int64, 0)
@@ -216,6 +221,11 @@ func AllProjectsByPrincipalIDDB(db *sql.DB, principalID int64) ([]Project, error
 		d = append(d, p)
 	}
 
+	rows.Close()
+	if len(d) < 1 {
+
+		return nil, ErrProjectNotFound
+	}
 	return d, err
 }
 

@@ -125,16 +125,24 @@ func (a *AdminAPI) getAllProjects(w http.ResponseWriter, r *http.Request) {
 
 	principalID, err := strconv.ParseInt(principalIDParam, 10, 64)
 	if err != nil {
-		log.Error("param principalid conversion error", log15.Ctx{"err": err})
+		log.Error("param principalid conversion error", log15.Ctx{"principalID": principalIDParam})
 		ErrReadParam.Write(w)
 		return
 	}
 
 	// get projects from database
 	db := a.ctx.PrincipalDB(service.ReadOnly)
+
+	// check if
+	_, err = principal.PrincipalByIDDB(db, principalID)
+	if err == principal.ErrPrincipalNotFound {
+		log.Error("principal ID not found", log15.Ctx{"Invalid principalID": principalIDParam})
+		ErrNotFound.Write(w)
+		return
+	}
 	pr, err := project.AllProjectsByPrincipalIDDB(db, principalID)
 	if err == project.ErrProjectNotFound {
-		log.Warn("projects not found", log15.Ctx{"err": err})
+		log.Error("no projects for given principalID", log15.Ctx{"err": err})
 		ErrNotFound.Write(w)
 		return
 	} else if err != nil {
@@ -161,9 +169,8 @@ func (a *AdminAPI) getAllProjects(w http.ResponseWriter, r *http.Request) {
 	resp.Status = StatusSuccess
 	resp.Info = "project found"
 	resp.Response = pr
-	resp.Write(w)
+	err = resp.Write(w)
 	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
 		log.Error("write error", log15.Ctx{"err": err})
 		return
 	}
