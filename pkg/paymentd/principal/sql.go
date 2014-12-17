@@ -90,15 +90,15 @@ func PrincipalAllDB(db *sql.DB) ([]Principal, error) {
 		p := Principal{}
 		err := rows.Scan(&p.ID, &p.Created, &p.CreatedBy, &p.Name)
 		if err != nil {
-			return d, err
 			rows.Close()
+			return d, err
 		}
 		d = append(d, p)
 
 	}
 	if err := rows.Err(); err != nil {
-		return d, err
 		rows.Close()
+		return d, err
 	}
 
 	return d, err
