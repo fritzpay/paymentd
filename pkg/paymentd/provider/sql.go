@@ -34,6 +34,9 @@ func scanSingleRow(row *sql.Row) (Provider, error) {
 
 func ProviderAllDB(db *sql.DB) ([]Provider, error) {
 	rows, err := db.Query(selectProvider)
+	if err != nil {
+		return nil, err
+	}
 
 	d := make([]Provider, 0, 200)
 
@@ -41,10 +44,13 @@ func ProviderAllDB(db *sql.DB) ([]Provider, error) {
 		pr := Provider{}
 		err := rows.Scan(&pr.Name)
 		if err != nil {
+			rows.Close()
 			return d, err
 		}
 		d = append(d, pr)
 	}
+	err = rows.Err()
+	rows.Close()
 
 	return d, err
 }
