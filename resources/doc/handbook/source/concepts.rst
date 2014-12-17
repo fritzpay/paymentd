@@ -26,7 +26,8 @@ A Provider
 A Payment Service Provider (:term:`PSP`) offers services to accept online payments.
 
 :term:`paymentd` has drivers, which manage the communication and handling of payment-related
-events with the :term:`PSPs <PSP>`.
+events with the :term:`PSPs <PSP>`. Sometimes this documentation will refer to the
+implementation of :term:`PSP` connections with "driver".
 
 .. _payment_method:
 
