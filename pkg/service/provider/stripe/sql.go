@@ -3,6 +3,7 @@ package stripe
 import (
 	"database/sql"
 	"errors"
+
 	"github.com/fritzpay/paymentd/pkg/paymentd/payment_method"
 )
 

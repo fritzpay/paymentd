@@ -4,7 +4,7 @@ Project API
 Create a new project
 --------------------
 
-.. http:put:: /v1/project
+.. http:put:: /v1/project/{name}/
 
 	Create a new project
 
@@ -12,7 +12,7 @@ Create a new project
 
 	.. sourcecode:: http
 
-		PUT /project HTTP/1.1
+		PUT /project/Roadrunnergame/ HTTP/1.1
 		Host: example.com
 		Content-Type: application/json
 		Accept: application/json
@@ -20,7 +20,6 @@ Create a new project
 
 		{
 			"PrincipalID":"1",
-			"Name":"Roadrunnergame",
 			"Metadata": {
 				"Version":"Singleplay"
 			}
@@ -42,12 +41,22 @@ Create a new project
 				"Name":"Roadrunnergame",
 				"CreatedBy":"John Doe",
 				"Created":"2014-10-17T14:12:11Z",
+				"Config": {
+					"WebURL": null,
+					"CallbackURL": null,
+					"CallbackAPIVersion": null,
+					"CallbackProjectKey": null,
+					"ReturnURL": null
+				},
 				"Metadata":{
 					"Version":"Singleplay"
 				}
 			},
 			"Error": null
 		}
+
+
+	:param name: The project name
 
 	:reqheader Authorization: HTTP Basic Auth
 	
@@ -58,7 +67,7 @@ Create a new project
 Change an existing project
 --------------------------
 
-.. http:post:: /v1/project
+.. http:post:: /v1/project/{name}/
 
 	Change an existing project
 
@@ -66,7 +75,7 @@ Change an existing project
 
 	.. sourcecode:: http
 
-		POST /project HTTP/1.1
+		POST /project/Roadrunnergame/ HTTP/1.1
 		Host: example.com
 		Content-Type: application/json
 		Accept: application/json
@@ -74,7 +83,6 @@ Change an existing project
 	
 		{
 			"PrincipalID":"1",
-			"ID":"1",
 			"Metadata": {
 				"Type": "Game",
 				"Version":"1"
@@ -99,6 +107,13 @@ Change an existing project
 				"Name":"Roadrunnergame",
 				"CreatedBy":"John Doe",
 				"Created":"2014-10-17T14:12:11Z",
+				"Config": {
+					"WebURL": null,
+					"CallbackURL": null,
+					"CallbackAPIVersion": null,
+					"CallbackProjectKey": null,
+					"ReturnURL": null
+				},
 				"Metadata": {
 					"Type": "Game",
 					"Version":"1"
@@ -106,6 +121,8 @@ Change an existing project
 			},
 			"Error": null
 		}
+
+	:param name: The project name
 
 	:statuscode 200: No error, project data changed.
 	:statuscode 400: The request was malformed; the provided parameters could not be understood.
