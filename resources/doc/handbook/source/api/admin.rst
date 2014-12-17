@@ -294,7 +294,7 @@ Create a new principal
 
 	.. sourcecode:: http
 
-		PUT /principal HTTP/1.1
+		PUT /v1/principal HTTP/1.1
 		Host: example.com
 		Content-Type: application/json
 		Accept: application/json
@@ -351,7 +351,7 @@ Create a new principal
 Change principal data
 *********************
 
-.. http:post:: /v1/principal
+.. http:post:: /v1/principal/(name)
 
 	Change an existing principal.
 
@@ -359,7 +359,7 @@ Change principal data
 
 	.. sourcecode:: http
 
-		POST /principal HTTP/1.1
+		POST /v1/principal/acme_corporation HTTP/1.1
 		Host: example.com
 		Content-Type: application/json
 		Accept: application/json
@@ -394,6 +394,8 @@ Change principal data
 			"Error": null
 		}
 
+	:param name: The principal name.
+
 	:reqheader Authorization: A valid authorization token.
 
 	:statuscode 200: No error, principal data changed.
@@ -407,7 +409,7 @@ Change principal data
 Retrieve a principal
 ********************
 
-.. http:get:: /principal/(name)
+.. http:get:: /v1/principal/(name)
 
 	Retrieve the given principal.
 
@@ -415,7 +417,7 @@ Retrieve a principal
 
 	.. sourcecode:: http
 
-		GET /principal/acme_corporation  HTTP/1.1
+		GET /v1/principal/acme_corporation  HTTP/1.1
 		Host: example.com
 		Content-Type: application/json
 		Accept: application/json
@@ -469,7 +471,7 @@ Create a new project
 
 	.. sourcecode:: http
 
-		PUT /project HTTP/1.1
+		PUT /v1/project HTTP/1.1
 		Host: example.com
 		Content-Type: application/json
 		Accept: application/json
@@ -508,7 +510,7 @@ Create a new project
 
 	:reqheader Authorization: A valid authorization token.
 
-	:reqjson string PrincipalID: The :ref:`Principal <prinicpal>` ID for which the project
+	:reqjson string PrincipalID: The :ref:`Principal <principal>` ID for which the project
 	                             should be created.
 	:reqjson string Name: The :ref:`project` name. This name has to be unique per principal.
 	:reqjson Object Metadata: Metadata associated with the project.
@@ -529,7 +531,7 @@ Change an existing project
 
 	.. sourcecode:: http
 
-		POST /project HTTP/1.1
+		POST /v1/project HTTP/1.1
 		Host: example.com
 		Content-Type: application/json
 		Accept: application/json
@@ -549,7 +551,6 @@ Change an existing project
 	.. sourcecode:: http
 
 		HTTP/1.1 200 OK
-		Accept: application/json
 		Content-Type: application/json
 
 		{
@@ -572,5 +573,153 @@ Change an existing project
 	:statuscode 200: No error, project data changed.
 	:statuscode 400: The request was malformed; the provided parameters could not be understood.
 	:statuscode 401: Unauthorized, either the username does not exist or the credentials
+	                 were incorrect.
 	:statuscode 404: project with given id was not found 
 
+******************
+Retrieve a project
+******************
+
+.. http:get:: /v1/project/(id)
+
+	Retrieve the project data with the given project id.
+
+	**Example request**:
+
+	.. sourcecode:: http
+
+		GET /v1/project/1 HTTP/1.1
+		Host: example.com
+		Accept: application/json
+		Authorization: MTQxNTA5NTI5MHxYaCVyOkp7RNaMujhp...
+
+	**Example response**:
+
+	.. sourcecode:: http
+
+		HTTP/1.1 200 OK
+		Content-Type: application/json
+
+		{
+			"Version": "1.2",
+			"Status": "success",
+			"Info": "project Roadrunnergame found",
+			"Response": {
+				"ID": "1",
+				"PrincipalID": "1",
+				"Name": "Roadrunnergame",
+				"Created": "2014-10-17T14:12:11Z",
+				"CreatedBy": "John Doe",
+				"Config": {
+					"WebURL": null,
+					"CallbackURL": null,
+					"CallbackAPIVersion": null,
+					"ProjectKey": null,
+					"ReturnURL": null
+				},
+				"Metadata": {
+					"Type": "Game",
+					"Version": "1"
+				}
+			},
+			"Error": null
+		}
+
+	:param name: The project id
+
+	:reqheader Authorization: A valid authorization token.
+	
+	:statuscode 200: No error, project data served.
+	:statuscode 400: The request was malformed; the provided id could not be understood.
+	:statuscode 401: Unauthorized, either the username does not exist or the credentials
+	                 were incorrect.
+	:statuscode 404: project with given id was not found.
+
+Currency API
+------------
+
+:term:`paymentd` maintains its own set of available currencies. Those are identified
+by ISO 4217 currency codes.
+
+*******************************************
+Retrieve a list of all supported currencies
+*******************************************
+
+.. http:get:: /v1/currency
+
+	Retrieve a list of all currencies.
+
+	**Example request**:
+
+	.. sourcecode:: http
+
+		GET /v1/currency HTTP/1.1
+		Host: example.com
+		Accept: application/json
+		Authorization: MTQxNTA5NTI5MHxYaCVyOkp7RNaMujhp...
+
+	**Example response**:
+
+	.. sourcecode:: http
+
+		HTTP/1.1 200 OK
+		Content-Type: application/json
+
+		{
+			"Version": "1.2",
+			"Status": "success",
+			"Info": "currencies found",
+			"Response": [
+				"AED",
+				"AFN",
+				...
+			],
+			"Error": null
+		}
+
+	:reqheader Authorization: A valid authorization token.
+	
+	:statuscode 200: No error, currencies returned.
+	:statuscode 401: Unauthorized, either the username does not exist or the credentials
+	                 were incorrect.
+
+
+****************************
+Retrieve a specific currency
+****************************
+
+.. http:get:: /v1/currency/(code)
+
+	Retrieve a currency.
+
+	**Example request**:
+
+	.. sourcecode:: http
+
+		GET /v1/currency/EUR HTTP/1.1
+		Host: example.com
+		Authorization: MTQxNTA5NTI5MHxYaCVyOkp7RNaMujhp...
+
+	**Example response**:
+
+	.. sourcecode:: http
+
+		HTTP/1.1 200 OK
+		Content-Type: application/json
+
+		{
+			"Version": "1.2",
+			"Status": "success",
+			"Info": "currency EUR found",
+			"Response": "EUR",
+			"Error": null
+		}
+
+	:reqheader Authorization: A valid authorization token.
+
+	:param code: ISO 4217 currency code
+	
+	:statuscode 200: No error, currencies returned.
+	:statuscode 401: Unauthorized, either the username does not exist or the credentials
+	                 were incorrect.
+	:statuscode 404: Not found, the currency was not found.	

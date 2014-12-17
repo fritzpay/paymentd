@@ -6,3 +6,4 @@ API Reference
 
 	api/basics
 	api/admin
+	api/payment
