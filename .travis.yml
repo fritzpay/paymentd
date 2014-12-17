@@ -14,7 +14,7 @@ install:
   - go get code.google.com/p/go.tools/cmd/vet || true
   - go get golang.org/x/tools/cmd/vet
   - go get github.com/tools/godep
-  - $HOME/gopath/bin/godep get ./...
+  - $HOME/gopath/bin/godep restore ./...
 
 script: go vet ./... && go test ./... -race -v
 
