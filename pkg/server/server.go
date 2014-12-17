@@ -21,6 +21,8 @@ const (
 	serverWaitTimeout = 10 * time.Second
 )
 
+// Wait is a global WaitGroup for the Server(s). During Shutdown() of the server(s)
+// the final close will wait for the waitgroup to be resolved or for a set timeout.
 var Wait sync.WaitGroup
 
 // Server is a  paymentd server

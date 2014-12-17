@@ -4,6 +4,14 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"html/template"
+	"io/ioutil"
+	"net/http"
+	"net/url"
+	"os"
+	"path"
+	"time"
+
 	"github.com/fritzpay/paymentd/pkg/paymentd/payment"
 	"github.com/fritzpay/paymentd/pkg/paymentd/payment_method"
 	"github.com/fritzpay/paymentd/pkg/service"
@@ -13,13 +21,6 @@ import (
 	"github.com/stripe/stripe-go"
 	"github.com/stripe/stripe-go/charge"
 	"gopkg.in/inconshreveable/log15.v2"
-	"html/template"
-	"io/ioutil"
-	"net/http"
-	"net/url"
-	"os"
-	"path"
-	"time"
 )
 
 const (

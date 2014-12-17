@@ -98,7 +98,7 @@ func installDependencies() {
 		}
 	}
 	args = []string{
-		"get",
+		"restore",
 		"./...",
 	}
 	if verbose {
