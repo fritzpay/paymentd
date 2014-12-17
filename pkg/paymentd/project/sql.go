@@ -221,11 +221,15 @@ func AllProjectsByPrincipalIDDB(db *sql.DB, principalID int64) ([]Project, error
 		d = append(d, p)
 	}
 
-	rows.Close()
+	if err = rows.Err(); err != nil {
+		rows.Close()
+		return d, err
+	}
 	if len(d) < 1 {
 
 		return nil, ErrProjectNotFound
 	}
+
 	return d, err
 }
 
