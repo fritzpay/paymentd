@@ -816,3 +816,6 @@ Retrieve a specific provider
 	:statuscode 200: No error, provider returned.
 	:statuscode 401: Unauthorized, either the username does not exist or the credentials
 	                 were incorrect.
+
+Payment Method API
+------------------
