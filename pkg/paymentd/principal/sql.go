@@ -83,7 +83,7 @@ func PrincipalAllDB(db *sql.DB) ([]Principal, error) {
 		return nil, err
 	}
 
-	d := make([]Principal, 0, 200)
+	d := make([]Principal, 0, 50)
 
 	for rows.Next() {
 

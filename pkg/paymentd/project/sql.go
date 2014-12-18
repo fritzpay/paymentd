@@ -192,7 +192,7 @@ func AllProjectsByPrincipalIDDB(db *sql.DB, principalID int64) ([]Project, error
 		return nil, err
 	}
 
-	d := make([]Project, 0, 200)
+	d := make([]Project, 0, 50)
 
 	for rows.Next() {
 		p := Project{}
