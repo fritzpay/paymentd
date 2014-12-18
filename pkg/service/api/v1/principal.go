@@ -109,6 +109,10 @@ func (a *AdminAPI) putNewPrincipal(w http.ResponseWriter, r *http.Request) {
 		log.Error("json decode failed", log15.Ctx{"err": err})
 		return
 	}
+	if err := pr.ValidStatus(); err != nil {
+		ErrInval.Write(w)
+		return
+	}
 
 	log = log.New(log15.Ctx{"principalName": pr.Name})
 
@@ -137,6 +141,14 @@ func (a *AdminAPI) putNewPrincipal(w http.ResponseWriter, r *http.Request) {
 		tx.Rollback()
 		ErrDatabase.Write(w)
 		log.Error("TX insert failed.", log15.Ctx{"err": err})
+		return
+	}
+	// insert principal status
+	err = principal.InsertPrincipalStatusTx(tx, pr, pr.CreatedBy)
+	if err != nil {
+		tx.Rollback()
+		ErrDatabase.Write(w)
+		log.Error("error on insert principal status", log15.Ctx{"err": err})
 		return
 	}
 	// insert Metadata
