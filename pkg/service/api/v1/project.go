@@ -121,6 +121,7 @@ func (a *AdminAPI) getAllProjects(w http.ResponseWriter, r *http.Request) {
 
 	params := r.URL.Query()
 	principalIDParam := params.Get("principalid")
+	metadataCtrlParam := params.Get("metadata")
 
 	principalID, err := strconv.ParseInt(principalIDParam, 10, 64)
 	if err != nil {
@@ -149,18 +150,19 @@ func (a *AdminAPI) getAllProjects(w http.ResponseWriter, r *http.Request) {
 		ErrDatabase.Write(w)
 		return
 	}
+	if metadataCtrlParam == "true" {
 
-	for _, pr := range pl {
+		for _, pr := range pl {
 
-		md, err := metadata.MetadataByPrimaryDB(db, project.MetadataModel, pr.ID)
-		if len(md) > 0 {
+			md, err := metadata.MetadataByPrimaryDB(db, project.MetadataModel, pr.ID)
+			if len(md) > 0 {
+				pr.Metadata = md.Values()
+			}
+			if err != nil {
+				log.Warn("error retrieving metadata", log15.Ctx{"err": err})
+			}
 			pr.Metadata = md.Values()
 		}
-		if err != nil {
-			log.Warn("error retrieving metadata", log15.Ctx{"err": err})
-
-		}
-		pr.Metadata = md.Values()
 	}
 
 	// response

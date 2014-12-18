@@ -25,7 +25,7 @@ type Project struct {
 
 	Config Config
 
-	Metadata map[string]string
+	Metadata map[string]string `json:",omitempty`
 }
 
 // Empty returns true if the project is considered empty/uninitialized

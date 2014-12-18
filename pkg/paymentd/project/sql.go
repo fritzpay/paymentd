@@ -129,7 +129,7 @@ WHERE
 	id = ?
 `
 
-const selectProjectByPrincipalID = selectProject + `
+const selectProjectsByPrincipalID = selectProject + `
 WHERE
 	principal_id = ?
 `
@@ -187,7 +187,7 @@ func ProjectByIDDB(db *sql.DB, projectId int64) (*Project, error) {
 // AllProjectsByPrincipalIDDB selects all projects by given principal ID
 
 func AllProjectsByPrincipalIDDB(db *sql.DB, principalID int64) ([]*Project, error) {
-	rows, err := db.Query(selectProjectByPrincipalID, principalID)
+	rows, err := db.Query(selectProjectsByPrincipalID, principalID)
 	if err != nil {
 		return nil, err
 	}
