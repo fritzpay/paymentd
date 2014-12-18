@@ -108,9 +108,8 @@ func (a *AdminAPI) putNewPaymentMethod(w http.ResponseWriter, r *http.Request) {
 	// projectid and methodname
 	vars := mux.Vars(r)
 	projectIDParam := vars["projectid"]
-	params := r.URL.Query()
-	principalIDParam := params.Get("principalid")
-	log.Info("put project", log15.Ctx{"principalID": principalIDParam, "projectID": projectIDParam})
+
+	log.Info("put project", log15.Ctx{"projectID": projectIDParam})
 
 	projectID, err := strconv.ParseInt(projectIDParam, 10, 64)
 	if err != nil {
@@ -118,19 +117,14 @@ func (a *AdminAPI) putNewPaymentMethod(w http.ResponseWriter, r *http.Request) {
 		log.Info("malformed param", log15.Ctx{"projectIdParam": projectIDParam})
 		return
 	}
-	principalID, err := strconv.ParseInt(principalIDParam, 10, 64)
-	if err != nil {
-		ErrReadParam.Write(w)
-		log.Info("malformed param", log15.Ctx{"principalIDParam": principalIDParam})
-		return
-	}
+
 	db := a.ctx.PrincipalDB()
 	if err != nil {
 		ErrDatabase.Write(w)
 		log.Error("error on begin", log15.Ctx{"err": err})
 	}
 
-	proj, err := project.ProjectByPrincipalIDandIDDB(db, principalID, projectID)
+	proj, err := project.ProjectByIDDB(db, projectID)
 	if err != nil && err != project.ErrProjectNotFound {
 		ErrDatabase.Write(w)
 		log.Error("database request failed", log15.Ctx{"err": err})
