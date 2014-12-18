@@ -15,10 +15,13 @@ func WithPrincipal(db *sql.Tx, f func(pr *Principal)) func() {
 			Created:   time.Now(),
 			CreatedBy: "test",
 			Name:      "test_principal",
+			Status:    PrincipalStatusActive,
 		}
 		err := InsertPrincipalTx(db, pr)
 		So(err, ShouldBeNil)
 		So(pr.Empty(), ShouldBeFalse)
+		err = InsertPrincipalStatusTx(db, *pr, "test2")
+		So(err, ShouldBeNil)
 
 		f(pr)
 	}
@@ -97,7 +100,7 @@ func TestPrincipalSQLTx(t *testing.T) {
 							selPr, err := PrincipalByIDTx(tx, pr.ID)
 
 							Convey("It should return no principal", func() {
-								So(selPr, ShouldBeNil)
+								So(selPr.ID, ShouldEqual, 0)
 								So(err, ShouldEqual, ErrPrincipalNotFound)
 							})
 						})

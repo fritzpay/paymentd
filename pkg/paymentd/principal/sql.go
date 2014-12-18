@@ -43,21 +43,30 @@ func InsertPrincipalTx(db *sql.Tx, p *Principal) error {
 
 const selectPrincipal = `
 SELECT
-	id,
-	created,
-	created_by,
-	name
-FROM principal
+	pr.id,
+	pr.created,
+	pr.created_by,
+	pr.name,
+	s.status
+FROM principal AS pr
+INNER JOIN principal_status AS s ON
+	s.principal_id = pr.id
+	AND
+	s.timestamp = (
+		SELECT MAX(timestamp) FROM principal_status
+		WHERE
+			principal_id = pr.id
+	)
 `
 
 const selectPrincipalByID = selectPrincipal + `
 WHERE
-	id = ?
+	pr.id = ?
 `
 
 func scanPrincipal(row *sql.Row) (Principal, error) {
 	p := Principal{}
-	err := row.Scan(&p.ID, &p.Created, &p.CreatedBy, &p.Name)
+	err := row.Scan(&p.ID, &p.Created, &p.CreatedBy, &p.Name, &p.Status)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return p, ErrPrincipalNotFound
@@ -74,7 +83,7 @@ func PrincipalByIDTx(db *sql.Tx, id int64) (Principal, error) {
 
 const selectPrincipalByName = selectPrincipal + `
 WHERE
-	name = ?
+	pr.name = ?
 `
 
 // PrincipalByNameDB selects a principal by the given name
