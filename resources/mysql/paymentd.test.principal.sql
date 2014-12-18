@@ -28,6 +28,25 @@ ENGINE = InnoDB;
 
 
 -- -----------------------------------------------------
+-- Table `principal_status`
+-- -----------------------------------------------------
+DROP TABLE IF EXISTS `principal_status` ;
+
+CREATE TABLE IF NOT EXISTS `principal_status` (
+  `principal_id` INT UNSIGNED NOT NULL,
+  `timestamp` BIGINT UNSIGNED NOT NULL,
+  `created_by` VARCHAR(64) NOT NULL,
+  `status` VARCHAR(32) NOT NULL,
+  PRIMARY KEY (`principal_id`, `timestamp`),
+  CONSTRAINT `fk_principal_status_principal_id`
+    FOREIGN KEY (`principal_id`)
+    REFERENCES `principal` (`id`)
+    ON DELETE RESTRICT
+    ON UPDATE CASCADE)
+ENGINE = InnoDB;
+
+
+-- -----------------------------------------------------
 -- Table `project`
 -- -----------------------------------------------------
 DROP TABLE IF EXISTS `project` ;

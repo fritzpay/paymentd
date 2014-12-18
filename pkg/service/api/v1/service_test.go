@@ -408,6 +408,25 @@ func TestGetProvider(t *testing.T) {
 	}))
 }
 
+func WithCreatePrincipalRequest(ctx *service.Context, pr principal.Principal, f func(req *http.Request)) func() {
+	return func() {
+		jsonB, err := json.Marshal(pr)
+		So(err, ShouldBeNil)
+		buf := bytes.NewBuffer(jsonB)
+
+		req, err := http.NewRequest("PUT", ServicePath+"/principal", buf)
+		So(err, ShouldBeNil)
+
+		// request context
+		service.SetRequestContext(req, ctx)
+		Reset(func() {
+			service.ClearRequestContext(req)
+		})
+
+		f(req)
+	}
+}
+
 func TestPrincipal(t *testing.T) {
 	Convey("Given a test context", t, testutil.WithContext(func(ctx *service.Context, logChan <-chan *log15.Record) {
 		ctx.Config().API.ServeAdmin = true
@@ -422,101 +441,118 @@ func TestPrincipal(t *testing.T) {
 					ctx.SetPrincipalDB(prDB, nil)
 					Reset(func() { prDB.Close() })
 
-					Convey("Given a create principal request", func() {
+					Convey("Given a principal", func() {
 						pr := principal.Principal{
 							Name: fmt.Sprintf("test%d", time.Now().UnixNano()),
 							Metadata: map[string]string{
 								"test": "one",
 							},
 						}
-						jsonB, err := json.Marshal(pr)
-						So(err, ShouldBeNil)
-						buf := bytes.NewBuffer(jsonB)
 
-						req, err := http.NewRequest("PUT", ServicePath+"/principal", buf)
-						So(err, ShouldBeNil)
+						Convey("Given the principal has a valid status", func() {
+							pr.Status = principal.PrincipalStatusActive
 
-						rm := mux.RouteMatch{}
-						match := mx.Match(req, &rm)
-						So(match, ShouldBeTrue)
+							Convey("Given a create principal request", WithCreatePrincipalRequest(ctx, pr, func(req *http.Request) {
+								rm := mux.RouteMatch{}
+								match := mx.Match(req, &rm)
+								So(match, ShouldBeTrue)
 
-						// request context
-						service.SetRequestContext(req, ctx)
-						Reset(func() {
-							service.ClearRequestContext(req)
-						})
+								Convey("Given a valid authorization", WithAuthorization(mx, func(auth string) {
+									req.Header.Set("Authorization", auth)
 
-						Convey("Given a valid authorization", WithAuthorization(mx, func(auth string) {
-							req.Header.Set("Authorization", auth)
+									Convey("When executing the request", func() {
+										w := testutil.NewResponseWriter()
+										mx.ServeHTTP(w, req)
 
-							Convey("When executing the request", func() {
-								w := testutil.NewResponseWriter()
-								mx.ServeHTTP(w, req)
+										Convey("It should succeed", func() {
+											So(w.HeaderWritten, ShouldBeTrue)
+											So(w.StatusCode, ShouldEqual, http.StatusOK)
 
-								Convey("It should succeed", func() {
-									So(w.HeaderWritten, ShouldBeTrue)
-									So(w.StatusCode, ShouldEqual, http.StatusOK)
+											resp := ServiceResponse{}
+											dec := json.NewDecoder(&w.Buf)
+											err := dec.Decode(&resp)
+											So(err, ShouldBeNil)
+											So(resp.Status, ShouldEqual, StatusSuccess)
 
-									resp := ServiceResponse{}
-									dec := json.NewDecoder(&w.Buf)
-									err := dec.Decode(&resp)
-									So(err, ShouldBeNil)
-									So(resp.Status, ShouldEqual, StatusSuccess)
+											respPr, ok := resp.Response.(map[string]interface{})
+											So(ok, ShouldBeTrue)
 
-									respPr, ok := resp.Response.(map[string]interface{})
-									So(ok, ShouldBeTrue)
+											principalIDStr := respPr["ID"].(string)
+											principalID, err := strconv.ParseInt(principalIDStr, 10, 64)
+											So(err, ShouldBeNil)
+											So(principalID, ShouldNotEqual, 0)
 
-									principalIDStr := respPr["ID"].(string)
-									principalID, err := strconv.ParseInt(principalIDStr, 10, 64)
-									So(err, ShouldBeNil)
-									So(principalID, ShouldNotEqual, 0)
-
-									Convey("Given an update request", func() {
-										pr.Metadata["test2"] = "two"
-										jsonB, err = json.Marshal(pr)
-										So(err, ShouldBeNil)
-										buf = bytes.NewBuffer(jsonB)
-										req, err = http.NewRequest("POST", ServicePath+"/principal/"+pr.Name, buf)
-										So(err, ShouldBeNil)
-										req.Header.Set("Authorization", auth)
-
-										rm := mux.RouteMatch{}
-										match := mx.Match(req, &rm)
-										So(match, ShouldBeTrue)
-
-										service.SetRequestContext(req, ctx)
-										Reset(func() {
-											service.ClearRequestContext(req)
-										})
-
-										Convey("When executing the request", func() {
-											w := testutil.NewResponseWriter()
-											mx.ServeHTTP(w, req)
-
-											Convey("It should succeed", func() {
-												So(w.HeaderWritten, ShouldBeTrue)
-												So(w.StatusCode, ShouldEqual, http.StatusOK)
-
-												resp := ServiceResponse{}
-												dec := json.NewDecoder(&w.Buf)
-												err := dec.Decode(&resp)
+											Convey("Given an update request", func() {
+												pr.Metadata["test2"] = "two"
+												jsonB, err := json.Marshal(pr)
 												So(err, ShouldBeNil)
-												So(resp.Status, ShouldEqual, StatusSuccess)
+												buf := bytes.NewBuffer(jsonB)
+												req, err = http.NewRequest("POST", ServicePath+"/principal/"+pr.Name, buf)
+												So(err, ShouldBeNil)
+												req.Header.Set("Authorization", auth)
 
-												respPr, ok := resp.Response.(map[string]interface{})
-												So(ok, ShouldBeTrue)
-												So(respPr["Metadata"], ShouldNotBeNil)
+												rm := mux.RouteMatch{}
+												match := mx.Match(req, &rm)
+												So(match, ShouldBeTrue)
 
-												meta, ok := respPr["Metadata"].(map[string]interface{})
-												So(ok, ShouldBeTrue)
+												service.SetRequestContext(req, ctx)
+												Reset(func() {
+													service.ClearRequestContext(req)
+												})
 
-												So(meta["test2"], ShouldEqual, "two")
+												Convey("When executing the request", func() {
+													w := testutil.NewResponseWriter()
+													mx.ServeHTTP(w, req)
+
+													Convey("It should succeed", func() {
+														So(w.HeaderWritten, ShouldBeTrue)
+														So(w.StatusCode, ShouldEqual, http.StatusOK)
+
+														resp := ServiceResponse{}
+														dec := json.NewDecoder(&w.Buf)
+														err := dec.Decode(&resp)
+														So(err, ShouldBeNil)
+														So(resp.Status, ShouldEqual, StatusSuccess)
+
+														respPr, ok := resp.Response.(map[string]interface{})
+														So(ok, ShouldBeTrue)
+														So(respPr["Metadata"], ShouldNotBeNil)
+
+														meta, ok := respPr["Metadata"].(map[string]interface{})
+														So(ok, ShouldBeTrue)
+
+														So(meta["test2"], ShouldEqual, "two")
+													})
+												})
 											})
 										})
 									})
-								})
-							})
-						}))
+								}))
+							}))
+						})
+
+						Convey("Given the principal has an invalid status", func() {
+							pr.Status = "invalidfwefwf"
+							Convey("Given a create principal request", WithCreatePrincipalRequest(ctx, pr, func(req *http.Request) {
+								rm := mux.RouteMatch{}
+								match := mx.Match(req, &rm)
+								So(match, ShouldBeTrue)
+
+								Convey("Given a valid authorization", WithAuthorization(mx, func(auth string) {
+									req.Header.Set("Authorization", auth)
+
+									Convey("When executing the request", func() {
+										w := testutil.NewResponseWriter()
+										mx.ServeHTTP(w, req)
+
+										Convey("It should return a bad request", func() {
+											So(w.HeaderWritten, ShouldBeTrue)
+											So(w.StatusCode, ShouldEqual, http.StatusBadRequest)
+										})
+									})
+								}))
+							}))
+						})
 					})
 				}))
 			}))

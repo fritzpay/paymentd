@@ -3,6 +3,7 @@ package principal
 import (
 	"database/sql"
 	"errors"
+	"time"
 )
 
 var (
@@ -29,17 +30,6 @@ func execInsertPrincipal(insert *sql.Stmt, p *Principal) error {
 	return err
 }
 
-// InsertPrincipalDB inserts a principal
-//
-// This will modify the given principal, setting the ID field.
-func InsertPrincipalDB(db *sql.DB, p *Principal) error {
-	insert, err := db.Prepare(insertPrincipal)
-	if err != nil {
-		return err
-	}
-	return execInsertPrincipal(insert, p)
-}
-
 // InsertPrincipalTx inserts a principal
 //
 // This will modify the given principal, setting the ID field.
@@ -53,21 +43,32 @@ func InsertPrincipalTx(db *sql.Tx, p *Principal) error {
 
 const selectPrincipal = `
 SELECT
-	id,
-	created,
-	created_by,
-	name
-FROM principal
+	pr.id,
+	pr.created,
+	pr.created_by,
+	pr.name,
+	s.status
+FROM principal AS pr
+INNER JOIN principal_status AS s ON
+	s.principal_id = pr.id
+	AND
+	s.timestamp = (
+		SELECT MAX(timestamp) FROM principal_status
+		WHERE
+			principal_id = pr.id
+	)
 `
 
 const selectPrincipalByID = selectPrincipal + `
 WHERE
-	id = ?
+	s.status <> '` + PrincipalStatusDeleted + `'
+	AND
+	pr.id = ?
 `
 
 func scanPrincipal(row *sql.Row) (Principal, error) {
 	p := Principal{}
-	err := row.Scan(&p.ID, &p.Created, &p.CreatedBy, &p.Name)
+	err := row.Scan(&p.ID, &p.Created, &p.CreatedBy, &p.Name, &p.Status)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return p, ErrPrincipalNotFound
@@ -84,7 +85,9 @@ func PrincipalByIDTx(db *sql.Tx, id int64) (Principal, error) {
 
 const selectPrincipalByName = selectPrincipal + `
 WHERE
-	name = ?
+	s.status <> '` + PrincipalStatusDeleted + `'
+	AND
+	pr.name = ?
 `
 
 // PrincipalByNameDB selects a principal by the given name
@@ -118,4 +121,23 @@ func PrincipalIDByNameTx(db *sql.Tx, name string) (int64, error) {
 		return 0, err
 	}
 	return id, nil
+}
+
+const insertPrincipalStatus = `
+INSERT INTO principal_status
+(principal_id, timestamp, created_by, status)
+VALUES
+(?, ?, ?, ?)
+`
+
+// InsertPrincipalStatusTx adds a status entry for the given principal
+func InsertPrincipalStatusTx(db *sql.Tx, pr Principal, createdBy string) error {
+	stmt, err := db.Prepare(insertPrincipalStatus)
+	if err != nil {
+		return err
+	}
+	ts := time.Now()
+	_, err = stmt.Exec(pr.ID, ts.UnixNano(), createdBy, pr.Status)
+	stmt.Close()
+	return err
 }
