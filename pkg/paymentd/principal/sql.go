@@ -3,6 +3,7 @@ package principal
 import (
 	"database/sql"
 	"errors"
+	"time"
 )
 
 var (
@@ -27,17 +28,6 @@ func execInsertPrincipal(insert *sql.Stmt, p *Principal) error {
 	p.ID, err = res.LastInsertId()
 	insert.Close()
 	return err
-}
-
-// InsertPrincipalDB inserts a principal
-//
-// This will modify the given principal, setting the ID field.
-func InsertPrincipalDB(db *sql.DB, p *Principal) error {
-	insert, err := db.Prepare(insertPrincipal)
-	if err != nil {
-		return err
-	}
-	return execInsertPrincipal(insert, p)
 }
 
 // InsertPrincipalTx inserts a principal
@@ -118,4 +108,23 @@ func PrincipalIDByNameTx(db *sql.Tx, name string) (int64, error) {
 		return 0, err
 	}
 	return id, nil
+}
+
+const insertPrincipalStatus = `
+INSERT INTO principal_status
+(principal_id, timestamp, created_by, status)
+VALUES
+(?, ?, ?, ?)
+`
+
+// InsertPrincipalStatusTx adds a status entry for the given principal
+func InsertPrincipalStatusTx(db *sql.Tx, pr Principal, createdBy string) error {
+	stmt, err := db.Prepare(insertPrincipalStatus)
+	if err != nil {
+		return err
+	}
+	ts := time.Now()
+	_, err = stmt.Exec(pr.ID, ts.UnixNano(), createdBy, pr.Status)
+	stmt.Close()
+	return err
 }
