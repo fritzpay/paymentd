@@ -101,7 +101,7 @@ func PrincipalAllDB(db *sql.DB) ([]Principal, error) {
 		return d, err
 	}
 	if len(d) < 1 {
-		return nil, errors.New("No principals found")
+		return nil, ErrPrincipalNotFound
 	}
 	rows.Close()
 
