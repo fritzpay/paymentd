@@ -9,6 +9,12 @@ const (
 	metadataPrimaryField = "principal_id"
 )
 
+const (
+	PrincipalStatusActive   = "active"
+	PrincipalStatusInactive = "inactive"
+	PrincipalStatusDeleted  = "deleted"
+)
+
 // Principal represents a principal
 //
 // A principal is a resource under which projects are organized
@@ -17,6 +23,8 @@ type Principal struct {
 	Created   time.Time
 	CreatedBy string
 	Name      string
+
+	Status string
 
 	Metadata map[string]string
 }
