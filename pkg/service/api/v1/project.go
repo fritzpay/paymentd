@@ -62,6 +62,7 @@ func (a *AdminAPI) ProjectGetRequest() http.Handler {
 }
 
 func (a *AdminAPI) getProject(w http.ResponseWriter, r *http.Request) {
+
 	log := a.log.New(log15.Ctx{"method": "getProject"})
 
 	// parse request paramter
@@ -138,7 +139,7 @@ func (a *AdminAPI) getAllProjects(w http.ResponseWriter, r *http.Request) {
 		ErrNotFound.Write(w)
 		return
 	}
-	pr, err := project.AllProjectsByPrincipalIDDB(db, principalID)
+	pl, err := project.AllProjectsByPrincipalIDDB(db, principalID)
 	if err == project.ErrProjectNotFound {
 		log.Error("no projects for given principalID", log15.Ctx{"err": err})
 		ErrNotFound.Write(w)
@@ -149,24 +150,24 @@ func (a *AdminAPI) getAllProjects(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Metadata required in general project listing?
+	for _, pr := range pl {
 
-	/*md, err := metadata.MetadataByPrimaryDB(db, project.MetadataModel, pr.ID)
-	if len(md) > 0 {
+		md, err := metadata.MetadataByPrimaryDB(db, project.MetadataModel, pr.ID)
+		if len(md) > 0 {
+			pr.Metadata = md.Values()
+		}
+		if err != nil {
+			log.Warn("error retrieving metadata", log15.Ctx{"err": err})
+
+		}
 		pr.Metadata = md.Values()
 	}
-	if err != nil {
-		log.Error("error retrieving metadata", log15.Ctx{"err": err})
-		ErrDatabase.Write(w)
-		return
-	}
-	pr.Metadata = md.Values()*/
 
 	// response
 	resp := ProjectAdminAPIResponse{}
 	resp.Status = StatusSuccess
 	resp.Info = "project found"
-	resp.Response = pr
+	resp.Response = pl
 	err = resp.Write(w)
 	if err != nil {
 		log.Error("write error", log15.Ctx{"err": err})

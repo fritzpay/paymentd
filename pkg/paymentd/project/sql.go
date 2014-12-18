@@ -186,16 +186,16 @@ func ProjectByIDDB(db *sql.DB, projectId int64) (*Project, error) {
 
 // AllProjectsByPrincipalIDDB selects all projects by given principal ID
 
-func AllProjectsByPrincipalIDDB(db *sql.DB, principalID int64) ([]Project, error) {
+func AllProjectsByPrincipalIDDB(db *sql.DB, principalID int64) ([]*Project, error) {
 	rows, err := db.Query(selectProjectByPrincipalID, principalID)
 	if err != nil {
 		return nil, err
 	}
 
-	d := make([]Project, 0, 50)
+	d := make([]*Project, 0, 50)
 
 	for rows.Next() {
-		p := Project{}
+		p := &Project{}
 		var ts sql.NullInt64
 		err := rows.Scan(
 			&p.ID,

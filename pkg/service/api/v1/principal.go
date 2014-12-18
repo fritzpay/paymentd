@@ -104,35 +104,34 @@ func (a *AdminAPI) getAllPrincipals(w http.ResponseWriter, r *http.Request) {
 	log := a.log.New(log15.Ctx{"method": "getAllPrincipals"})
 
 	db := a.ctx.PrincipalDB(service.ReadOnly)
-	pr, err := principal.PrincipalAllDB(db)
+	pl, err := principal.PrincipalAllDB(db)
 	if err == principal.ErrPrincipalNotFound {
 		ErrNotFound.Write(w)
 		log.Info("no principals found/ present")
 		return
 	}
 	if err != nil {
-		ErrDatabase.Write(w)
-		log.Error("DB get all failed", log15.Ctx{"err": err})
-		return
+		log.Warn("DB get all failed", log15.Ctx{"err": err})
 	}
 
-	// Meta Data in list principals required?
+	for _, pr := range pl {
 
-	/*md, err := metadata.MetadataByPrimaryDB(db, principal.MetadataModel, pr.ID)
-	if err != nil {
-		ErrDatabase.Write(w)
-		log.Error("get metadata failed", log15.Ctx{"err": err})
-		return
+		md, err := metadata.MetadataByPrimaryDB(db, principal.MetadataModel, pr.ID)
+		if err != nil {
+			ErrDatabase.Write(w)
+			log.Error("get metadata failed", log15.Ctx{"err": err})
+			return
+		}
+		if len(md) > 0 {
+			pr.Metadata = md.Values()
+		}
 	}
-	if len(md) > 0 {
-		pr.Metadata = md.Values()
-	}*/
 
 	// create service response object
 	resp := PrincipalAdminAPIResponse{}
 	resp.Status = StatusSuccess
 	resp.Info = "principals found"
-	resp.Response = pr
+	resp.Response = pl
 	err = resp.Write(w)
 	if err != nil {
 		log.Error("write error", log15.Ctx{"err": err})

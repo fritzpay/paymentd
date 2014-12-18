@@ -77,13 +77,13 @@ func scanPrincipal(row *sql.Row) (Principal, error) {
 	return p, nil
 }
 
-func PrincipalAllDB(db *sql.DB) ([]Principal, error) {
+func PrincipalAllDB(db *sql.DB) ([]*Principal, error) {
 	rows, err := db.Query(selectPrincipal)
 	if err != nil {
 		return nil, err
 	}
 
-	d := make([]Principal, 0, 50)
+	d := make([]*Principal, 0, 50)
 
 	for rows.Next() {
 
@@ -93,7 +93,7 @@ func PrincipalAllDB(db *sql.DB) ([]Principal, error) {
 			rows.Close()
 			return d, err
 		}
-		d = append(d, p)
+		d = append(d, &p)
 
 	}
 	if err := rows.Err(); err != nil {
