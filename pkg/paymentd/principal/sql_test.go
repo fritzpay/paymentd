@@ -93,25 +93,40 @@ func TestPrincipalSQLTx(t *testing.T) {
 						So(err, ShouldBeNil)
 						So(pr.ID, ShouldNotBeEmpty)
 
-						Convey("When selecting the principal by ID", func() {
+						Convey("When selecting the principal without status", func() {
 							selPr, err := PrincipalByIDTx(tx, pr.ID)
 
-							Convey("It should match", func() {
-								So(err, ShouldBeNil)
-								So(selPr.Name, ShouldEqual, pr.Name)
-								So(selPr.Created.Unix(), ShouldEqual, pr.Created.Unix())
-								So(selPr.CreatedBy, ShouldEqual, pr.CreatedBy)
+							Convey("It should return no principal", func() {
+								So(selPr, ShouldBeNil)
+								So(err, ShouldEqual, ErrPrincipalNotFound)
 							})
 						})
 
-						Convey("When selecting the principal by name", func() {
-							selPr, err := PrincipalByNameTx(tx, pr.Name)
+						Convey("When setting the status to active", func() {
+							pr.Status = PrincipalStatusActive
+							err = InsertPrincipalStatusTx(tx, *pr, "tester")
+							So(err, ShouldBeNil)
 
-							Convey("It should match", func() {
-								So(err, ShouldBeNil)
-								So(selPr.Name, ShouldEqual, pr.Name)
-								So(selPr.Created.Unix(), ShouldEqual, pr.Created.Unix())
-								So(selPr.CreatedBy, ShouldEqual, pr.CreatedBy)
+							Convey("When selecting the principal by ID", func() {
+								selPr, err := PrincipalByIDTx(tx, pr.ID)
+
+								Convey("It should match", func() {
+									So(err, ShouldBeNil)
+									So(selPr.Name, ShouldEqual, pr.Name)
+									So(selPr.Created.Unix(), ShouldEqual, pr.Created.Unix())
+									So(selPr.CreatedBy, ShouldEqual, pr.CreatedBy)
+								})
+							})
+
+							Convey("When selecting the principal by name", func() {
+								selPr, err := PrincipalByNameTx(tx, pr.Name)
+
+								Convey("It should match", func() {
+									So(err, ShouldBeNil)
+									So(selPr.Name, ShouldEqual, pr.Name)
+									So(selPr.Created.Unix(), ShouldEqual, pr.Created.Unix())
+									So(selPr.CreatedBy, ShouldEqual, pr.CreatedBy)
+								})
 							})
 						})
 					})
