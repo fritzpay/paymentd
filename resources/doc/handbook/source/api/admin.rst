@@ -723,3 +723,99 @@ Retrieve a specific currency
 	:statuscode 401: Unauthorized, either the username does not exist or the credentials
 	                 were incorrect.
 	:statuscode 404: Not found, the currency was not found.	
+
+Provider API
+------------
+
+:ref:`Provider Drivers <provider>` :term:`Payment Service Providers (PSPs) <PSP>` are a static
+part of :term:`paymentd`. Future implementations might support generic drivers as well as a
+module system to easily extend drivers through third-party plugins.
+
+:ref:`Drivers <provider>` require a fixed reference name inside the FritzPay ecosystem.
+Therefor the Provider API provides methods to obtain the name.
+
+*********************************************************
+Retrieving a list of registered :ref:`drivers <provider>`
+*********************************************************
+
+.. http:get:: /v1/provider
+
+	Retrieve a list of registered provider drivers.
+
+	**Example request**:
+
+	.. sourcecode:: http
+
+		GET /v1/provider HTTP/1.1
+		Host: example.com
+		Authorization: MTQxNTA5NTI5MHxYaCVyOkp7RNaMujhp...
+
+	**Example response**:
+
+	.. sourcecode:: http
+
+		HTTP/1.1 200 OK
+		Content-Type: application/json
+
+		{
+			"Version": "1.2",
+			"Status": "success",
+			"Info": "providers found",
+			"Response": [
+				{"Name": "fritzpay"},
+				{"Name": "paypal_rest"}
+			],
+			"Error": null
+		}
+
+	:reqheader Authorization: A valid authorization token.
+
+	:resjson Array Response: An Array of Provider Objects.
+
+	:statuscode 200: No error, providers returned.
+	:statuscode 401: Unauthorized, either the username does not exist or the credentials
+	                 were incorrect.
+
+****************************
+Retrieve a specific provider
+****************************
+
+.. http:get:: /v1/provider/(name)
+
+	Retrieve a provider.
+
+	**Example request**:
+
+	.. sourcecode:: http
+
+		GET /v1/provider/fritzpay HTTP/1.1
+		Host: example.com
+		Authorization: MTQxNTA5NTI5MHxYaCVyOkp7RNaMujhp...
+
+	**Example response**:
+
+	.. sourcecode:: http
+
+		HTTP/1.1 200 OK
+		Content-Type: application/json
+
+		{
+			"Version": "1.2",
+			"Status": "success",
+			"Info": "provider fritzpay found.",
+			"Response": {
+				"Name": "fritzpay"
+			},
+			"Error": null
+		}
+
+	:reqheader Authorization: A valid authorization token.
+
+	:resjson Object Response: The Provider Object.
+
+	:statuscode 200: No error, provider returned.
+	:statuscode 401: Unauthorized, either the username does not exist or the credentials
+	                 were incorrect.
+
+Payment Method API
+------------------
