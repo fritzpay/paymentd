@@ -61,6 +61,8 @@ INNER JOIN principal_status AS s ON
 
 const selectPrincipalByID = selectPrincipal + `
 WHERE
+	s.status <> '` + PrincipalStatusDeleted + `'
+	AND
 	pr.id = ?
 `
 
@@ -83,6 +85,8 @@ func PrincipalByIDTx(db *sql.Tx, id int64) (Principal, error) {
 
 const selectPrincipalByName = selectPrincipal + `
 WHERE
+	s.status <> '` + PrincipalStatusDeleted + `'
+	AND
 	pr.name = ?
 `
 

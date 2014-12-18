@@ -118,6 +118,7 @@ func TestPrincipalSQLTx(t *testing.T) {
 									So(selPr.Name, ShouldEqual, pr.Name)
 									So(selPr.Created.Unix(), ShouldEqual, pr.Created.Unix())
 									So(selPr.CreatedBy, ShouldEqual, pr.CreatedBy)
+									So(selPr.Active(), ShouldBeNil)
 								})
 							})
 
@@ -129,6 +130,20 @@ func TestPrincipalSQLTx(t *testing.T) {
 									So(selPr.Name, ShouldEqual, pr.Name)
 									So(selPr.Created.Unix(), ShouldEqual, pr.Created.Unix())
 									So(selPr.CreatedBy, ShouldEqual, pr.CreatedBy)
+								})
+							})
+						})
+
+						Convey("When setting the status to deleted", func() {
+							pr.Status = PrincipalStatusDeleted
+							err = InsertPrincipalStatusTx(tx, *pr, "test3")
+							So(err, ShouldBeNil)
+
+							Convey("When selecting the principal", func() {
+								selPr, err := PrincipalByIDTx(tx, pr.ID)
+								Convey("It should not be found", func() {
+									So(selPr.ID, ShouldEqual, 0)
+									So(err, ShouldEqual, ErrPrincipalNotFound)
 								})
 							})
 						})
