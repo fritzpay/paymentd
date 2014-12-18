@@ -4,7 +4,7 @@ Payment Method API
 Add a paymentmethod to a project
 --------------------------------
 
-.. http:put:: /v1/project/(projectid)/method/?principalid=(principalid)
+.. http:put:: /v1/project/(projectid)/method/
 
 	Add a paymentmethod to a project
 
@@ -12,7 +12,7 @@ Add a paymentmethod to a project
 
 	.. sourcecode:: http
 
-		PUT /project/1/method/?principalid=1 HTTP/1.1
+		PUT /project/1/method/ HTTP/1.1
 		Host: example.com
 		Accept: application/json
 		Authorization: MTQxNTA5NTI5MHxYaCVyOkp7RNaMujhp...
@@ -25,7 +25,6 @@ Add a paymentmethod to a project
 
 
 	:param name: The project id
-	:param name: The principal id
 	:param name: The new payment method key
 	:param name: The provider id that should be used for the new payment method
 
