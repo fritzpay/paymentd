@@ -150,7 +150,7 @@ func (a *AdminAPI) getAllProjects(w http.ResponseWriter, r *http.Request) {
 		ErrDatabase.Write(w)
 		return
 	}
-	if metadataCtrlParam == "true" {
+	if metadataCtrlParam != "" {
 
 		for _, pr := range pl {
 

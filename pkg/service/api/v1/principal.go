@@ -116,7 +116,7 @@ func (a *AdminAPI) getAllPrincipals(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		log.Warn("DB get all failed", log15.Ctx{"err": err})
 	}
-	if metadataCtrlParam == "true" {
+	if metadataCtrlParam != "" {
 
 		for _, pr := range pl {
 
