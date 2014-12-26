@@ -104,7 +104,7 @@ func (a *AdminAPI) getAllPrincipals(w http.ResponseWriter, r *http.Request) {
 	log := a.log.New(log15.Ctx{"method": "getAllPrincipals"})
 
 	params := r.URL.Query()
-	metadataCtrlParam := params.Get("metadata")
+	metadataCtrlParam := params.Get("metadata") != ""
 
 	db := a.ctx.PrincipalDB(service.ReadOnly)
 	pl, err := principal.PrincipalAllDB(db)
@@ -116,7 +116,7 @@ func (a *AdminAPI) getAllPrincipals(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		log.Warn("DB get all failed", log15.Ctx{"err": err})
 	}
-	if metadataCtrlParam != "" {
+	if metadataCtrlParam == true {
 
 		for _, pr := range pl {
 
