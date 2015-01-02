@@ -28,7 +28,7 @@ type Principal struct {
 	ID        int64 `json:",string"`
 	Created   time.Time
 	CreatedBy string
-	Name      string
+	Name      string `json:",omitempty"`
 
 	Status string
 

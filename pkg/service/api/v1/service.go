@@ -55,6 +55,7 @@ func NewService(ctx *service.Context, mux *mux.Router) (*Service, error) {
 		mux.Handle(ServicePath+"/principal/{name:[-A-Za-z0-9_]+}", admin.AuthRequiredHandler(admin.PrincipalNameRequest()))
 		mux.Handle(ServicePath+"/provider", admin.AuthRequiredHandler(admin.ProviderGetAllRequest()))
 		mux.Handle(ServicePath+"/provider/{provider}", admin.AuthRequiredHandler(admin.ProviderGetRequest()))
+		mux.Handle(ServicePath+"/project", admin.AuthRequiredHandler(admin.ProjectRequest()))
 		mux.Handle(ServicePath+"/project/{name:[-A-Za-z0-9_]+}/", admin.AuthRequiredHandler(admin.ProjectRequest()))
 		mux.Handle(ServicePath+"/project/{projectid}", admin.AuthRequiredHandler(admin.ProjectGetRequest()))
 		mux.Handle(ServicePath+"/project/{projectid}/method/{methodkey}/provider/{provider}", admin.AuthRequiredHandler(admin.PaymentMethodGetRequest()))

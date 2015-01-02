@@ -30,6 +30,8 @@ func (a *AdminAPI) ProjectRequest() http.Handler {
 			a.putNewProject(w, r)
 		case "POST":
 			a.postChangeProject(w, r)
+		case "GET":
+			a.getAllProjects(w, r)
 		default:
 			if Debug {
 				log.Debug("request method not supported", log15.Ctx{"requestMethod": r.Method})
@@ -60,6 +62,7 @@ func (a *AdminAPI) ProjectGetRequest() http.Handler {
 }
 
 func (a *AdminAPI) getProject(w http.ResponseWriter, r *http.Request) {
+
 	log := a.log.New(log15.Ctx{"method": "getProject"})
 
 	// parse request paramter
@@ -105,6 +108,70 @@ func (a *AdminAPI) getProject(w http.ResponseWriter, r *http.Request) {
 	resp.Write(w)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
+		log.Error("write error", log15.Ctx{"err": err})
+		return
+	}
+}
+
+func (a *AdminAPI) getAllProjects(w http.ResponseWriter, r *http.Request) {
+	log := a.log.New(log15.Ctx{"method": "getAllProjects"})
+
+	// parse request paramter
+	// principal_id
+
+	params := r.URL.Query()
+	principalIDParam := params.Get("principalid")
+	metadataCtrlParam := params.Get("metadata")
+
+	principalID, err := strconv.ParseInt(principalIDParam, 10, 64)
+	if err != nil {
+		log.Error("param principalid conversion error", log15.Ctx{"principalID": principalIDParam})
+		ErrReadParam.Write(w)
+		return
+	}
+
+	// get projects from database
+	db := a.ctx.PrincipalDB(service.ReadOnly)
+
+	// check if
+	_, err = principal.PrincipalByIDDB(db, principalID)
+	if err == principal.ErrPrincipalNotFound {
+		log.Error("principal ID not found", log15.Ctx{"Invalid principalID": principalIDParam})
+		ErrNotFound.Write(w)
+		return
+	}
+	pl, err := project.AllProjectsByPrincipalIDDB(db, principalID)
+	if err == project.ErrProjectNotFound {
+		log.Error("no projects for given principalID", log15.Ctx{"err": err})
+		ErrNotFound.Write(w)
+		return
+	} else if err != nil {
+		log.Error("get projects from DB failed", log15.Ctx{"err": err})
+		ErrDatabase.Write(w)
+		return
+	}
+	if metadataCtrlParam != "" {
+
+		for _, pr := range pl {
+
+			md, err := metadata.MetadataByPrimaryDB(db, project.MetadataModel, pr.ID)
+			if len(md) > 0 {
+				pr.Metadata = md.Values()
+			}
+			if err != nil {
+				log.Warn("error retrieving metadata", log15.Ctx{"err": err})
+			}
+			pr.Metadata = md.Values()
+		}
+	}
+
+	// response
+	resp := ProjectAdminAPIResponse{}
+	resp.Status = StatusSuccess
+	resp.Info = "project found"
+	resp.Response = pl
+	err = resp.Write(w)
+	if err != nil {
 		log.Error("write error", log15.Ctx{"err": err})
 		return
 	}
